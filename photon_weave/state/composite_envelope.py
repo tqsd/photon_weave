@@ -1,4 +1,5 @@
 import numpy as np
+
 from .expansion_levels import ExpansionLevel
 
 
@@ -277,11 +278,11 @@ class CompositeEnvelope:
 
     @redirect_if_consumed
     def apply_operation(self, operation, *states):
+        from photon_weave.operation.composite_operation import CompositeOperation
         from photon_weave.operation.fock_operation import FockOperation
         from photon_weave.operation.polarization_operations import PolarizationOperation
-        from photon_weave.operation.composite_operation import CompositeOperation
-        from photon_weave.state.envelope import Envelope
         from photon_weave.state.composite_envelope import CompositeEnvelope
+        from photon_weave.state.envelope import Envelope
 
         csi = self._find_composite_state_index(states[0])
         if isinstance(operation, FockOperation) or isinstance(
@@ -299,8 +300,6 @@ class CompositeEnvelope:
         """
         Assumes the spaces are correctly ordered
         """
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
         from photon_weave.operation.fock_operation import (
             FockOperation,
             FockOperationType,
@@ -309,6 +308,8 @@ class CompositeEnvelope:
             PolarizationOperation,
             PolarizationOperationType,
         )
+        from photon_weave.state.fock import Fock
+        from photon_weave.state.polarization import Polarization
 
         csi = self._find_composite_state_index(*states)
         composite_operator = 1
@@ -347,8 +348,8 @@ class CompositeEnvelope:
         Measures the number state
         """
         from photon_weave.state.envelope import Envelope
-        from photon_weave.state.polarization import Polarization
         from photon_weave.state.fock import Fock
+        from photon_weave.state.polarization import Polarization
 
         outcomes = []
         nstates = []
@@ -389,8 +390,8 @@ class CompositeEnvelope:
     @redirect_if_consumed
     def POVM_measurement(self, states, operators, non_destructive=False) -> int:
         from photon_weave.state.envelope import Envelope
-        from photon_weave.state.polarization import Polarization
         from photon_weave.state.fock import Fock
+        from photon_weave.state.polarization import Polarization
 
         self.combine(*states)
         self.rearange(*states)

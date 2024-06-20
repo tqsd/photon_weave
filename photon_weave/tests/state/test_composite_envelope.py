@@ -1,24 +1,22 @@
 """
 Tests for the Fock class
 """
-import numpy as np
+import random
 import unittest
+
+import numpy as np
 from numpy.testing import assert_array_equal
-from photon_weave.state.envelope import Envelope
+
+from photon_weave.operation.fock_operation import FockOperation, FockOperationType
 from photon_weave.state.composite_envelope import (
     CompositeEnvelope,
-    StateNotInThisCompositeEnvelopeException,
     FockOrPolarizationExpectedException,
-    pad_operator
+    StateNotInThisCompositeEnvelopeException,
+    pad_operator,
 )
-from photon_weave.state.polarization import (
-    Polarization,
-    PolarizationLabel
-)
-from photon_weave.operation.fock_operation import (
-    FockOperation, FockOperationType
-)
-import random
+from photon_weave.state.envelope import Envelope
+from photon_weave.state.polarization import Polarization, PolarizationLabel
+
 
 class TestFock(unittest.TestCase):
     def test_initiation_from_envelopes(self):
@@ -39,7 +37,6 @@ class TestFock(unittest.TestCase):
         self.assertEqual(env3.composite_envelope, composite_envelope)
         self.assertTrue(env3 in composite_envelope.envelopes)
 
-
     def test_composite_envelope_merge(self):
         env1 = Envelope()
         env2 = Envelope()
@@ -53,7 +50,9 @@ class TestFock(unittest.TestCase):
 
         self.assertEqual(len(ce3.envelopes), 4)
         for e in [env1, env2, env3, env4]:
-            self.assertTrue(e in ce3.envelopes, msg="Added envelope should be in envelopes")
+            self.assertTrue(
+                e in ce3.envelopes, msg="Added envelope should be in envelopes"
+            )
             self.assertEqual(e.composite_envelope, ce3)
 
     def test_composite_envelope_combine(self):
@@ -69,15 +68,15 @@ class TestFock(unittest.TestCase):
         self.assertEqual(env2.polarization.index, (1, 1))
         self.assertEqual(env1.composite_envelope, ce1)
         self.assertEqual(env2.composite_envelope, ce1)
-        self.assertTrue(np.array_equal(ce1.states[1][0], [[1],[0],[0],[0]]))
+        self.assertTrue(np.array_equal(ce1.states[1][0], [[1], [0], [0], [0]]))
 
         env3 = Envelope()
         ce1.add_envelope(env3)
         ce1.combine(env1.polarization, env3.polarization)
-        self.assertTrue(np.array_equal(
-            ce1.states[1][0],
-            [[1],[0],[0],[0],[0],[0],[0],[0]]))
-        self.assertEqual(env3.polarization.index, (1,2))
+        self.assertTrue(
+            np.array_equal(ce1.states[1][0], [[1], [0], [0], [0], [0], [0], [0], [0]])
+        )
+        self.assertEqual(env3.polarization.index, (1, 2))
 
     def test_composite_combine(self):
         env1 = Envelope()
@@ -91,22 +90,33 @@ class TestFock(unittest.TestCase):
         ce2 = CompositeEnvelope(env3, env4)
         ce2.combine(env3.fock, env4.fock)
         ce2.combine(env3.polarization, env4.polarization)
-        ce3 = CompositeEnvelope(ce1,ce2)
-        self.assertTrue(np.array_equal(
-            ce3.states[1][0],
-            [[1], [0], [0], [0]]
-            
-        ))
-        self.assertTrue(np.array_equal(
-            ce3.states[3][0],
-            [[1], [0], [0], [0]]
-        ))
+        ce3 = CompositeEnvelope(ce1, ce2)
+        self.assertTrue(np.array_equal(ce3.states[1][0], [[1], [0], [0], [0]]))
+        self.assertTrue(np.array_equal(ce3.states[3][0], [[1], [0], [0], [0]]))
         ce3.combine(env1.polarization, env3.polarization)
-        self.assertTrue(np.array_equal(
-            ce3.states[1][0],
-            [[1], [0], [0], [0], [0], [0], [0], [0],
-             [0], [0], [0], [0], [0], [0], [0], [0]]
-        ))
+        self.assertTrue(
+            np.array_equal(
+                ce3.states[1][0],
+                [
+                    [1],
+                    [0],
+                    [0],
+                    [0],
+                    [0],
+                    [0],
+                    [0],
+                    [0],
+                    [0],
+                    [0],
+                    [0],
+                    [0],
+                    [0],
+                    [0],
+                    [0],
+                    [0],
+                ],
+            )
+        )
         self.assertEqual(len(ce3.states), 3, msg="Is the residual vector deleted?")
 
     def test_matrix_combine(self):
@@ -116,13 +126,12 @@ class TestFock(unittest.TestCase):
         env1.polarization.expand()
         ce1 = CompositeEnvelope(env1, env2)
         ce1.combine(env1.polarization, env2.polarization)
-        self.assertTrue(np.array_equal(
-            ce1.states[0][0],
-            [[1,0,0,0],
-             [0,0,0,0],
-             [0,0,0,0],
-             [0,0,0,0]]
-        ))
+        self.assertTrue(
+            np.array_equal(
+                ce1.states[0][0],
+                [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+            )
+        )
 
     def test_precombined_envelope(self):
         env1 = Envelope()
@@ -131,12 +140,12 @@ class TestFock(unittest.TestCase):
         env2 = Envelope()
         ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.polarization, env2.polarization)
-        self.assertTrue(np.array_equal(
-            ce.states[0][0],
-            [[1], [0], [0], [0],
-             [0], [0], [0], [0],
-             [0], [0], [0], [0]]
-        ))
+        self.assertTrue(
+            np.array_equal(
+                ce.states[0][0],
+                [[1], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0]],
+            )
+        )
 
         env3 = Envelope()
         env3.fock.expand()
@@ -149,14 +158,9 @@ class TestFock(unittest.TestCase):
         expected_vector = np.zeros(72)
         expected_vector[0] = 1
         expected_density_matrix = np.outer(
-            expected_vector.flatten(),
-            np.conj(expected_vector.flatten())
+            expected_vector.flatten(), np.conj(expected_vector.flatten())
         )
-        self.assertTrue(np.array_equal(
-            ce2.states[0][0],
-            expected_density_matrix
-        ))
-
+        self.assertTrue(np.array_equal(ce2.states[0][0], expected_density_matrix))
 
     def test_exception(self):
         with self.assertRaises(StateNotInThisCompositeEnvelopeException):
@@ -193,19 +197,11 @@ class TestFock(unittest.TestCase):
 
         ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.polarization, env2.polarization)
-        self.assertTrue(np.array_equal(
-            ce.states[0][0],
-            np.kron(state1, state2)
-            ))
-        self.assertEqual(ce.states[0][1],
-                         [env1.polarization, env2.polarization])
+        self.assertTrue(np.array_equal(ce.states[0][0], np.kron(state1, state2)))
+        self.assertEqual(ce.states[0][1], [env1.polarization, env2.polarization])
         ce.rearange(env2.polarization, env1.polarization)
-        self.assertTrue(np.array_equal(
-            ce.states[0][0],
-            np.kron(state2, state1)
-            ))
-        self.assertEqual(ce.states[0][1],
-                         [env2.polarization, env1.polarization])
+        self.assertTrue(np.array_equal(ce.states[0][0], np.kron(state2, state1)))
+        self.assertEqual(ce.states[0][1], [env2.polarization, env1.polarization])
         ce.rearange(env1.polarization, env2.polarization)
 
     def test_composite_reorder_matrix(self):
@@ -227,25 +223,13 @@ class TestFock(unittest.TestCase):
         ce.combine(env1.fock, env2.fock, env1.polarization)
 
         expected_matrix = np.kron(np.kron(f1, f2), pol)
-        self.assertTrue(np.array_equal(
-            expected_matrix,
-            ce.states[0][0]
-        ))
-        self.assertEqual(
-            ce.states[0][1],
-            [env1.fock, env2.fock, env1.polarization]
-        )
+        self.assertTrue(np.array_equal(expected_matrix, ce.states[0][0]))
+        self.assertEqual(ce.states[0][1], [env1.fock, env2.fock, env1.polarization])
         ce.rearange(env1.polarization, env1.fock)
 
         expected_matrix = np.kron(np.kron(pol, f1), f2)
-        self.assertTrue(np.array_equal(
-            expected_matrix,
-            ce.states[0][0]
-        ))
-        self.assertEqual(
-            ce.states[0][1],
-            [env1.polarization, env1.fock, env2.fock]
-        )
+        self.assertTrue(np.array_equal(expected_matrix, ce.states[0][0]))
+        self.assertEqual(ce.states[0][1], [env1.polarization, env1.fock, env2.fock])
 
     def test_fock_operations_on_composite_envelope_first(self):
         # Applying Fock operations to the composite envelope
@@ -270,14 +254,8 @@ class TestFock(unittest.TestCase):
         e1.combine()
         op = FockOperation(FockOperationType.Creation)
         c.apply_operation(op, e1)
-        expected_vector = np.kron(
-            [[0], [1], [0]],
-            [[1], [0]]
-        )
-        self.assertTrue(np.array_equal(
-            e1.composite_vector,
-            expected_vector
-        ))
+        expected_vector = np.kron([[0], [1], [0]], [[1], [0]])
+        self.assertTrue(np.array_equal(e1.composite_vector, expected_vector))
         # Combining the composite envelope
         e1 = Envelope()
         e2 = Envelope()
@@ -287,16 +265,9 @@ class TestFock(unittest.TestCase):
         c.apply_operation(op, e1.fock)
 
         expected_vector = [[0], [1], [0]]
-        expected_vector = np.kron(
-            expected_vector,
-            [[1], [0], [0]])
-        expected_vector = np.kron(
-            expected_vector,
-            [[1], [0]])
-        assert_array_equal(
-            c.states[0][0],
-            expected_vector
-        )
+        expected_vector = np.kron(expected_vector, [[1], [0], [0]])
+        expected_vector = np.kron(expected_vector, [[1], [0]])
+        assert_array_equal(c.states[0][0], expected_vector)
 
     def test_composite_nested(self):
         env1 = Envelope()
@@ -304,14 +275,13 @@ class TestFock(unittest.TestCase):
 
         ce1 = CompositeEnvelope(env1, env2)
         ce2 = CompositeEnvelope(env1, env2)
-        self.assertEqual(ce1.states,[])
+        self.assertEqual(ce1.states, [])
         try:
             # Trigger combination of states in ce1
             # eventhough the states are in ce2
             ce1.combine(env1.fock, env2.fock)
         except Exception as _:
             self.fail("ce1.combine() should work")
-
 
     def test_measurement_fock(self):
         """
@@ -368,7 +338,6 @@ class TestFock(unittest.TestCase):
         self.assertEqual(env1.polarization.label, None)
         self.assertEqual(env1.polarization.state_vector, None)
         self.assertEqual(env1.polarization.density_matrix, None)
-
 
     def test_measurement_envelope_matrix_form(self):
         """
@@ -433,7 +402,6 @@ class TestFock(unittest.TestCase):
         self.assertEqual(env1.polarization.state_vector, None)
         self.assertEqual(env1.polarization.density_matrix, None)
 
-
     def test_measurement_composite_combine_vector(self):
         """
         Verious tests of measurement when
@@ -467,11 +435,8 @@ class TestFock(unittest.TestCase):
         self.assertTrue(env3 in c.envelopes)
         expected_vector = np.zeros(9)
         expected_vector[0] = 1
-        expected_vector = expected_vector.reshape(-1,1)
-        self.assertTrue(np.array_equal(
-            c.states[0][0],
-            expected_vector
-        ))
+        expected_vector = expected_vector.reshape(-1, 1)
+        self.assertTrue(np.array_equal(c.states[0][0], expected_vector))
 
     def test_polarization_measurement(self):
         """
@@ -504,7 +469,7 @@ class TestFock(unittest.TestCase):
 
     def test_trace_out(self):
         """
-        Testing if the traceout 
+        Testing if the traceout
         """
         env1 = Envelope()
         env2 = Envelope()
@@ -517,22 +482,14 @@ class TestFock(unittest.TestCase):
         env3.fock.dimensions = 3
         c = CompositeEnvelope(env1, env2, env3)
         c.combine(env2.fock, env1.fock, env3.fock)
-        self.assertEqual(
-            len(c.states[0][0]),
-            2*5*3)
+        self.assertEqual(len(c.states[0][0]), 2 * 5 * 3)
         c._trace_out(env1.fock)
-        self.assertEqual(
-            len(c.states[0][0]),
-            5*3)
-        e2 = np.array([[0],[0],[0],[1],[0]], dtype=np.float_)
-        e3 = np.array([[0],[1],[0]])
-        exp = np.kron(e2,e3)
+        self.assertEqual(len(c.states[0][0]), 5 * 3)
+        e2 = np.array([[0], [0], [0], [1], [0]], dtype=np.float_)
+        e3 = np.array([[0], [1], [0]])
+        exp = np.kron(e2, e3)
         x = exp - c.states[0][0]
-        self.assertTrue(np.array_equal(
-            c.states[0][0],
-            np.kron(e2,e3)
-        ))
-
+        self.assertTrue(np.array_equal(c.states[0][0], np.kron(e2, e3)))
 
     def test_automatic_polarization_measurement(self):
         """
@@ -584,23 +541,25 @@ class TestFock(unittest.TestCase):
         c = CompositeEnvelope(env1, env2)
 
         # Define properly summing up to identity POVM operators for a two-state system
-        E1 = np.array([[2/3, 0], [0, 0]])  # Acts more on |0>
-        E2 = np.array([[1/3, 0], [0, 1]])  # Acts partially on |0> and fully on |1>
+        E1 = np.array([[2 / 3, 0], [0, 0]])  # Acts more on |0>
+        E2 = np.array([[1 / 3, 0], [0, 1]])  # Acts partially on |0> and fully on |1>
 
         # Combine states into the composite envelope
         c.combine(env1.polarization, env2.polarization)
 
         # Perform POVM measurement with the defined operators
         result_index = c.POVM_measurement(
-            [env1.polarization, env2.polarization],
-            [E1, E2]
+            [env1.polarization, env2.polarization], [E1, E2]
         )
 
         post_state = c.states[0][0]
 
         self.assertIn(result_index, [0, 1], "Outcome should be either 0 or 1.")
         norm_post_state = np.linalg.norm(post_state)
-        self.assertTrue(np.isclose(norm_post_state, 1), "Post-measurement state is not normalized correctly.")
+        self.assertTrue(
+            np.isclose(norm_post_state, 1),
+            "Post-measurement state is not normalized correctly.",
+        )
 
     def test_POVM_measurement_three_envelopes(self):
         env1 = Envelope(polarization=Polarization(PolarizationLabel.H))
@@ -618,14 +577,17 @@ class TestFock(unittest.TestCase):
 
         result_index = c.POVM_measurement(
             [env1.polarization, env2.polarization],
-            [E1, E2, E3]  # Include E3 to cover the entire space
+            [E1, E2, E3],  # Include E3 to cover the entire space
         )
 
         post_state = c.states[0][0]
         self.assertIn(result_index, [0, 1, 2], "Outcome index should be 0, 1, or 2.")
 
         norm_post_state = np.linalg.norm(post_state)
-        self.assertTrue(np.isclose(norm_post_state, 1), "Post-measurement state is not normalized correctly.")
+        self.assertTrue(
+            np.isclose(norm_post_state, 1),
+            "Post-measurement state is not normalized correctly.",
+        )
 
     def test_POVM_measurement_three_envelopes_matrix(self):
         env1 = Envelope(polarization=Polarization(PolarizationLabel.H))
@@ -645,14 +607,17 @@ class TestFock(unittest.TestCase):
 
         result_index = c.POVM_measurement(
             [env1.polarization, env2.polarization],
-            [E1, E2, E3]  # Include E3 to cover the entire space
+            [E1, E2, E3],  # Include E3 to cover the entire space
         )
 
         post_state = c.states[0][0]
         self.assertIn(result_index, [0, 1, 2], "Outcome index should be 0, 1, or 2.")
 
         norm_post_state = np.linalg.norm(post_state)
-        self.assertTrue(np.isclose(norm_post_state, 1), "Post-measurement state is not normalized correctly.")
+        self.assertTrue(
+            np.isclose(norm_post_state, 1),
+            "Post-measurement state is not normalized correctly.",
+        )
 
     def known_POVM_test(self):
         env1 = Envelope(polarization=Polarization(PolarizationLabel.H))
@@ -662,15 +627,13 @@ class TestFock(unittest.TestCase):
 
         c = CompositeEnvelope(env1, env2)
         c.combine(env1.polarization, env2.polarization)
-        
-        E1 = np.array([[1/3, 0], [0, 0]])
-        E2 = np.array([[0, 0], [0, 1/3]])
-        E3 = np.eye(2) - E1 - E2 
 
-        c.POVM_measurement(
-            [env1.polarization],
-            [E1, E2, E3]
-        )
+        E1 = np.array([[1 / 3, 0], [0, 0]])
+        E2 = np.array([[0, 0], [0, 1 / 3]])
+        E3 = np.eye(2) - E1 - E2
+
+        c.POVM_measurement([env1.polarization], [E1, E2, E3])
+
 
 class TestPadOperator(unittest.TestCase):
     def test_pad_operator_single(self):
@@ -678,14 +641,18 @@ class TestPadOperator(unittest.TestCase):
         state_dims = [2, 2, 2]  # Three qubits
         operator = np.array([[1, 0], [0, 0]])  # Projection operator on the first qubit
         target_index = 0
-        expected_result = np.array([[1, 0, 0, 0, 0, 0, 0, 0],
-                                    [0, 1, 0, 0, 0, 0, 0, 0],
-                                    [0, 0, 1, 0, 0, 0, 0, 0],
-                                    [0, 0, 0, 1, 0, 0, 0, 0],
-                                    [0, 0, 0, 0, 0, 0, 0, 0],
-                                    [0, 0, 0, 0, 0, 0, 0, 0],
-                                    [0, 0, 0, 0, 0, 0, 0, 0],
-                                    [0, 0, 0, 0, 0, 0, 0, 0]])
+        expected_result = np.array(
+            [
+                [1, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ]
+        )
         padded_op = pad_operator(operator, state_dims, target_index)
         np.testing.assert_array_equal(padded_op, expected_result)
 

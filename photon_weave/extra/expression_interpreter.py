@@ -23,12 +23,8 @@ def interpreter(expr, context):
         elif op == "expm":
             return la.expm(interpreter(args[0], context))
         elif op == "div":
-            return intepreter(args[0], context)/interpreter(args[1], context)
+            return intepreter(args[0], context) / interpreter(args[1], context)
     elif isinstance(expr, str):
         return context[expr]
     else:
         return expr
-
-
-
-

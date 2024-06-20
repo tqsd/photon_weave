@@ -1,6 +1,6 @@
 """fock envelope simulator"""
-from setuptools import find_packages, setup
 
+from setuptools import find_packages, setup
 
 setup(
     name="photon_weave",
@@ -10,6 +10,5 @@ setup(
     description="Fock Envelope Simulator",
     license="Apache 2.0",
     packages=find_packages(where="."),
-    install_requires=["numpy","scipy"],
+    install_requires=["numpy", "scipy", "numba", "tox"],
 )
-

@@ -2,7 +2,9 @@
 Polarization State
 """
 from enum import Enum
+
 import numpy as np
+
 from .expansion_levels import ExpansionLevel
 
 
@@ -15,9 +17,11 @@ class PolarizationLabel(Enum):
 
 
 class Polarization:
-    def __init__(self,
-                 polarization: PolarizationLabel = PolarizationLabel.H,
-                 envelope: 'Envelope' = None):
+    def __init__(
+        self,
+        polarization: PolarizationLabel = PolarizationLabel.H,
+        envelope: "Envelope" = None,
+    ):
         self.index = None
         self.label = polarization
         self.dimensions = 2
@@ -31,11 +35,25 @@ class Polarization:
             return f"|{self.label.value}⟩"
         elif self.state_vector is not None:
             formatted_vector = "\n".join(
-                [f"{complex_num.real:.2f} {'+' if complex_num.imag >= 0 else '-'} {abs(complex_num.imag):.2f}j" for complex_num in self.state_vector.flatten()])
+                [
+                    f"{complex_num.real:.2f} {'+' if complex_num.imag >= 0 else '-'} {abs(complex_num.imag):.2f}j"
+                    for complex_num in self.state_vector.flatten()
+                ]
+            )
 
             return f"{formatted_vector}"
         elif self.density_matrix is not None:
-            formatted_matrix = "\n".join(["\t".join([f"({num.real:.2f} {'+' if num.imag >= 0 else '-'} {abs(num.imag):.2f}j)" for num in row]) for row in self.density_matrix])
+            formatted_matrix = "\n".join(
+                [
+                    "\t".join(
+                        [
+                            f"({num.real:.2f} {'+' if num.imag >= 0 else '-'} {abs(num.imag):.2f}j)"
+                            for num in row
+                        ]
+                    )
+                    for row in self.density_matrix
+                ]
+            )
             return f"{formatted_matrix}"
         elif self.index is not None:
             return "System is part of the Envelope"
@@ -51,18 +69,18 @@ class Polarization:
                     vector = [0, 1]
                 case PolarizationLabel.R:
                     # Right circular polarization = (1/sqrt(2)) * (|H⟩ + i|V⟩)
-                    vector = [1/np.sqrt(2), 1j/np.sqrt(2)]
+                    vector = [1 / np.sqrt(2), 1j / np.sqrt(2)]
                 case PolarizationLabel.L:
                     # Left circular polarization = (1/sqrt(2)) * (|H⟩ - i|V⟩)
-                    vector = [1/np.sqrt(2), -1j/np.sqrt(2)]
+                    vector = [1 / np.sqrt(2), -1j / np.sqrt(2)]
 
             self.state_vector = np.array(vector)[:, np.newaxis]
             self.label = None
             self.expansion_level = ExpansionLevel.Vector
         elif self.state_vector is not None:
             self.density_matrix = np.outer(
-                self.state_vector.flatten(),
-                np.conj(self.state_vector.flatten()))
+                self.state_vector.flatten(), np.conj(self.state_vector.flatten())
+            )
             self.state_vector = None
             self.expansion_level = ExpansionLevel.Matrix
 
@@ -71,7 +89,7 @@ class Polarization:
         self.label = None
         self.density_matrix = None
         self.state_vector = None
-        
+
     def set_index(self, minor, major=-1):
         if major >= 0:
             self.index = (major, minor)
@@ -80,11 +98,12 @@ class Polarization:
 
     def apply_operation(self, operation):
         from photon_weave.operation.polarization_operations import (
-            PolarizationOperationType
+            PolarizationOperationType,
         )
+
         match operation.operation:
             case PolarizationOperationType.I:
-                return 
+                return
             case PolarizationOperationType.X:
                 if self.label is not None:
                     match self.label:

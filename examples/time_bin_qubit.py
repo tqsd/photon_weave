@@ -1,11 +1,9 @@
 from photon_weave.state.envelope import Envelope
 from photon_weave.state.composite_envelope import CompositeEnvelope
-from photon_weave.operation.fock_operation import (
-    FockOperation, FockOperationType
-)
+from photon_weave.operation.fock_operation import FockOperation, FockOperationType
 from photon_weave.operation.composite_operation import (
     CompositeOperation,
-    CompositeOperationType
+    CompositeOperationType,
 )
 
 env1 = Envelope()
@@ -20,6 +18,3 @@ bs1 = CompositeOperation(CompositeOperationType.NonPolarizingBeamSplit)
 
 # First Beam Splitter
 c1.apply_operation(bs1, env1, vac1)
-
-
-
