@@ -10,5 +10,5 @@ setup(
     description="Fock Envelope Simulator",
     license="Apache 2.0",
     packages=find_packages(where="."),
-    install_requires=["numpy", "scipy", "numba", "tox"],
+    install_requires=["numpy", "scipy", "numba", "tox", "jax"],
 )

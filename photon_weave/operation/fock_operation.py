@@ -4,8 +4,14 @@ Operations on fock spaces
 from enum import Enum, auto
 
 import numpy as np
-import numpy.linalg as la
 
+from photon_weave._math.ops import (
+    annihilation_operator,
+    creation_operator,
+    displacement_operator,
+    matrix_power,
+    squeezing_operator,
+)
 from photon_weave.extra import interpreter
 
 from .generic_operation import GenericOperation
@@ -73,17 +79,10 @@ class FockOperation(GenericOperation):
                 self.operator = np.diag(phases)
             case FockOperationType.Displace:
                 alpha = self.kwargs["alpha"]
-                self.operator = la.expm(
-                    alpha * self._create(dimensions) - self._destroy(dimensions) * alpha
-                )
+                self.operator = displacement_operator(alpha=alpha, cutoff=dimensions)
             case FockOperationType.Squeeze:
                 zeta = self.kwargs["zeta"]
-                a = self._destroy(dimensions)
-                a_dagger = self._create(dimensions)
-                self.operator = la.expm(
-                    0.5
-                    * (np.conj(zeta) * np.dot(a, a) - zeta * np.dot(a_dagger, a_dagger))
-                )
+                self.operator = squeezing_operator(zeta=zeta, cutoff=dimensions)
             case FockOperationType.Identity:
                 self.operator = np.eye(dimensions)
             case FockOperationType.Custom:
@@ -92,23 +91,34 @@ class FockOperation(GenericOperation):
                         self.kwargs["expression"], dimensions
                     )
         if self.apply_count > 1:
-            self.operator = la.matrix_power(self.operator, self.apply_count)
+            self.operator = matrix_power(self.operator, self.apply_count)
 
-    def _create(self, cutoff):
-        a_dagger = np.zeros((cutoff, cutoff), dtype=np.complex_)
-        for i in range(1, cutoff):
-            a_dagger[i, i - 1] = np.sqrt(i)
-        return a_dagger
+    def _create(self, cutoff: int) -> np.ndarray[np.complex_]:
+        return creation_operator(cutoff=cutoff)
 
-    def _destroy(self, cutoff):
-        a = np.zeros((cutoff, cutoff), dtype=np.complex_)
-        for i in range(1, cutoff):
-            a[i - 1, i] = np.sqrt(i)
-        return a
+    def _destroy(self, cutoff) -> np.ndarray:
+        """_summary_
+
+        Parameters
+        ----------
+        cutoff : _type_
+            _description_
+
+        Returns
+        -------
+        np.ndarray
+            _description_
+        """
+        return annihilation_operator(cutoff=cutoff)
 
     def expansion_level_required(self) -> int:
-        """
+        r"""
         Returns the expansion level required
+
+        Returns
+        -------
+        int
+            _description_
         """
         match self.operation:
             case FockOperationType.Creation:
@@ -125,8 +135,18 @@ class FockOperation(GenericOperation):
                 return 1
 
     def cutoff_required(self, num_quanta=0) -> int:
-        """
+        r"""
         Returns the expansion level required
+
+        Parameters
+        ----------
+        num_quanta : int, optional
+            _description_, by default 0
+
+        Returns
+        -------
+        int
+            _description_
         """
         match self.operation:
             case FockOperationType.Displace:
@@ -137,11 +157,27 @@ class FockOperation(GenericOperation):
             case _:
                 return 0
 
-    def assign_operator(self, expression):
+    def assign_operator(self, expression) -> None:
+        """_summary_
+
+        Parameters
+        ----------
+        expression : _type_
+            _description_
+        """
         if self.operation is FockOperationType.Custom:
             self.expression = expression
 
-    def _evaluate_custom_operator(self, expression, dimensions):
+    def _evaluate_custom_operator(self, expression: str, dimensions: int) -> None:
+        """_summary_
+
+        Parameters
+        ----------
+        expression : _type_
+            _description_
+        dimensions : _type_
+            _description_
+        """
         context = {
             "a": self._destroy(dimensions),
             "a_dag": self._create(dimensions),

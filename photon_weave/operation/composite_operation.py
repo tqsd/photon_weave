@@ -6,8 +6,8 @@ from enum import Enum, auto
 from typing import Union
 
 import numpy as np
-from scipy.linalg import expm
 
+from photon_weave._math.ops import _expm
 from photon_weave.operation.fock_operation import FockOperation, FockOperationType
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.envelope import Envelope
@@ -101,11 +101,6 @@ class CompositeOperation:
         ce._apply_operator(self, args[0].fock, args[1].fock)
 
     def compute_operator(self, *args, **kwargs):
-        from photon_weave.operation.fock_operation import (
-            FockOperation,
-            FockOperationType,
-        )
-
         match self.operation:
             case CompositeOperationType.NonPolarizingBeamSplit:
                 eta = self.kwargs.get(
@@ -129,7 +124,7 @@ class CompositeOperation:
 
                 theta = self.kwargs.get("theta", 0)  # Default to 0 if not provided
                 self.operator = theta * self.operator
-                self.operator = expm(1j * self.operator)
+                self.operator = _expm(1j * self.operator)
             case CompositeOperationType.CNOT:
                 self.operator = np.array(
                     [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]]

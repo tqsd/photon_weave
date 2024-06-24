@@ -3,6 +3,7 @@ import numpy as np
 # CONSTANTS
 C0 = 299792458  # m/s
 
+
 # FUNCTIONS
 def gaussian(t, t_a, omega, mu=0, sigma=1):
     ##norm = 1/(sigma*np.sqrt(2 * np.pi))

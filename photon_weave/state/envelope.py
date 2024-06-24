@@ -1,15 +1,19 @@
 """
 Envelope
 """
+
 # ruff: noqa: F401
 
 from __future__ import annotations
-from typing import Optional
-from photon_weave.operation.generic_operation import GenericOperation
-from photon_weave.constants import C0, gaussian
+
 from enum import Enum, auto
+from typing import Optional
+
 import numpy as np
 from scipy.integrate import quad
+
+from photon_weave.constants import C0, gaussian
+from photon_weave.operation.generic_operation import GenericOperation
 
 
 class TemporalProfile(Enum):
@@ -153,8 +157,8 @@ class Envelope:
             FockOperationType,
         )
         from photon_weave.operation.polarization_operations import (
-            PolarizationOperationType,
             PolarizationOperation,
+            PolarizationOperationType,
         )
 
         if isinstance(operation, FockOperation):
