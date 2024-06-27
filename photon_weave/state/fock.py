@@ -3,11 +3,13 @@ Fock state
 """
 
 from __future__ import annotations
-from .envelope import EnvelopeAssignedException
-from .expansion_levels import ExpansionLevel
-from photon_weave.operation.fock_operation import FockOperation, FockOperationType
 
 import numpy as np
+
+from photon_weave.operation.fock_operation import FockOperation, FockOperationType
+
+from .envelope import EnvelopeAssignedException
+from .expansion_levels import ExpansionLevel
 
 
 class Fock:

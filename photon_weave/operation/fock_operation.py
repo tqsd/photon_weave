@@ -1,11 +1,15 @@
 """
 Operations on fock spaces
 """
-from photon_weave.extra import interpreter
 from enum import Enum, auto
-from .generic_operation import GenericOperation
+
 import numpy as np
-import numpy.linalg as la
+from scipy.linalg import expm
+
+from photon_weave.extra import interpreter
+
+from .generic_operation import GenericOperation
+
 
 class FockOperationType(Enum):
     # implemented
@@ -23,8 +27,7 @@ class FockOperationType(Enum):
 
 
 class FockOperation(GenericOperation):
-    def __init__(self, operation: FockOperationType,
-                 apply_count: int = 1, **kwargs):
+    def __init__(self, operation: FockOperationType, apply_count: int = 1, **kwargs):
         self.kwargs = kwargs
         self.operation = operation
         self.operator = None
@@ -38,15 +41,21 @@ class FockOperation(GenericOperation):
             case FockOperationType.Annihilation:
                 self.renormalize = True
             case FockOperationType.PhaseShift:
-                if 'phi' not in kwargs:
-                    raise KeyError("The 'phi' argument is required for Phase Shift operator")
+                if "phi" not in kwargs:
+                    raise KeyError(
+                        "The 'phi' argument is required for Phase Shift operator"
+                    )
             case FockOperationType.Displace:
                 self.renormalize = True
-                if 'alpha' not in kwargs:
-                    raise KeyError("The 'alpha' argument is required for Displace operator")
+                if "alpha" not in kwargs:
+                    raise KeyError(
+                        "The 'alpha' argument is required for Displace operator"
+                    )
             case FockOperationType.Squeeze:
-                if 'zeta' not in kwargs:
-                    raise KeyError("The compley 'zeta' argument is required for Squeeze operator")
+                if "zeta" not in kwargs:
+                    raise KeyError(
+                        "The compley 'zeta' argument is required for Squeeze operator"
+                    )
 
     def compute_operator(self, dimensions):
         """
@@ -64,37 +73,37 @@ class FockOperation(GenericOperation):
                 self.operator = np.diag(phases)
             case FockOperationType.Displace:
                 alpha = self.kwargs["alpha"]
-                self.operator = la.expm(
-                    alpha * self._create(dimensions) -
-                    self._destroy(dimensions) * alpha
+                self.operator = expm(
+                    alpha * self._create(dimensions) - self._destroy(dimensions) * alpha
                 )
             case FockOperationType.Squeeze:
                 zeta = self.kwargs["zeta"]
                 a = self._destroy(dimensions)
                 a_dagger = self._create(dimensions)
-                self.operator = la.expm(
-                    0.5 * (np.conj(zeta) * np.dot(a, a) -
-                           zeta * np.dot(a_dagger, a_dagger)))
+                self.operator = expm(
+                    0.5
+                    * (np.conj(zeta) * np.dot(a, a) - zeta * np.dot(a_dagger, a_dagger))
+                )
             case FockOperationType.Identity:
                 self.operator = np.eye(dimensions)
             case FockOperationType.Custom:
-                if 'expression' in self.kwargs:
+                if "expression" in self.kwargs:
                     self._evaluate_custom_operator(
-                        self.kwargs['expression'],
-                        dimensions)
+                        self.kwargs["expression"], dimensions
+                    )
         if self.apply_count > 1:
-            self.operator = la.matrix_power(self.operator, self.apply_count)
+            self.operator = np.linalg.matrix_power(self.operator, self.apply_count)
 
     def _create(self, cutoff):
         a_dagger = np.zeros((cutoff, cutoff), dtype=np.complex_)
         for i in range(1, cutoff):
-            a_dagger[i, i-1] = np.sqrt(i)
+            a_dagger[i, i - 1] = np.sqrt(i)
         return a_dagger
 
     def _destroy(self, cutoff):
         a = np.zeros((cutoff, cutoff), dtype=np.complex_)
         for i in range(1, cutoff):
-            a[i-1, i] = np.sqrt(i)
+            a[i - 1, i] = np.sqrt(i)
         return a
 
     def expansion_level_required(self) -> int:
@@ -114,17 +123,17 @@ class FockOperation(GenericOperation):
                 return 1
             case _:
                 return 1
-        
+
     def cutoff_required(self, num_quanta=0) -> int:
         """
         Returns the expansion level required
         """
         match self.operation:
             case FockOperationType.Displace:
-                return int(np.ceil(4 * np.abs(self.kwargs["alpha"])**2))
+                return int(np.ceil(4 * np.abs(self.kwargs["alpha"]) ** 2))
             case FockOperationType.Squeeze:
                 r = np.abs(self.kwargs["zeta"])
-                return int(2+4*r+2*r**4)
+                return int(2 + 4 * r + 2 * r**4)
             case _:
                 return 0
 
@@ -139,4 +148,3 @@ class FockOperation(GenericOperation):
         }
         context["n"] = np.dot(context["a_dag"], context["a"])
         self.operator = interpreter(expression, context)
-        

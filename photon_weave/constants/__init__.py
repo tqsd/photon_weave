@@ -1,13 +1,14 @@
 import numpy as np
 
 # CONSTANTS
-C0 = 299792458 #m/s
+C0 = 299792458  # m/s
+
 
 # FUNCTIONS
 def gaussian(t, t_a, omega, mu=0, sigma=1):
     ##norm = 1/(sigma*np.sqrt(2 * np.pi))
-    norm = 1/(np.sqrt(sigma*np.sqrt(np.pi)))
-    exponent = - (t-t_a-mu)**2/(2*sigma**2)
+    norm = 1 / (np.sqrt(sigma * np.sqrt(np.pi)))
+    exponent = -((t - t_a - mu) ** 2) / (2 * sigma**2)
     envelope = norm * np.exp(exponent)
     carrier = np.exp(1j * omega * t)
-    return envelope 
+    return envelope

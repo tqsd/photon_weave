@@ -1,15 +1,15 @@
 """
 Tests for the Fock class
 """
-import numpy as np
+import random
 import unittest
+
+import numpy as np
+
+from photon_weave.operation.fock_operation import FockOperation, FockOperationType
+from photon_weave.state.envelope import Envelope
 from photon_weave.state.fock import Fock
 from photon_weave.state.polarization import Polarization
-from photon_weave.state.envelope import Envelope
-from photon_weave.operation.fock_operation import (
-    FockOperation, FockOperationType
-)
-import random
 
 
 class TestFock(unittest.TestCase):
@@ -26,22 +26,18 @@ class TestFock(unittest.TestCase):
         fock.expand()
         expected_state_vector = np.zeros(3)
         expected_state_vector[0] = 1
-        self.assertTrue(np.array_equal(
-            fock.state_vector,
-            expected_state_vector.reshape(-1, 1)))
+        self.assertTrue(
+            np.array_equal(fock.state_vector, expected_state_vector.reshape(-1, 1))
+        )
         self.assertIsNone(fock.label)
         self.assertIsNone(fock.density_matrix)
         fock.expand()
         expected_density_matrix = np.outer(
-            expected_state_vector.flatten(),
-            np.conj(expected_state_vector.flatten())
+            expected_state_vector.flatten(), np.conj(expected_state_vector.flatten())
         )
-        self.assertTrue(np.array_equal(
-            fock.density_matrix,
-            expected_density_matrix))
+        self.assertTrue(np.array_equal(fock.density_matrix, expected_density_matrix))
         self.assertIsNone(fock.label)
         self.assertIsNone(fock.state_vector)
-        
 
     def test_fock_eq(self):
         fock = Fock()
@@ -72,15 +68,28 @@ class TestFock(unittest.TestCase):
         expected_state_vector = np.zeros(3)
         expected_state_vector[0] = 1
         expected_repr = "\n".join(
-            [f"{complex_num.real:.2f} {'+' if complex_num.imag >= 0 else '-'} {abs(complex_num.imag):.2f}j" for complex_num in expected_state_vector])
+            [
+                f"{complex_num.real:.2f} {'+' if complex_num.imag >= 0 else '-'} {abs(complex_num.imag):.2f}j"
+                for complex_num in expected_state_vector
+            ]
+        )
         self.assertEqual(repr(fock), expected_repr)
         fock.expand()
         expected_density_matrix = np.outer(
-            expected_state_vector.flatten(),
-            np.conj(expected_state_vector.flatten())
+            expected_state_vector.flatten(), np.conj(expected_state_vector.flatten())
         )
-        
-        expected_repr = "\n".join(["\t".join([f"({num.real:.2f} {'+' if num.imag >= 0 else '-'} {abs(num.imag):.2f}j)" for num in row]) for row in expected_density_matrix])
+
+        expected_repr = "\n".join(
+            [
+                "\t".join(
+                    [
+                        f"({num.real:.2f} {'+' if num.imag >= 0 else '-'} {abs(num.imag):.2f}j)"
+                        for num in row
+                    ]
+                )
+                for row in expected_density_matrix
+            ]
+        )
         self.assertEqual(repr(fock), expected_repr)
 
         fock.density_matrix = None
@@ -102,59 +111,44 @@ class TestFock(unittest.TestCase):
         fock = Fock()
         fock.expand()
         expected_vector = np.array([1, 0, 0])
-        self.assertTrue(np.array_equal(
-            fock.state_vector,
-            expected_vector.reshape(-1, 1)
-        ))
+        self.assertTrue(
+            np.array_equal(fock.state_vector, expected_vector.reshape(-1, 1))
+        )
         fock.resize(10)
         expected_vector = np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-        self.assertTrue(np.array_equal(
-            fock.state_vector,
-            expected_vector.reshape(-1, 1)
-        ))
+        self.assertTrue(
+            np.array_equal(fock.state_vector, expected_vector.reshape(-1, 1))
+        )
 
         fock.resize(2)
         expected_vector = np.array([1, 0])
-        self.assertTrue(np.array_equal(
-            fock.state_vector,
-            expected_vector.reshape(-1, 1)
-        ))
+        self.assertTrue(
+            np.array_equal(fock.state_vector, expected_vector.reshape(-1, 1))
+        )
 
         fock.expand()
 
         expected_vector = np.array([1, 0])
         expected_density_matrix = np.outer(
-            expected_vector.flatten(),
-            np.conj(expected_vector.flatten())
+            expected_vector.flatten(), np.conj(expected_vector.flatten())
         )
-        self.assertTrue(np.array_equal(
-            fock.density_matrix,
-            expected_density_matrix
-        ))
+        self.assertTrue(np.array_equal(fock.density_matrix, expected_density_matrix))
         fock.resize(5)
         expected_vector = np.array([1, 0, 0, 0, 0])
         expected_density_matrix = np.outer(
-            expected_vector.flatten(),
-            np.conj(expected_vector.flatten())
+            expected_vector.flatten(), np.conj(expected_vector.flatten())
         )
-        self.assertTrue(np.array_equal(
-            fock.density_matrix,
-            expected_density_matrix
-        ))
+        self.assertTrue(np.array_equal(fock.density_matrix, expected_density_matrix))
 
         fock.resize(3)
         expected_vector = np.array([1, 0, 0])
         expected_density_matrix = np.outer(
-            expected_vector.flatten(),
-            np.conj(expected_vector.flatten())
+            expected_vector.flatten(), np.conj(expected_vector.flatten())
         )
-        self.assertTrue(np.array_equal(
-            fock.density_matrix,
-            expected_density_matrix
-        ))
+        self.assertTrue(np.array_equal(fock.density_matrix, expected_density_matrix))
 
     def test_measurement(self):
-        r = random.randint(1,10)
+        r = random.randint(1, 10)
         env = Envelope()
         op = FockOperation(FockOperationType.Creation, apply_count=r)
         env.apply_operation(op)
@@ -163,7 +157,6 @@ class TestFock(unittest.TestCase):
         self.assertEqual(env.measured, True)
 
 
-
 # This allows the tests to be run with the script via the command line.
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

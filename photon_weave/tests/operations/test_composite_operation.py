@@ -2,20 +2,23 @@
 Test the Composite Operations
 """
 import random
-import numpy as np
 import unittest
-from photon_weave.operation.fock_operation import (
-    FockOperation, FockOperationType
-)
+
+import numpy as np
+
 from photon_weave.operation.composite_operation import (
-    CompositeOperation, CompositeOperationType)
+    CompositeOperation,
+    CompositeOperationType,
+)
+from photon_weave.operation.fock_operation import FockOperation, FockOperationType
+from photon_weave.operation.polarization_operations import (
+    PolarizationOperation,
+    PolarizationOperationType,
+)
+from photon_weave.state.composite_envelope import CompositeEnvelope
+from photon_weave.state.envelope import Envelope
 from photon_weave.state.fock import Fock
 from photon_weave.state.polarization import Polarization
-from photon_weave.state.envelope import Envelope
-from photon_weave.state.composite_envelope import CompositeEnvelope
-from photon_weave.operation.polarization_operations import (
-    PolarizationOperation, PolarizationOperationType
-)
 
 
 class TestFockOperation(unittest.TestCase):
@@ -28,26 +31,23 @@ class TestFockOperation(unittest.TestCase):
         env2 = Envelope()
         env1.fock.resize(2)
         env2.fock.resize(2)
-        op_create = FockOperation(operation=FockOperationType.Creation,
-                                  apply_count=1)
+        op_create = FockOperation(operation=FockOperationType.Creation, apply_count=1)
         env2.fock.apply_operation(op_create)
 
-        op = CompositeOperation(
-            operation=CompositeOperationType.NonPolarizingBeamSplit)
+        op = CompositeOperation(operation=CompositeOperationType.NonPolarizingBeamSplit)
 
         op.operate(env1, env2)
 
-        expected_operator = np.zeros((4,4), dtype=np.complex_)
-        
+        expected_operator = np.zeros((4, 4), dtype=np.complex_)
+
         self.assertTrue(env1.composite_envelope is env2.composite_envelope)
         ce = env1.composite_envelope
         self.assertAlmostEqual(op.operator[0][0], 1)
-        self.assertAlmostEqual(op.operator[1][1], 1/np.sqrt(2))
-        self.assertAlmostEqual(op.operator[1][2], 1j/np.sqrt(2))
-        self.assertAlmostEqual(op.operator[2][1], 1j/np.sqrt(2))
-        self.assertAlmostEqual(op.operator[2][2], 1/np.sqrt(2))
+        self.assertAlmostEqual(op.operator[1][1], 1 / np.sqrt(2))
+        self.assertAlmostEqual(op.operator[1][2], 1j / np.sqrt(2))
+        self.assertAlmostEqual(op.operator[2][1], 1j / np.sqrt(2))
+        self.assertAlmostEqual(op.operator[2][2], 1 / np.sqrt(2))
         self.assertAlmostEqual(op.operator[3][3], 1)
-
 
     def test_non_polarizing_beam_splitter_second(self):
         """
@@ -118,30 +118,26 @@ class TestFockOperation(unittest.TestCase):
     def test_cnot_operation(self):
         e1 = Envelope()
         e2 = Envelope()
-        H = PolarizationOperation(
-            operation=PolarizationOperationType.H)
+        H = PolarizationOperation(operation=PolarizationOperationType.H)
         e1.apply_operation(H)
-        CNOT = CompositeOperation(
-            operation=CompositeOperationType.CNOT)
-        CNOT.operate(e1,e2)
+        CNOT = CompositeOperation(operation=CompositeOperationType.CNOT)
+        CNOT.operate(e1, e2)
         states = e1.composite_envelope.states[0][0]
-        self.assertAlmostEqual(1/np.sqrt(2), states[0][0])
+        self.assertAlmostEqual(1 / np.sqrt(2), states[0][0])
         self.assertAlmostEqual(0, states[1][0])
         self.assertAlmostEqual(0, states[2][0])
-        self.assertAlmostEqual(1/np.sqrt(2), states[3][0])
+        self.assertAlmostEqual(1 / np.sqrt(2), states[3][0])
 
     def test_cnot_second(self):
         e1 = Envelope()
         e2 = Envelope()
         c = CompositeEnvelope(e1, e2)
-        H = PolarizationOperation(
-            operation=PolarizationOperationType.H)
+        H = PolarizationOperation(operation=PolarizationOperationType.H)
         e1.apply_operation(H)
-        CNOT = CompositeOperation(
-            operation=CompositeOperationType.CNOT)
+        CNOT = CompositeOperation(operation=CompositeOperationType.CNOT)
         c.apply_operation(CNOT, e1, e2)
         states = e1.composite_envelope.states[0][0]
-        self.assertAlmostEqual(1/np.sqrt(2), states[0][0])
+        self.assertAlmostEqual(1 / np.sqrt(2), states[0][0])
         self.assertAlmostEqual(0, states[1][0])
         self.assertAlmostEqual(0, states[2][0])
-        self.assertAlmostEqual(1/np.sqrt(2), states[3][0])
+        self.assertAlmostEqual(1 / np.sqrt(2), states[3][0])

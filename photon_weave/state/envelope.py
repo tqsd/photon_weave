@@ -3,15 +3,19 @@ Envelope
 """
 
 from __future__ import annotations
-from typing import Optional
-from photon_weave.operation.generic_operation import GenericOperation
-from photon_weave.constants import C0, gaussian
+
 from enum import Enum, auto
+from typing import Optional
+
 import numpy as np
 from scipy.integrate import quad
 
+from photon_weave.constants import C0, gaussian
+from photon_weave.operation.generic_operation import GenericOperation
+
+
 class TemporalProfile(Enum):
-    Gaussian = (gaussian, {'mu':0, 'sigma':1, 'omega':None})
+    Gaussian = (gaussian, {"mu": 0, "sigma": 1, "omega": None})
 
     def __init__(self, func, params):
         self.func = func
@@ -30,10 +34,9 @@ class TemporalProfileInstance:
 
     def get_function(self, t_a, omega_a):
         params = self.params.copy()
-        params.update({"t_a":t_a, "omega":omega_a})
-        
+        params.update({"t_a": t_a, "omega": omega_a})
+
         return lambda t: self.func(t, **params)
-        
 
 
 class Envelope:
@@ -44,8 +47,8 @@ class Envelope:
         polarization: Optional["Polarization"] = None,
         temporal_profile: TemporalProfileInstance = TemporalProfile.Gaussian.with_params(
             mu=0,
-            sigma = 42.45*10**(-15), # 100 fs pulse
-        )
+            sigma=42.45 * 10 ** (-15),  # 100 fs pulse
+        ),
     ):
         if fock is None:
             from .fock import Fock
@@ -152,8 +155,8 @@ class Envelope:
             FockOperationType,
         )
         from photon_weave.operation.polarization_operations import (
-            PolarizationOperationType,
             PolarizationOperation,
+            PolarizationOperationType,
         )
 
         if isinstance(operation, FockOperation):
@@ -252,7 +255,7 @@ class Envelope:
         self.fock._set_measured()
         self.polarization._set_measured()
 
-    def overlap_integral(self, other: Envelope, delay:float, n:float=1):
+    def overlap_integral(self, other: Envelope, delay: float, n: float = 1):
         r"""
         Given delay in [seconds] this method computes overlap of temporal
         profiles between this envelope and other envelope.
@@ -264,13 +267,16 @@ class Envelope:
         Returns:
         float: overlap factor
         """
-        f1 = self.temporal_profile.get_function(t_a=0, omega_a=(C0/n)/self.wavelength)
-        f2 = other.temporal_profile.get_function(t_a=delay, omega_a=(C0/n)/other.wavelength)
-        integrand = lambda x: np.conj(f1(x))*f2(x)
+        f1 = self.temporal_profile.get_function(
+            t_a=0, omega_a=(C0 / n) / self.wavelength
+        )
+        f2 = other.temporal_profile.get_function(
+            t_a=delay, omega_a=(C0 / n) / other.wavelength
+        )
+        integrand = lambda x: np.conj(f1(x)) * f2(x)
         result, error = quad(integrand, -np.inf, np.inf)
 
         return result
-        
 
 
 class EnvelopeAssignedException(Exception):
@@ -279,6 +285,7 @@ class EnvelopeAssignedException(Exception):
 
 class EnvelopeAlreadyMeasuredException(Exception):
     pass
+
 
 class MissingTemporalProfileArgumentException(Exception):
     pass
