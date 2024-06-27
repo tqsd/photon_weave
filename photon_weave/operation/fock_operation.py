@@ -105,7 +105,7 @@ class FockOperation(GenericOperation):
                 if "expression" in self.kwargs:
                     self._evaluate_custom_operator(
                         self.kwargs["expression"], dimensions
-                    )
+                    
                         self.kwargs["expression"], dimensions
                     )
         if self.apply_count > 1:

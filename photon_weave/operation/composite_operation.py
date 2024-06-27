@@ -27,7 +27,6 @@ def ensure_equal_expansion(func):
     Ensures that all given states, have the same expansion level
     """
 
-
     def wrapper(self, *states, **kwargs):
         expansion_levels = [s.expansion_level for s in states]
         if max(expansion_levels) == 0:
@@ -63,8 +62,6 @@ def ensure_composite(func):
 
 class CompositeOperation:
     def __init__(self, operation: CompositeOperationType, apply_num: int = 1, **kwargs):
-class CompositeOperation:
-    def __init__(self, operation: CompositeOperationType, apply_num: int = 1, **kwargs):
         self.kwargs = kwargs
         self.operation = operation
         self.operator = None
@@ -72,7 +69,6 @@ class CompositeOperation:
         match self.operation:
             case CompositeOperationType.NonPolarizingBeamSplit:
                 if "theta" not in kwargs:
-                    self.kwargs["theta"] = np.pi / 4
                     self.kwargs["theta"] = np.pi / 4
 
     def operate(self, *args) -> Union[CompositeEnvelope, Envelope]:
@@ -105,7 +101,6 @@ class CompositeOperation:
         ce._apply_operator(self, args[0].fock, args[1].fock)
 
     def compute_operator(self, *args, **kwargs):
-        from photon_weave.operation.fock_operation import FockOperation, FockOperationType
         match self.operation:
             case CompositeOperationType.NonPolarizingBeamSplit:
                 eta = self.kwargs.get(
