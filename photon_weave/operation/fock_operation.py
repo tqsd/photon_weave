@@ -14,7 +14,9 @@ from photon_weave._math.ops import (
 )
 from photon_weave.extra import interpreter
 
+
 from .generic_operation import GenericOperation
+
 
 
 class FockOperationType(Enum):
@@ -34,6 +36,7 @@ class FockOperationType(Enum):
 
 class FockOperation(GenericOperation):
     def __init__(self, operation: FockOperationType, apply_count: int = 1, **kwargs):
+    def __init__(self, operation: FockOperationType, apply_count: int = 1, **kwargs):
         self.kwargs = kwargs
         self.operation = operation
         self.operator = None
@@ -51,13 +54,25 @@ class FockOperation(GenericOperation):
                     raise KeyError(
                         "The 'phi' argument is required for Phase Shift operator"
                     )
+                if "phi" not in kwargs:
+                    raise KeyError(
+                        "The 'phi' argument is required for Phase Shift operator"
+                    )
             case FockOperationType.Displace:
                 self.renormalize = True
                 if "alpha" not in kwargs:
                     raise KeyError(
                         "The 'alpha' argument is required for Displace operator"
                     )
+                if "alpha" not in kwargs:
+                    raise KeyError(
+                        "The 'alpha' argument is required for Displace operator"
+                    )
             case FockOperationType.Squeeze:
+                if "zeta" not in kwargs:
+                    raise KeyError(
+                        "The compley 'zeta' argument is required for Squeeze operator"
+                    )
                 if "zeta" not in kwargs:
                     raise KeyError(
                         "The compley 'zeta' argument is required for Squeeze operator"
@@ -87,7 +102,10 @@ class FockOperation(GenericOperation):
                 self.operator = np.eye(dimensions)
             case FockOperationType.Custom:
                 if "expression" in self.kwargs:
+                if "expression" in self.kwargs:
                     self._evaluate_custom_operator(
+                        self.kwargs["expression"], dimensions
+                    )
                         self.kwargs["expression"], dimensions
                     )
         if self.apply_count > 1:
@@ -134,6 +152,7 @@ class FockOperation(GenericOperation):
             case _:
                 return 1
 
+
     def cutoff_required(self, num_quanta=0) -> int:
         r"""
         Returns the expansion level required
@@ -151,8 +170,10 @@ class FockOperation(GenericOperation):
         match self.operation:
             case FockOperationType.Displace:
                 return int(np.ceil(4 * np.abs(self.kwargs["alpha"]) ** 2))
+                return int(np.ceil(4 * np.abs(self.kwargs["alpha"]) ** 2))
             case FockOperationType.Squeeze:
                 r = np.abs(self.kwargs["zeta"])
+                return int(2 + 4 * r + 2 * r**4)
                 return int(2 + 4 * r + 2 * r**4)
             case _:
                 return 0
