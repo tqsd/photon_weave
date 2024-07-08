@@ -14,9 +14,7 @@ from photon_weave._math.ops import (
 )
 from photon_weave.extra import interpreter
 
-
 from .generic_operation import GenericOperation
-
 
 
 class FockOperationType(Enum):
@@ -35,7 +33,6 @@ class FockOperationType(Enum):
 
 
 class FockOperation(GenericOperation):
-    def __init__(self, operation: FockOperationType, apply_count: int = 1, **kwargs):
     def __init__(self, operation: FockOperationType, apply_count: int = 1, **kwargs):
         self.kwargs = kwargs
         self.operation = operation
@@ -102,10 +99,7 @@ class FockOperation(GenericOperation):
                 self.operator = np.eye(dimensions)
             case FockOperationType.Custom:
                 if "expression" in self.kwargs:
-                if "expression" in self.kwargs:
                     self._evaluate_custom_operator(
-                        self.kwargs["expression"], dimensions
-                    
                         self.kwargs["expression"], dimensions
                     )
         if self.apply_count > 1:
