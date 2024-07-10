@@ -2,6 +2,7 @@
 Composite Operation:
 operates on multiple spaces
 """
+
 from enum import Enum, auto
 from typing import Union
 
