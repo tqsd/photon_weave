@@ -16,10 +16,10 @@ def matrix_power(mat: np.ndarray, power: int) -> np.ndarray:
     return np.linalg.matrix_power(mat, power)
 
 
-@njit
+@njit(fastmath=True)
 def _expm(mat: np.ndarray):
     eigvals, eigvecs = np.linalg.eig(mat)
-    return eigvecs @ np.diag(eigvals) @ np.linalg.inv(eigvecs)
+    return eigvecs @ np.diag(np.exp(eigvals)) @ np.linalg.pinv(eigvecs)
 
 
 @njit

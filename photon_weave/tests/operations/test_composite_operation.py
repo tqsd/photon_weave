@@ -86,7 +86,7 @@ class TestFockOperation(unittest.TestCase):
         c.apply_operation(bs, e1, e2)
         for i, v in enumerate(c.states[0][0]):
             if i == 1:
-                self.assertAlmostEqual(v[0], 0.78539816j)
+                self.assertAlmostEqual(v[0], 0.707106781j)
             elif i == 3:
                 self.assertAlmostEqual(v[0], 0.7071068)
             else:
