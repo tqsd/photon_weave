@@ -1,6 +1,7 @@
 """
 Test the Composite Operations
 """
+
 import random
 import unittest
 

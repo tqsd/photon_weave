@@ -1,6 +1,7 @@
 """
 Operations on fock spaces
 """
+
 from enum import Enum, auto
 
 import numpy as np
