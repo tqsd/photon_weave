@@ -18,8 +18,8 @@ def matrix_power(mat: np.ndarray, power: int) -> np.ndarray:
 
 @njit
 def _expm(mat: np.ndarray):
-    eigvals, eigvecs = np.linalg.eigh(mat)
-    return eigvecs @ np.diag(1j * eigvals) @ np.linalg.inv(eigvecs)
+    eigvals, eigvecs = np.linalg.eig(mat)
+    return eigvecs @ np.diag(eigvals) @ np.linalg.inv(eigvecs)
 
 
 @njit

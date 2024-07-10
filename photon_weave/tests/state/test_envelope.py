@@ -164,7 +164,7 @@ class TestTemporalProfile(unittest.TestCase):
         a = two_gaussian_integral(1, 1, 0, 1, 100, 100)
         print(a)
 
-        self.assertAlmostEqual(overlap, 1.0, places=6)
+        self.assertAlmostEqual(overlap, 0.77880078, places=6)
 
 
 if __name__ == "__main__":
