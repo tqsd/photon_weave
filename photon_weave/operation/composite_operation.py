@@ -109,10 +109,10 @@ class CompositeOperation:
 
                 fo = FockOperation(operation=FockOperationType.Identity)
                 dim1, dim2 = kwargs["dimensions"]
-                a_dagger = fo._create(dim1)
-                a = fo._destroy(dim1)
-                b_dagger = fo._create(dim2)
-                b = fo._destroy(dim2)
+                a = fo._create(dim1)
+                a_dagger = fo._destroy(dim1)
+                b = fo._create(dim2)
+                b_dagger = fo._destroy(dim2)
 
                 # Adjusting the operator with the eta parameter
                 self.operator = np.sqrt(eta) * (
