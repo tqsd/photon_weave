@@ -1,7 +1,9 @@
 import numba as nb
 import numpy as np
 from numba import njit
-
+import jax.numpy as jnp
+from jax import jit
+from typing import Union
 
 @njit('complex128[:,::1](uintc)', cache=True, parallel=True, fastmath=True)
 def annihilation_operator(cutoff: int) -> np.ndarray:
@@ -54,3 +56,21 @@ def phase_operator(theta: float, cutoff: int):
 
 
 # to do: implement beamsplitter here
+@jit
+def compute_einsum(einsum_str: str,
+                   *operands: Union[jax.Array, np.ndarray]) -> jax.Array:
+    """
+    Computes einsum using the provided einsum_str and matrices
+    with the gpu if accessible (jax.numpy).
+    Parameters
+    ----------
+    einsum_str: str
+        Einstein Sum String
+    operatnds: Union[jax.Array, np.ndarray]
+        Operands for the einstein sum
+    Returns
+    -------
+    jax.Array
+        resulting matrix after eintein sum
+    """
+    return jnp.einsum(einsum_str, *operands)

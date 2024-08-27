@@ -6,8 +6,11 @@ from __future__ import annotations
 from enum import Enum
 
 import numpy as np
+import jax.numpy as jnp
 
 from .expansion_levels import ExpansionLevel
+from photon_weave._math.ops import compute_einsum
+from typing import Union, List
 
 
 class PolarizationLabel(Enum):
@@ -51,6 +54,11 @@ class Polarization:
     measured: bool
         If the state was measured than measured is True
     """
+    __slots__ = (
+        "index", "label", "dimension", "state_vector",
+        "density_matrix", "envelope", "expansions", "expansion_level",
+        "measured", "__dict__")
+    )
     def __init__(
         self,
         polarization: PolarizationLabel = PolarizationLabel.H,
@@ -65,7 +73,7 @@ class Polarization:
         self.expansion_level = ExpansionLevel.Label
         self.measured = True
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.label is not None:
             return f"|{self.label.value}⟩"
         elif self.state_vector is not None:
@@ -95,9 +103,12 @@ class Polarization:
         else:
             return "Invalid Fock object"
 
-    def expand(self):
+    def expand(self) -> None:
         """
         Expands the representation
+        If current representation is label, then it gets
+        expanded to state_vector and if it is state_vector
+        then it gets expanded to density matrix
         """
         if self.label is not None:
             match self.label:
@@ -107,22 +118,22 @@ class Polarization:
                     vector = [0, 1]
                 case PolarizationLabel.R:
                     # Right circular polarization = (1/sqrt(2)) * (|H⟩ + i|V⟩)
-                    vector = [1 / np.sqrt(2), 1j / np.sqrt(2)]
+                    vector = [1 / jnp.sqrt(2), 1j / jnp.sqrt(2)]
                 case PolarizationLabel.L:
                     # Left circular polarization = (1/sqrt(2)) * (|H⟩ - i|V⟩)
-                    vector = [1 / np.sqrt(2), -1j / np.sqrt(2)]
+                    vector = [1 / jnp.sqrt(2), -1j / jnp.sqrt(2)]
 
-            self.state_vector = np.array(vector)[:, np.newaxis]
+            self.state_vector = jnp.array(vector)[:, jnp.newaxis]
             self.label = None
             self.expansion_level = ExpansionLevel.Vector
         elif self.state_vector is not None:
-            self.density_matrix = np.outer(
-                self.state_vector.flatten(), np.conj(self.state_vector.flatten())
+            self.density_matrix = jnp.outer(
+                self.state_vector.flatten(), jnp.conj(self.state_vector.flatten())
             )
             self.state_vector = None
             self.expansion_level = ExpansionLevel.Matrix
 
-    def extract(self, index: int):
+    def extract(self, index: int) -> None:
         """
         This method is called, when the state is
         joined into a product space. Then the
@@ -134,8 +145,7 @@ class Polarization:
         self.density_matrix = None
         self.state_vector = None
 
-
-    def set_index(self, minor:int, major:int=-1):
+    def set_index(self, minor:int, major:int=-1) -> None:
         """
         Sets the index, when product space is created, or
         manipulated
@@ -153,7 +163,7 @@ class Polarization:
         else:
             self.index = minor
 
-    def apply_operation(self, operation: PolarizationOperation):
+    def apply_operation(self, operation: PolarizationOperation) -> None:
         """
         Applies a specific operation to the state
 
@@ -191,23 +201,27 @@ class Polarization:
         operation.compute_operator()
         self._execute_apply(operation)
 
-    def _execute_apply(self, operation: PolarizationOperation):
+    def _execute_apply(self, operation: PolarizationOperation) -> None:
         """
-        Actually executes the operation
-
-        Todo
-        ----
-        Consider using gpu for this operation
+        Internal function, which applies the operator to the state
+        Parameters
+        ----------
+        operation: PolarizationOperation
+            The operation which is applied to the state
         """
         if self.expansion_level == 1:
-            self.state_vector = operation.operator @ self.state_vector
+            self.state_vector = compute_einsum("ij,j->i",operation.operator, self.state_vector)
         elif self.expansion_level == 2:
-            self.density_matrix = operation.operator @ self.density_matrix
-            self.density_matrix @= operation.operator.conj().T
+            self.density_matrix = compute_einsum(
+                "ik,kj,jl->il",
+                operation.operator,
+                self.density_matrix,
+                operation.operator.T)
 
     def _set_measured(self, **kwargs):
         """
-        Destroys the state
+        Internal method, called after measurement,
+        it will destroy the state.
         """
         self.measured = True
         self.label = None
@@ -215,13 +229,88 @@ class Polarization:
         self.state_vector = None
         self.density_matrix = None
 
-    def measure(self, **kwargs):
+    def measure(self, separate_measurement:bool=False, **kwargs) -> Union[int,None]:
         """
-        Measures this state
+        Measures this state. If the state is not in a product state it will
+        produce a measurement, otherwise it will return None.
+        
+        Parameters
+        ----------
+        separate_measurement: bool
 
-        Todo
+        Returns
         ----
-        Needs to be Implemented still 
+        Union[int,None]
+            Measurement Outcome
         """
-        self._set_measured()
+        if self.index is None:
+            # Measure in this state
+            if self.expansion_level == ExpansionLevel.Label:
+                self.expand()
+            if self.expansion_level == ExpansionLevel.Vector:
+                prob_0 = jnp.abs(self.state[0])**2
+                prob_1 = jnp.abs(self.state[1])**2
+                assert jnp.isclose(prob_0 + prob_1, 1.0)
+                probs = jnp.array([prob_0, prob_1])
+                key = jnp.random.PRNGKey(jax.random.default_prng_seed())
+                result = jax.random.choice(key, a=jnp.array([0,1]), p=probs)
+                self._set_measured()
+                return result
+            elif self.expansion_level == ExpansionLevel.Matrix:
+                # Extract the diagonal elements
+                probabilities = jnp.diag(self.state).real
+                # Normalize
+                probabilities = probabilities / jnp.sum(probabilities)
+                # Generate a random key
+                key = jnp.random.PRNGKey(jax.random.default_prng_seed())
+                measurement_result = jax.random.choice(
+                    key,
+                    a=jnp.arrange(self.state.shape[0]),
+                    probabilities = probabilities
+                )
+                self._set_measured()
+                return result
+
         return None
+
+    def POVM_measurement(self, *operators:Union[np.ndarray, jnp.Array]) -> int:
+        """
+        Positive Operation-Valued Measurement
+
+        Parameters
+        ----------
+        *operators: Union[np.ndarray, jnp.Array]
+            
+
+        Returns
+        -------
+        int
+            The index of the measurement outcome
+        """
+
+        if self.expansion_level == ExpansionLevel.Label:
+            self.expand()
+
+        if self.expansion_level == ExpansionLevel.Vector:
+            self.expand()
+
+        # Compute probabilities p(i) = Tr(E_i * rho) for each POVM operator E_i
+        probabilities = jnp.array([
+            jnp.trace(jnp.matmul(op, self.state)).real for op in operators
+        ])
+
+        # Normalize probabilities (handle numerical issues)
+        probabilities = probabilities / jnp.sum(probabilities)
+
+        # Generate a random key
+        key = jax.random.PRNGKey(jax.random.default_prng_seed())
+
+        # Sample the measurement outcome
+        measurement_result = jax.random.choice(
+            key,
+            a=jnp.arrange(len(operators)),
+            p=probabilities
+        )
+        self._set_measured()
+        return measurement_result
+        
