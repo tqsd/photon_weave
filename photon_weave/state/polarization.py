@@ -103,6 +103,8 @@ class Polarization:
         else:
             return "Invalid Fock object"
 
+    def _get_state(self, label):
+
     def expand(self) -> None:
         """
         Expands the representation
@@ -132,6 +134,42 @@ class Polarization:
             )
             self.state_vector = None
             self.expansion_level = ExpansionLevel.Matrix
+
+
+    def contract(self, tol:float=1e-7) -> None:
+        """
+        Tests if the state can be contracted and if
+        so it contracts its representation.
+        If expansion_level is Density Matrix and the state is
+        pure state it contracts it to the vector representation.
+        If the state is in one of the basis states, than it
+        contracts it to the 
+        """
+        if self.expansion_level is ExpansionLevel.Matrix:
+            # Check if the state is pure state
+            state_squared = jnp.matmul(self.state, self.state)
+            state_trace = jnp.trace(state_squared)
+            if jnp.abs(state_trace-1) < tol:
+                # The state is pure
+                eigenvalue, eigenvectors = jnp.linalg.eigh(self.state)
+                pure_state_index = jnp.argmax(jnp.abs(eigenvalues -1.0) < tol)
+                self.state_vector = [:, pure_state_index]
+                self.density_matrix = None
+                self.expansion_level = ExpansionLevel.Vector
+        if self.expansion_level is ExpansionLevel.Vector:
+            match self.state_vector:
+                case jnp.allclose(self.state_vector, jnp.array([[1],[0]])):
+                    self.label = Polarization.H
+                    self.state_vector = None
+                case jnp.allclose(self.state_vector, jnp.array([[0],[1]])):
+                    self.label = Polarization.V
+                    self.state_vector = None
+                case jnp.allclose(self.state_vector, jnp.array([[1/jnp.sqrt(2)],[1j/jnp.sqrt(2)]])):
+                    self.label = Polarization.R
+                    self.state_vector = None
+                case jnp.allclose(self.state_vector, jnp.array([[1/jnp.sqrt(2)],[-1j/jnp.sqrt(2)]])):
+                    self.label = Polarization.L
+                    self.state_vector = None
 
     def extract(self, index: int) -> None:
         """
