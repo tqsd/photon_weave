@@ -1,0 +1,3 @@
+
+class NotExtractedException(Exception):
+    pass

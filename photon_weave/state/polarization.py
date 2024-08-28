@@ -189,7 +189,7 @@ class Polarization:
                 self.label = PolarizationLabel.L
                 self.state_vector = None
 
-    def extract(self, index: Union[int, Tuple[int, int]) -> None:
+    def extract(self, index: Union[int, Tuple[int, int]]) -> None:
         """
         This method is called, when the state is
         joined into a product space. Then the
