@@ -3,7 +3,9 @@ import numpy as np
 from numba import njit
 import jax.numpy as jnp
 from jax import jit
-from typing import Union
+import jax
+from typing import Union, List
+
 
 @njit('complex128[:,::1](uintc)', cache=True, parallel=True, fastmath=True)
 def annihilation_operator(cutoff: int) -> np.ndarray:
@@ -74,3 +76,46 @@ def compute_einsum(einsum_str: str,
         resulting matrix after eintein sum
     """
     return jnp.einsum(einsum_str, *operands)
+
+@jit
+def apply_kraus(
+        density_matrix: Union[np.ndarray, jnp.array],
+        kraus_operators: List[Union[np.ndarray, jnp.array]]) -> jnp.array:
+    """
+    Apply Kraus operators to the density matrix.
+    Parameters
+    ----------
+    density_matrix: Union[np.ndarray, jnp.array]
+        Density matrix onto which the Kraus operators are applied
+    kraus_operators: List[Union[np.ndarray, jnp.array]]
+        List of Kraus operators to apply to the density matrix
+    """
+    new_density_matrix = jnp.zeros_like(density_matrix)
+    for K in kraus_operators:
+        new_density_matrix += K @ density_matrix @ jnp.conjugate(K).T
+
+    return new_density_matrix
+
+@jit
+def kraus_identity_check(operators: List[Union[np.ndarray, jnp.array]], tol: float = 1e-6) -> bool:
+    """
+    Check if Kraus operators sum to the identity matrix.
+
+    Parameters
+    ----------
+    kraus_operators: List[np.ndarray, jnp.array]
+        List of the operators
+    tol: float
+        Tolerance for the floating-point comparisons
+
+    Returns
+    -------
+    bool
+        True if the Kraus operators sum to identity within the tolerance
+    """
+    dim = operators[0].shape[0]
+    identity_matrix = jnp.eye(dim)
+    sum_kraus = sum(
+        jnp.matmul(jnp.conjugate(K.T),K) for K in operators
+    )
+    return jnp.allclose(sum_kraus, identity_matrix, atol=tol)

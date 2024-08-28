@@ -4,13 +4,19 @@ Polarization State
 from __future__ import annotations
 
 from enum import Enum
-
+import logging 
 import numpy as np
 import jax.numpy as jnp
+import jax
+import uuid
+from typing import Union, List, Tuple
 
 from .expansion_levels import ExpansionLevel
-from photon_weave._math.ops import compute_einsum
-from typing import Union, List
+from photon_weave._math.ops import compute_einsum, apply_kraus, kraus_identity_check
+from photon_weave.state.exceptions import NotExtractedException
+from photon_weave.photon_weave import Config
+
+logger = logging.getLogger()
 
 
 class PolarizationLabel(Enum):
@@ -55,15 +61,17 @@ class Polarization:
         If the state was measured than measured is True
     """
     __slots__ = (
-        "index", "label", "dimension", "state_vector",
+        "uid", "index", "label", "dimension", "state_vector",
         "density_matrix", "envelope", "expansions", "expansion_level",
         "measured", "__dict__")
-    )
+
     def __init__(
         self,
         polarization: PolarizationLabel = PolarizationLabel.H,
         envelope: "Envelope" = None,
     ):
+        self.uid = uuid.uuid4()
+        logger.info("Creating polarization with id %s", self.uid)
         self.index = None
         self.label = polarization
         self.dimensions = 2
@@ -76,34 +84,40 @@ class Polarization:
     def __repr__(self) -> str:
         if self.label is not None:
             return f"|{self.label.value}⟩"
+
         elif self.state_vector is not None:
+        # Handle cases where the vector has only one element
+            flattened_vector = self.state_vector.flatten()
             formatted_vector = "\n".join(
                 [
-                    f"{complex_num.real:.2f} {'+' if complex_num.imag >= 0 else '-'} {abs(complex_num.imag):.2f}j"
-                    for complex_num in self.state_vector.flatten()
+                    f"⎢ {''.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
+                    for row in self.state_vector
                 ]
             )
-
+            formatted_vector = formatted_vector.split("\n")
+            formatted_vector[0] = "⎡" + formatted_vector[0][1:-1] + "⎤"
+            formatted_vector[-1] = "⎣" + formatted_vector[-1][1:-1] + "⎦"
+            formatted_vector = "\n".join(formatted_vector)
             return f"{formatted_vector}"
         elif self.density_matrix is not None:
             formatted_matrix = "\n".join(
                 [
-                    "\t".join(
-                        [
-                            f"({num.real:.2f} {'+' if num.imag >= 0 else '-'} {abs(num.imag):.2f}j)"
-                            for num in row
-                        ]
-                    )
+                    f"⎢ {'   '.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
                     for row in self.density_matrix
                 ]
             )
+
+            # Add top and bottom brackets
+            formatted_matrix = formatted_matrix.split("\n")
+            formatted_matrix[0] = "⎡" + formatted_matrix[0][1:-1] + "⎤"
+            formatted_matrix[-1] = "⎣" + formatted_matrix[-1][1:-1] + "⎦"
+            formatted_matrix = "\n".join(formatted_matrix)
+
             return f"{formatted_matrix}"
         elif self.index is not None:
             return "System is part of the Envelope"
         else:
-            return "Invalid Fock object"
-
-    def _get_state(self, label):
+            return "Invalid Fock object" # pragma: no cover
 
     def expand(self) -> None:
         """
@@ -136,47 +150,54 @@ class Polarization:
             self.expansion_level = ExpansionLevel.Matrix
 
 
-    def contract(self, tol:float=1e-7) -> None:
+    def contract(self, final:ExpansionLevel=ExpansionLevel.Label, tol:float=1e-6) -> None:
         """
-        Tests if the state can be contracted and if
-        so it contracts its representation.
-        If expansion_level is Density Matrix and the state is
-        pure state it contracts it to the vector representation.
-        If the state is in one of the basis states, than it
-        contracts it to the 
+        Attempts to contract the representation to the level defined in `final`argument.
+
+        Parameters
+        ----------
+        final: ExpansionLevel
+            Expected expansion level after contraction
+        tol: float
+            Tolerance when comparing matrices
         """
-        if self.expansion_level is ExpansionLevel.Matrix:
+        if self.expansion_level is ExpansionLevel.Matrix and final < ExpansionLevel.Matrix:
             # Check if the state is pure state
-            state_squared = jnp.matmul(self.state, self.state)
+            state_squared = jnp.matmul(self.density_matrix, self.density_matrix)
             state_trace = jnp.trace(state_squared)
             if jnp.abs(state_trace-1) < tol:
                 # The state is pure
-                eigenvalue, eigenvectors = jnp.linalg.eigh(self.state)
+                eigenvalues, eigenvectors = jnp.linalg.eigh(self.density_matrix)
                 pure_state_index = jnp.argmax(jnp.abs(eigenvalues -1.0) < tol)
-                self.state_vector = [:, pure_state_index]
+                self.state_vector = eigenvectors[:, pure_state_index].reshape(-1,1)
+                # Normalizing the phase
+                phase = jnp.exp(-1j * jnp.angle(self.state_vector[0]))
+                self.state_vector = self.state_vector*phase
                 self.density_matrix = None
                 self.expansion_level = ExpansionLevel.Vector
-        if self.expansion_level is ExpansionLevel.Vector:
-            match self.state_vector:
-                case jnp.allclose(self.state_vector, jnp.array([[1],[0]])):
-                    self.label = Polarization.H
-                    self.state_vector = None
-                case jnp.allclose(self.state_vector, jnp.array([[0],[1]])):
-                    self.label = Polarization.V
-                    self.state_vector = None
-                case jnp.allclose(self.state_vector, jnp.array([[1/jnp.sqrt(2)],[1j/jnp.sqrt(2)]])):
-                    self.label = Polarization.R
-                    self.state_vector = None
-                case jnp.allclose(self.state_vector, jnp.array([[1/jnp.sqrt(2)],[-1j/jnp.sqrt(2)]])):
-                    self.label = Polarization.L
-                    self.state_vector = None
+        if self.expansion_level is ExpansionLevel.Vector and final < ExpansionLevel.Vector:
+            if jnp.allclose(self.state_vector, jnp.array([[1],[0]])):
+                self.label = PolarizationLabel.H
+                self.state_vector = None
+            elif jnp.allclose(self.state_vector, jnp.array([[0],[1]])):
+                self.label = PolarizationLabel.V
+                self.state_vector = None
+            elif jnp.allclose(self.state_vector, jnp.array([[1/jnp.sqrt(2)],[1j/jnp.sqrt(2)]])):
+                self.label = PolarizationLabel.R
+                self.state_vector = None
+            elif jnp.allclose(self.state_vector, jnp.array([[1/jnp.sqrt(2)],[-1j/jnp.sqrt(2)]])):
+                self.label = PolarizationLabel.L
+                self.state_vector = None
 
-    def extract(self, index: int) -> None:
+    def extract(self, index: Union[int, Tuple[int, int]) -> None:
         """
         This method is called, when the state is
         joined into a product space. Then the
         index is set and the label, density_matrix and
         state_vector is set to None
+        Parameters:
+        index: Union[int, Tuple[int, int]
+            Index of the state in the product state
         """
         self.index = index
         self.label = None
@@ -196,12 +217,15 @@ class Polarization:
             Major index points to the product space when it is in
             CompositeEnvelope
         """
-        if major >= 0:
-            self.index = (major, minor)
+        if all(p is None for p in [self.label, self.state_vector, self.density_matrix]):
+            if major >= 0:
+                self.index = (major, minor)
+            else:
+                self.index = minor
         else:
-            self.index = minor
+            raise NotExtractedException("Polarization state does not seem to be extracted")
 
-    def apply_operation(self, operation: PolarizationOperation) -> None:
+    def apply_operation(self, operation: PolarizationOperation, contract:bool = True) -> None:
         """
         Applies a specific operation to the state
 
@@ -238,6 +262,8 @@ class Polarization:
             self.expand()
         operation.compute_operator()
         self._execute_apply(operation)
+        if contract:
+            self.contract()
 
     def _execute_apply(self, operation: PolarizationOperation) -> None:
         """
@@ -255,6 +281,32 @@ class Polarization:
                 operation.operator,
                 self.density_matrix,
                 operation.operator.T)
+
+    def apply_kraus(self, operators: List[Union[np.ndarray, jnp.array]], identity_check:bool=True) -> None:
+        """
+        Apply Kraus operators to the state.
+        State is automatically expanded to the density matrix representation
+        Parameters
+        ----------
+        operators: List[Union[np.ndarray, jnp.array]]
+            List of the operators
+        identity_check: bool
+            Signal to check whether or not the operators sum up to identity, True by default
+        """
+
+        while self.density_matrix is None:
+            self.expand()
+
+        dim = self.density_matrix.shape[0]
+        for op in operators:
+            if op.shape != (dim, dim):
+                raise ValueError(f"Kraus operator has incorrect dimensions: {op.shape}, expected ({dim},{dim})")
+
+        if not kraus_identity_check(operators):
+            raise ValueError("Kraus operators do not sum to the identity")
+            
+        self.density_matrix = apply_kraus(self.density_matrix, operators)
+        self.contract()
 
     def _set_measured(self, **kwargs):
         """
@@ -283,35 +335,36 @@ class Polarization:
         """
         if self.index is None:
             # Measure in this state
+            C = Config()
             if self.expansion_level == ExpansionLevel.Label:
                 self.expand()
             if self.expansion_level == ExpansionLevel.Vector:
-                prob_0 = jnp.abs(self.state[0])**2
-                prob_1 = jnp.abs(self.state[1])**2
+                prob_0 = jnp.abs(self.state_vector[0])**2
+                prob_1 = jnp.abs(self.state_vector[1])**2
                 assert jnp.isclose(prob_0 + prob_1, 1.0)
                 probs = jnp.array([prob_0, prob_1])
-                key = jnp.random.PRNGKey(jax.random.default_prng_seed())
-                result = jax.random.choice(key, a=jnp.array([0,1]), p=probs)
+                key = jax.random.PRNGKey(C.random_seed)
+                result = jax.random.choice(key, a=jnp.array([0,1]), p=probs.ravel())
                 self._set_measured()
                 return result
             elif self.expansion_level == ExpansionLevel.Matrix:
                 # Extract the diagonal elements
-                probabilities = jnp.diag(self.state).real
+                probabilities = jnp.diag(self.density_matrix).real
                 # Normalize
                 probabilities = probabilities / jnp.sum(probabilities)
                 # Generate a random key
-                key = jnp.random.PRNGKey(jax.random.default_prng_seed())
-                measurement_result = jax.random.choice(
+                key = jax.random.PRNGKey(C.random_seed)
+                result = jax.random.choice(
                     key,
-                    a=jnp.arrange(self.state.shape[0]),
-                    probabilities = probabilities
+                    a=jnp.arange(self.density_matrix.shape[0]),
+                    p=probabilities
                 )
                 self._set_measured()
                 return result
+        # TODO IF MEASURED WHILE IN PRODUCT STATE IS SHOULD ALSO WORK
+        return None # pragme: no cover
 
-        return None
-
-    def POVM_measurement(self, *operators:Union[np.ndarray, jnp.Array]) -> int:
+    def measure_POVM(self, operators:List[np.ndarray, jnp.Array]) -> int:
         """
         Positive Operation-Valued Measurement
 
@@ -325,30 +378,33 @@ class Polarization:
         int
             The index of the measurement outcome
         """
+        if self.index is None:
+            if self.expansion_level == ExpansionLevel.Label:
+                self.expand()
 
-        if self.expansion_level == ExpansionLevel.Label:
-            self.expand()
+            if self.expansion_level == ExpansionLevel.Vector:
+                self.expand()
 
-        if self.expansion_level == ExpansionLevel.Vector:
-            self.expand()
+            # Compute probabilities p(i) = Tr(E_i * rho) for each POVM operator E_i
+            probabilities = jnp.array([
+                jnp.trace(jnp.matmul(op, self.density_matrix)).real for op in operators
+            ])
 
-        # Compute probabilities p(i) = Tr(E_i * rho) for each POVM operator E_i
-        probabilities = jnp.array([
-            jnp.trace(jnp.matmul(op, self.state)).real for op in operators
-        ])
+            # Normalize probabilities (handle numerical issues)
+            probabilities = probabilities / jnp.sum(probabilities)
 
-        # Normalize probabilities (handle numerical issues)
-        probabilities = probabilities / jnp.sum(probabilities)
+            # Generate a random key
+            C = Config()
+            key = jax.random.PRNGKey(C.random_seed)
 
-        # Generate a random key
-        key = jax.random.PRNGKey(jax.random.default_prng_seed())
-
-        # Sample the measurement outcome
-        measurement_result = jax.random.choice(
-            key,
-            a=jnp.arrange(len(operators)),
-            p=probabilities
-        )
-        self._set_measured()
-        return measurement_result
+            # Sample the measurement outcome
+            measurement_result = jax.random.choice(
+                key,
+                a=jnp.arange(len(operators)),
+                p=probabilities
+            )
+            self._set_measured()
+            return measurement_result
+        #TODO Measuring while in product space should also work
+        return -1 # pragma: no cover
         
