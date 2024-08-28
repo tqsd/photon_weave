@@ -3,6 +3,7 @@ from enum import Enum, auto
 import numpy as np
 
 from photon_weave._math.ops import _expm
+from photon_weave.state.expansion_levels import ExpansionLevel
 
 from .generic_operation import GenericOperation
 
@@ -116,7 +117,7 @@ class PolarizationOperation(GenericOperation):
             case PolarizationOperationType.Custom:
                 self.operator = self.kwargs["operator"]
 
-    def expansion_level_required(self, state) -> int:
+    def expansion_level_required(self, state) -> ExpansionLevel:
         # from photon_weave.state.polarization import PolarizationLabel
 
         match self.operation:
@@ -125,8 +126,8 @@ class PolarizationOperation(GenericOperation):
             case PolarizationOperationType.X:
                 if state.label is not None:
                     return 0
-                return 1
+                return ExpansionLevel.Vector
             case PolarizationOperationType.Y:
-                return 1
+                return ExpansionLevel.Vector
             case _:
-                return 1
+                return ExpansionLevel.Vector

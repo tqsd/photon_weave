@@ -79,16 +79,19 @@ def compute_einsum(einsum_str: str,
 
 @jit
 def apply_kraus(
-        density_matrix: Union[np.ndarray, jnp.array],
-        kraus_operators: List[Union[np.ndarray, jnp.array]]) -> jnp.array:
+        density_matrix: Union[np.ndarray, jnp.ndarray],
+        kraus_operators: List[Union[np.ndarray, jnp.ndarray]]) -> jnp.ndarray:
     """
     Apply Kraus operators to the density matrix.
     Parameters
     ----------
-    density_matrix: Union[np.ndarray, jnp.array]
+    density_matrix: Union[np.ndarray, jnp.ndarray]
         Density matrix onto which the Kraus operators are applied
-    kraus_operators: List[Union[np.ndarray, jnp.array]]
+    kraus_operators: List[Union[np.ndarray, jnp.ndarray]]
         List of Kraus operators to apply to the density matrix
+    Returns
+    jnp.ndarray
+        density matrix after applying Kraus operators
     """
     new_density_matrix = jnp.zeros_like(density_matrix)
     for K in kraus_operators:
@@ -97,13 +100,13 @@ def apply_kraus(
     return new_density_matrix
 
 @jit
-def kraus_identity_check(operators: List[Union[np.ndarray, jnp.array]], tol: float = 1e-6) -> bool:
+def kraus_identity_check(operators: List[Union[np.ndarray, jnp.ndarray]], tol: float = 1e-6) -> bool:
     """
     Check if Kraus operators sum to the identity matrix.
 
     Parameters
     ----------
-    kraus_operators: List[np.ndarray, jnp.array]
+    kraus_operators: List[np.ndarray, jnp.Array]
         List of the operators
     tol: float
         Tolerance for the floating-point comparisons

@@ -2,10 +2,10 @@
 Expansion levels
 """
 
-from enum import Enum
+from enum import IntEnum
 
 
-class ExpansionLevel:
+class ExpansionLevel(IntEnum):
     Label = 0
     Vector = 1
     Matrix = 2

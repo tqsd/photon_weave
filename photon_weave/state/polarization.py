@@ -9,13 +9,17 @@ import numpy as np
 import jax.numpy as jnp
 import jax
 import uuid
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, TYPE_CHECKING, Optional
 
 from .expansion_levels import ExpansionLevel
 from photon_weave._math.ops import compute_einsum, apply_kraus, kraus_identity_check
 from photon_weave.state.exceptions import NotExtractedException
 from photon_weave.photon_weave import Config
 
+if TYPE_CHECKING:
+    from .envelope import Envelope
+    from photon_weave.operation.polarization_operations import PolarizationOperation
+    
 logger = logging.getLogger()
 
 
@@ -68,18 +72,18 @@ class Polarization:
     def __init__(
         self,
         polarization: PolarizationLabel = PolarizationLabel.H,
-        envelope: "Envelope" = None,
+        envelope: Union["Envelope", None] = None,
     ):
-        self.uid = uuid.uuid4()
+        self.uid: uuid.UUID = uuid.uuid4()
         logger.info("Creating polarization with id %s", self.uid)
-        self.index = None
-        self.label = polarization
-        self.dimensions = 2
-        self.state_vector = None
-        self.density_matrix = None
-        self.envelope = envelope
-        self.expansion_level = ExpansionLevel.Label
-        self.measured = True
+        self.index: Optional[Union[int, Tuple[int,int]]] = None
+        self.label: Optional[PolarizationLabel] = polarization
+        self.dimensions: int = 2
+        self.state_vector: Optional[jnp.ndarray] = None
+        self.density_matrix :Optional[jnp.ndarray] = None
+        self.envelope :Optional["Envelope"] = envelope
+        self.expansion_level : ExpansionLevel = ExpansionLevel.Label
+        self.measured: bool = True
 
     def __repr__(self) -> str:
         if self.label is not None:
@@ -88,6 +92,7 @@ class Polarization:
         elif self.state_vector is not None:
         # Handle cases where the vector has only one element
             flattened_vector = self.state_vector.flatten()
+            formatted_vector: Union[str, List[str]]
             formatted_vector = "\n".join(
                 [
                     f"⎢ {''.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
@@ -100,6 +105,7 @@ class Polarization:
             formatted_vector = "\n".join(formatted_vector)
             return f"{formatted_vector}"
         elif self.density_matrix is not None:
+            formatted_matrix: Union[str,List[str]]
             formatted_matrix = "\n".join(
                 [
                     f"⎢ {'   '.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
@@ -127,6 +133,7 @@ class Polarization:
         then it gets expanded to density matrix
         """
         if self.label is not None:
+            vector: List[Union[jnp.ndarray, float, complex]]
             match self.label:
                 case PolarizationLabel.H:
                     vector = [1, 0]
@@ -150,7 +157,7 @@ class Polarization:
             self.expansion_level = ExpansionLevel.Matrix
 
 
-    def contract(self, final:ExpansionLevel=ExpansionLevel.Label, tol:float=1e-6) -> None:
+    def contract(self, final:ExpansionLevel = ExpansionLevel.Label, tol:float=1e-6) -> None:
         """
         Attempts to contract the representation to the level defined in `final`argument.
 
@@ -163,19 +170,25 @@ class Polarization:
         """
         if self.expansion_level is ExpansionLevel.Matrix and final < ExpansionLevel.Matrix:
             # Check if the state is pure state
-            state_squared = jnp.matmul(self.density_matrix, self.density_matrix)
+            if self.density_matrix is not None:
+                state_squared = jnp.matmul(self.density_matrix, self.density_matrix)
+            else:
+                raise ValueError("Density matrix is None, cannot perform matrix multiplication")
             state_trace = jnp.trace(state_squared)
             if jnp.abs(state_trace-1) < tol:
                 # The state is pure
                 eigenvalues, eigenvectors = jnp.linalg.eigh(self.density_matrix)
                 pure_state_index = jnp.argmax(jnp.abs(eigenvalues -1.0) < tol)
+                assert pure_state_index is not None, "pure_state_index should not be None"
                 self.state_vector = eigenvectors[:, pure_state_index].reshape(-1,1)
                 # Normalizing the phase
+                assert self.state_vector is not None, "self.state_vector should not be None"
                 phase = jnp.exp(-1j * jnp.angle(self.state_vector[0]))
                 self.state_vector = self.state_vector*phase
                 self.density_matrix = None
                 self.expansion_level = ExpansionLevel.Vector
         if self.expansion_level is ExpansionLevel.Vector and final < ExpansionLevel.Vector:
+            assert self.state_vector is not None, "self.state_vector should not be None"
             if jnp.allclose(self.state_vector, jnp.array([[1],[0]])):
                 self.label = PolarizationLabel.H
                 self.state_vector = None
@@ -282,13 +295,13 @@ class Polarization:
                 self.density_matrix,
                 operation.operator.T)
 
-    def apply_kraus(self, operators: List[Union[np.ndarray, jnp.array]], identity_check:bool=True) -> None:
+    def apply_kraus(self, operators: List[Union[np.ndarray, jnp.ndarray]], identity_check:bool=True) -> None:
         """
         Apply Kraus operators to the state.
         State is automatically expanded to the density matrix representation
         Parameters
         ----------
-        operators: List[Union[np.ndarray, jnp.array]]
+        operators: List[Union[np.ndarray, jnp.Array]]
             List of the operators
         identity_check: bool
             Signal to check whether or not the operators sum up to identity, True by default
@@ -339,6 +352,7 @@ class Polarization:
             if self.expansion_level == ExpansionLevel.Label:
                 self.expand()
             if self.expansion_level == ExpansionLevel.Vector:
+                assert self.state_vector is not None, "self.state_vector should not be None"
                 prob_0 = jnp.abs(self.state_vector[0])**2
                 prob_1 = jnp.abs(self.state_vector[1])**2
                 assert jnp.isclose(prob_0 + prob_1, 1.0)
@@ -346,9 +360,10 @@ class Polarization:
                 key = jax.random.PRNGKey(C.random_seed)
                 result = jax.random.choice(key, a=jnp.array([0,1]), p=probs.ravel())
                 self._set_measured()
-                return result
+                return int(result)
             elif self.expansion_level == ExpansionLevel.Matrix:
                 # Extract the diagonal elements
+                assert self.density_matrix is not None, "self.density_matrix should not be None"
                 probabilities = jnp.diag(self.density_matrix).real
                 # Normalize
                 probabilities = probabilities / jnp.sum(probabilities)
@@ -360,11 +375,11 @@ class Polarization:
                     p=probabilities
                 )
                 self._set_measured()
-                return result
+                return int(result)
         # TODO IF MEASURED WHILE IN PRODUCT STATE IS SHOULD ALSO WORK
         return None # pragme: no cover
 
-    def measure_POVM(self, operators:List[np.ndarray, jnp.Array]) -> int:
+    def measure_POVM(self, operators:List[Union[np.ndarray, jnp.ndarray]]) -> int:
         """
         Positive Operation-Valued Measurement
 
@@ -386,6 +401,7 @@ class Polarization:
                 self.expand()
 
             # Compute probabilities p(i) = Tr(E_i * rho) for each POVM operator E_i
+            assert self.density_matrix is not None, "self.density_matrix should not be None"
             probabilities = jnp.array([
                 jnp.trace(jnp.matmul(op, self.density_matrix)).real for op in operators
             ])
@@ -404,7 +420,7 @@ class Polarization:
                 p=probabilities
             )
             self._set_measured()
-            return measurement_result
+            return int(measurement_result)
         #TODO Measuring while in product space should also work
         return -1 # pragma: no cover
         
