@@ -7,7 +7,7 @@ import numpy as np
 import jax.numpy as jnp
 import jax
 import uuid
-from typing import TYPE_CHECKING, Optional, Tuple, List
+from typing import TYPE_CHECKING, Optional, Tuple, List, Union, Any
 
 from photon_weave.photon_weave import Config
 from photon_weave.operation.fock_operation import FockOperation, FockOperationType
@@ -18,6 +18,9 @@ from photon_weave._math.ops import (
 from .envelope import EnvelopeAssignedException
 from .expansion_levels import ExpansionLevel
 from .base_state import BaseState
+
+if TYPE_CHECKING:
+    from .envelope import Envelope
 
 
 
@@ -57,18 +60,18 @@ class Fock(BaseState):
         "density_matrix", "envelope", "expansions", "expansion_level",
         "measured")
 
-    def __init__(self, envelope: Envelope = None):
+    def __init__(self, envelope: Optional[Envelope] = None):
         self.uid: uuid.UUID = uuid.uuid4()
         self.index: Optional[Union[int, Tuple[int, int]]] = None
         self.dimensions: int = -1
-        self.label: int = 0
-        self.state_vector: Optional[jnd.ndarray] = None
-        self.density_matrix: Optional[jnd.ndarray] = None
+        self.label: Optional[int] = 0
+        self.state_vector: Optional[jnp.ndarray] = None
+        self.density_matrix: Optional[jnp.ndarray] = None
         self.envelope: Optional["Envelope"] = envelope
         self.expansion_level : ExpansionLevel = ExpansionLevel.Label
         self.measured = False
 
-    def __eq__(self, other: Fock):
+    def __eq__(self, other: Any):
         """
         Comparison operator for the states, returns True if
         states are expanded to the same level and are not part
@@ -148,7 +151,7 @@ class Fock(BaseState):
             assert self.state_vector is not None, "self.state_vector should not be None"
             ones = jnp.where(self.state_vector == 1)[0]
             if ones.size == 1:
-                self.label = ones[0]
+                self.label = int(ones[0])
                 self.state_vector = None
                 self.expansion_level = ExpansionLevel.Label
 
@@ -210,6 +213,11 @@ class Fock(BaseState):
         """
         The highest possible measurement outcome.
         returns highest basis with non_zero probability
+
+        Returns:
+        --------
+        int
+            Highest possible measurement outcome, -1 if failed
         """
         if self.label is not None:
             return self.label
@@ -217,6 +225,7 @@ class Fock(BaseState):
             return num_quanta_vector(self.state_vector)
         if self.density_matrix is not None:
             return num_quanta_matrix(self.density_matrix)
+        return -1
 
     def _execute_apply(self, operation: FockOperation):
         """
@@ -226,6 +235,7 @@ class Fock(BaseState):
         ----
         Consider using gpu for this operation
         """
+        assert operation.operator is not None, "operation.operators must not be None"
         if self.state_vector is not None:
             self.state_vector = operation.operator @ self.state_vector
         if self.density_matrix is not None:
@@ -336,17 +346,19 @@ class Fock(BaseState):
         Returns
         -------
         outcome: int
-            Outcome of the measurement
+            Outcome of the measurement, -1 if failed
         """
         if self.measured:
             raise FockAlreadyMeasuredException()
-        result = None
+        result:int = -1
         if isinstance(self.index, int):
+            assert self.envelope is not None, "Envelope should not be None"
             return self.envelope.measure(remove_composite=remove_composite)
         else:
             C = Config()
             match self.expansion_level:
                 case ExpansionLevel.Label:
+                    assert self.label is not None, "self.label should not be None"
                     result = self.label
                 case ExpansionLevel.Vector:
                     assert self.state_vector is not None, "self.state_vector should not be None"
@@ -354,19 +366,21 @@ class Fock(BaseState):
                     probs = probs.ravel()
                     assert jnp.isclose(sum(probs), 1)
                     key = jax.random.PRNGKey(C.random_seed)
-                    result = jax.random.choice(key, a=jnp.array(
-                        list(range(len(probs)))),
-                        p=probs)
+                    result = int(jax.random.choice(
+                        key,
+                        a=jnp.array(
+                            list(range(len(probs)))),
+                        p=probs))
                 case ExpansionLevel.Matrix:
                     assert self.density_matrix is not None, "self.density_matrix should not be None"
                     probs = jnp.diag(self.density_matrix).real
                     probs = probs / jnp.sum(probs)
                     key = jax.random.PRNGKey(C.random_seed)
-                    result = jax.random.choice(
+                    result = int(jax.random.choice(
                         key,
                         a=jnp.arange(self.density_matrix.shape[0]),
                         p=probs
-                    )
+                    ))
         if not partial and self.envelope:
             self.envelope._set_measured(remove_composite=remove_composite)
         self._set_measured()
@@ -384,7 +398,7 @@ class Fock(BaseState):
         Returns
         -------
         int
-            The index of the measurement outcome
+            The index of the measurement outcome, -1 if measurement failed
         """
         if self.index is None:
             if self.expansion_level == ExpansionLevel.Label:
@@ -415,7 +429,7 @@ class Fock(BaseState):
             self._set_measured()
             return int(measurement_result)
         # TODO IF MEASURED WHILE IN PRODUCT STATE IT SHOULD ALSO WORK
-        return None
+        return -1
 
     def _set_measured(self, **kwargs):
         """
@@ -428,7 +442,7 @@ class Fock(BaseState):
         self.density_matrix = None
         self.index = None
 
-    def get_subspace(self) -> np.array:
+    def get_subspace(self) -> Union[int,jnp.ndarray]:
         """
         Returns the space subspace. If the state is in label representation
         then it is expanded once. If the state is in product space,
@@ -436,8 +450,8 @@ class Fock(BaseState):
 
         Returns
         -------
-        state: np.array
-            The state in the numpy array
+        state: Union[np.array]
+            The state in the numpy array, or -1 if failed
         """
         if self.index is None:
             if not self.label is None:
@@ -446,13 +460,16 @@ class Fock(BaseState):
                 return self.state_vector
             elif not self.density_matrix is None:
                 return self.density_matrix
-        elif len(self.index) == 1:
+        elif isinstance(self.index, int):
             # State is in the Envelope
             pass
 
-        elif len(self.index) == 2:
+        elif isinstance(self.index, tuple):
+            assert self.envelope is not None, "self.envelope should not be None"
+            assert self.envelope.composite_envelope is not None, "self.envelope.composite_envelope should not be None"
             state = self.envelope.composite_envelope._trace_out(self, destructive=False)
             return state
+        return -1
 
 
 

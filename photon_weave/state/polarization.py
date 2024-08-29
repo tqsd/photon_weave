@@ -12,6 +12,7 @@ import uuid
 from typing import Union, List, Tuple, TYPE_CHECKING, Optional
 
 from .expansion_levels import ExpansionLevel
+from .base_state import BaseState
 from photon_weave._math.ops import compute_einsum, apply_kraus, kraus_identity_check
 from photon_weave.state.exceptions import NotExtractedException
 from photon_weave.photon_weave import Config
@@ -33,7 +34,7 @@ class PolarizationLabel(Enum):
     L = "L"
 
 
-class Polarization:
+class Polarization(BaseState):
     """
     Polarization class
 
@@ -67,7 +68,7 @@ class Polarization:
     __slots__ = (
         "uid", "index", "label", "dimension", "state_vector",
         "density_matrix", "envelope", "expansions", "expansion_level",
-        "measured", "__dict__")
+        "measured")
 
     def __init__(
         self,
@@ -85,45 +86,6 @@ class Polarization:
         self.expansion_level : ExpansionLevel = ExpansionLevel.Label
         self.measured: bool = True
 
-    def __repr__(self) -> str:
-        if self.label is not None:
-            return f"|{self.label.value}⟩"
-
-        elif self.state_vector is not None:
-        # Handle cases where the vector has only one element
-            flattened_vector = self.state_vector.flatten()
-            formatted_vector: Union[str, List[str]]
-            formatted_vector = "\n".join(
-                [
-                    f"⎢ {''.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
-                    for row in self.state_vector
-                ]
-            )
-            formatted_vector = formatted_vector.split("\n")
-            formatted_vector[0] = "⎡" + formatted_vector[0][1:-1] + "⎤"
-            formatted_vector[-1] = "⎣" + formatted_vector[-1][1:-1] + "⎦"
-            formatted_vector = "\n".join(formatted_vector)
-            return f"{formatted_vector}"
-        elif self.density_matrix is not None:
-            formatted_matrix: Union[str,List[str]]
-            formatted_matrix = "\n".join(
-                [
-                    f"⎢ {'   '.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
-                    for row in self.density_matrix
-                ]
-            )
-
-            # Add top and bottom brackets
-            formatted_matrix = formatted_matrix.split("\n")
-            formatted_matrix[0] = "⎡" + formatted_matrix[0][1:-1] + "⎤"
-            formatted_matrix[-1] = "⎣" + formatted_matrix[-1][1:-1] + "⎦"
-            formatted_matrix = "\n".join(formatted_matrix)
-
-            return f"{formatted_matrix}"
-        elif self.index is not None:
-            return "System is part of the Envelope"
-        else:
-            return "Invalid Fock object" # pragma: no cover
 
     def expand(self) -> None:
         """
@@ -201,6 +163,24 @@ class Polarization:
             elif jnp.allclose(self.state_vector, jnp.array([[1/jnp.sqrt(2)],[-1j/jnp.sqrt(2)]])):
                 self.label = PolarizationLabel.L
                 self.state_vector = None
+
+    def assign_envelope(self, envelope: "Envelope") -> None:
+        """
+        Assigns the to the envelope
+        # TODO
+        """
+        pass
+
+    def normalize(self):
+        """
+        Normalizes the state.
+        """
+        if self.density_matrix is not None:
+            self.density_matrix = normalize_matrix(self.density_matrix)
+        elif self.state_vector is not None:
+            self.state_vector = normalize_vector(self.state_vector)
+
+
 
     def extract(self, index: Union[int, Tuple[int, int]]) -> None:
         """
@@ -294,32 +274,6 @@ class Polarization:
                 operation.operator,
                 self.density_matrix,
                 operation.operator.T)
-
-    def apply_kraus(self, operators: List[Union[np.ndarray, jnp.ndarray]], identity_check:bool=True) -> None:
-        """
-        Apply Kraus operators to the state.
-        State is automatically expanded to the density matrix representation
-        Parameters
-        ----------
-        operators: List[Union[np.ndarray, jnp.Array]]
-            List of the operators
-        identity_check: bool
-            Signal to check whether or not the operators sum up to identity, True by default
-        """
-
-        while self.density_matrix is None:
-            self.expand()
-
-        dim = self.density_matrix.shape[0]
-        for op in operators:
-            if op.shape != (dim, dim):
-                raise ValueError(f"Kraus operator has incorrect dimensions: {op.shape}, expected ({dim},{dim})")
-
-        if not kraus_identity_check(operators):
-            raise ValueError("Kraus operators do not sum to the identity")
-            
-        self.density_matrix = apply_kraus(self.density_matrix, operators)
-        self.contract()
 
     def _set_measured(self, **kwargs):
         """
