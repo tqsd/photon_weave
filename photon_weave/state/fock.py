@@ -7,7 +7,7 @@ import numpy as np
 import jax.numpy as jnp
 import jax
 import uuid
-from typing import TYPE_CHECKING, Optional, Tuple, List, Union, Any
+from typing import TYPE_CHECKING, Optional, Tuple, List, Union, Any, Dict
 
 from photon_weave.photon_weave import Config
 from photon_weave.operation.fock_operation import FockOperation, FockOperationType
@@ -68,10 +68,10 @@ class Fock(BaseState):
         self.state_vector: Optional[jnp.ndarray] = None
         self.density_matrix: Optional[jnp.ndarray] = None
         self.envelope: Optional["Envelope"] = envelope
-        self.expansion_level : ExpansionLevel = ExpansionLevel.Label
+        self.expansion_level : Optional[ExpansionLevel] = ExpansionLevel.Label
         self.measured = False
 
-    def __eq__(self, other: Any):
+    def __eq__(self, other: Any) -> bool:
         """
         Comparison operator for the states, returns True if
         states are expanded to the same level and are not part
@@ -97,7 +97,7 @@ class Fock(BaseState):
             return False
         return False
 
-    def expand(self):
+    def expand(self) -> None:
         """
         Expands the representation. If the state is stored in
         label then it is expanded to state_vector and if the
@@ -105,17 +105,24 @@ class Fock(BaseState):
         to the state_matrix
         """
         if self.dimensions < 0:
-            self.dimensions = self.label + 3
+            assert self.dimensions is not None, "self.dimensions shoul not be None"
+            if self.label is not None:
+                self.dimensions = self.label + 3
         if self.expansion_level is ExpansionLevel.Label:
-            state_vector = np.zeros(int(self.dimensions))
+            state_vector = jnp.zeros(int(self.dimensions))
             state_vector[self.label] = 1
-            self.state_vector = state_vector[:, np.newaxis]
+            new_state_vector = state_vector[:, jnp.newaxis]
+            assert new_state_vector is not None, "Expansion failed"
+            self.state_vector = new_state_vector
             self.label = None
             self.expansion_level = ExpansionLevel.Vector
         elif self.expansion_level is ExpansionLevel.Vector:
-            self.density_matrix = np.outer(
-                self.state_vector.flatten(), np.conj(self.state_vector.flatten())
+            assert self.state_vector is not None, "self.state_vector should not be None"
+            new_density_matrix = jnp.outer(
+                self.state_vector.flatten(), jnp.conj(self.state_vector.flatten())
             )
+            assert new_density_matrix is not None, "new density matrix should not be None"
+            self.density_matrix = new_density_matrix
             self.state_vector = None
             self.expansion_level = ExpansionLevel.Matrix
 
@@ -193,6 +200,7 @@ class Fock(BaseState):
                         self.label = 0
                     return
         min_expansion_level = operation.expansion_level_required()
+        assert self.expansion_level is not None, "self.expansion_level should not be None"
         while self.expansion_level < min_expansion_level:
             self.expand()
 
@@ -227,7 +235,7 @@ class Fock(BaseState):
             return num_quanta_matrix(self.density_matrix)
         return -1
 
-    def _execute_apply(self, operation: FockOperation):
+    def _execute_apply(self, operation: FockOperation) -> None:
         """
         Actually executes the operation
 
@@ -309,7 +317,7 @@ class Fock(BaseState):
         self.dimensions = new_dimensions
         return success
 
-    def set_index(self, minor:int, major:int=-1):
+    def set_index(self, minor:int, major:int=-1) -> None:
         """
         Sets the index, when product space is created, or
         manipulated
@@ -327,7 +335,7 @@ class Fock(BaseState):
         else:
             self.index = minor
 
-    def measure(self, non_destructive=False, remove_composite=True, partial=False) -> int:
+    def measure(self, non_destructive:bool=False, remove_composite:bool=True, partial:bool=False) -> int:
         """
         Measures the state in the number basis. This Method can be used if the
         state resides in the Envelope or Composite Envelope
@@ -431,7 +439,7 @@ class Fock(BaseState):
         # TODO IF MEASURED WHILE IN PRODUCT STATE IT SHOULD ALSO WORK
         return -1
 
-    def _set_measured(self, **kwargs):
+    def _set_measured(self, **kwargs: Dict[str, Any]) -> None:
         """
         Destroys the state
         """
