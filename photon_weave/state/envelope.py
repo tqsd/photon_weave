@@ -7,14 +7,22 @@ Envelope
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 from scipy.integrate import quad
+import jax.numpy as jnp
+import jax
 
+from photon_weave.photon_weave import Config
 from photon_weave.constants import C0, gaussian
 from photon_weave.operation.generic_operation import GenericOperation
-
+from photon_weave.state.expansion_levels import ExpansionLevel
+from photon_weave.state.exceptions import (
+    EnvelopeAlreadyMeasuredException,
+    EnvelopeAssignedException,
+    MissingTemporalProfileArgumentException
+)
 
 class TemporalProfile(Enum):
     Gaussian = (gaussian, {"mu": 0, "sigma": 1, "omega": None})
@@ -74,84 +82,125 @@ class Envelope:
         self.wavelength = wavelength
         self.temporal_profile = temporal_profile
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.measured:
-            return "Envelope already Measured"
+            return "Envelope already measured"
         if self.composite_matrix is None and self.composite_vector is None:
-            if (
-                self.fock.expansion_level == 0
-                and self.polarization.expansion_level == 0
-            ):
-                return f"{repr(self.fock)} ⊗ {repr(self.polarization)}"
-            else:
-                return f"{repr(self.fock)}\n   ⊗\n {repr(self.polarization)}"
+            fock_repr = self.fock.__repr__().splitlines()
+            pol_repr = self.polarization.__repr__().splitlines()
+            # Maximum length accross fock repr
+            max_length = max(len(line) for line in fock_repr)
+            max_lines = max(len(fock_repr), len(pol_repr))
+
+            fock_repr.extend([" " * max_length] * (max_lines - len(fock_repr)))
+            pol_repr.extend([""] * (max_lines - len(pol_repr)))
+            zipped_lines = zip(fock_repr, pol_repr)
+            return "\n".join(f"{f_line} ⊗ {p_line}" for f_line, p_line in zipped_lines)
+
         elif self.composite_vector is not None:
+            flattened_vector = self.composite_vector.flatten()
+            formatted_vector: Union[str, List[str]]
             formatted_vector = "\n".join(
                 [
-                    f"{complex_num.real:.2f} {'+' if complex_num.imag >= 0 else '-'} {abs(complex_num.imag):.2f}j"
-                    for complex_num in self.composite_vector.flatten()
+                    f"⎢ {''.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
+                    for row in self.composite_vector
                 ]
             )
+            formatted_vector = formatted_vector.split("\n")
+            formatted_vector[0] = "⎡" + formatted_vector[0][1:-1] + "⎤"
+            formatted_vector[-1] = "⎣" + formatted_vector[-1][1:-1] + "⎦"
+            formatted_vector = "\n".join(formatted_vector)
             return f"{formatted_vector}"
         elif self.composite_matrix is not None:
+            formatted_matrix: Union[str,List[str]]
             formatted_matrix = "\n".join(
                 [
-                    "\t".join(
-                        [
-                            f"({num.real:.2f} {'+' if num.imag >= 0 else '-'} {abs(num.imag):.2f}j)"
-                            for num in row
-                        ]
-                    )
+                    f"⎢ {'   '.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
                     for row in self.composite_matrix
                 ]
             )
+
+            # Add top and bottom brackets
+            formatted_matrix = formatted_matrix.split("\n")
+            formatted_matrix[0] = "⎡" + formatted_matrix[0][1:-1] + "⎤"
+            formatted_matrix[-1] = "⎣" + formatted_matrix[-1][1:-1] + "⎦"
+            formatted_matrix = "\n".join(formatted_matrix)
+
             return f"{formatted_matrix}"
 
-    def combine(self):
+    def combine(self) -> None:
         """
-        Combines the fock and polarization into one matrix
+        Combines the fock and polarization into one vector or matrix and
+        stores it under self.composite_vector or self.composite_matrix appropriately
         """
-        if self.fock.expansion_level == 0:
+        if self.fock.expansion_level == ExpansionLevel.Label:
             self.fock.expand()
-        if self.polarization.expansion_level == 0:
+        if self.polarization.expansion_level == ExpansionLevel.Label:
             self.polarization.expand()
 
         while self.fock.expansion_level < self.polarization.expansion_level:
             self.fock.expand()
 
-        while self.fock.expansion_level > self.polarization.expansion_level:
+        while self.polarization.expansion_level < self.fock.expansion_level:
             self.polarization.expand()
 
-        if self.fock.expansion_level == 1 and self.polarization.expansion_level == 1:
-            self.composite_vector = np.kron(
+        if (self.fock.expansion_level == ExpansionLevel.Vector and
+            self.polarization.expansion_level == ExpansionLevel.Vector):
+            self.composite_vector = jnp.kron(
                 self.fock.state_vector, self.polarization.state_vector
             )
             self.fock.extract(0)
             self.polarization.extract(1)
 
-        if self.fock.expansion_level == 2 and self.polarization.expansion_level == 2:
-            self.composite_matrix = np.kron(
+        if (self.fock.expansion_level == ExpansionLevel.Matrix and
+            self.polarization.expansion_level == ExpansionLevel.Matrix):
+            self.composite_matrix = jnp.kron(
                 self.fock.density_matrix, self.polarization.density_matrix
             )
             self.fock.extract(0)
             self.polarization.extract(1)
 
-    def extract(self, state):
-        pass
+    def extract(self, state) -> None:
+        raise NotImplementedError("Extract method is not implemented for the envelope")
 
     @property
-    def expansion_level(self):
+    def expansion_level(self) -> Union[ExpansionLevel, int]:
         if self.composite_vector is not None:
-            return 1
+            return ExpansionLevel.Vector
         elif self.composite_matrix is not None:
-            return 2
+            return ExpansionLevel.Matrix
         else:
             return -1
 
-    def separate(self):
-        pass
+    def expand(self) -> None:
+        """
+        Expands the state.
+        If state is in the Fock and Polarization instances
+        it expands those
+        """
+        if self.composite_vector is not None:
+            self.composite_matrix= jnp.outer(
+                self.composite_vector.flatten(), jnp.conj(self.composite_vector.flatten())
+            )
+            self.composite_vector = None
+        if self.composite_vector is None and self.composite_matrix is None:
+            self.fock.expand()
+            self.polarization.expand()
 
-    def apply_operation(self, operation: GenericOperation):
+    def separate(self):
+        raise NotImplementedError("Sperate method is not implemented for the envelope class")
+
+    def apply_operation(self, operation: GenericOperation) -> None:
+        """
+        Applies operation to the system.
+        Depending on the operation type, the operation will be applied to the polarization
+        or to the Fock space.
+
+        Parameters
+        ----------
+        operation: GenericOperation
+            Operation that will be applied
+        """
         from photon_weave.operation.fock_operation import (
             FockOperation,
             FockOperationType,
@@ -207,45 +256,79 @@ class Envelope:
                     op_dagger = operator.conj().T
                     self.composite_matrix = self.composite_matrix @ op_dagger
 
-    def measure(self, non_destructive=False, remove_composite=True):
+    def measure(self, non_destructive=False, remove_composite=True) -> Tuple[int, int]:
         """
         Measures the number of particles in the space
         """
         if self.measured:
             raise EnvelopeAlreadyMeasuredException()
-        outcome = None
+        outcome = [-1,-1]
         if self.composite_vector is not None:
+            C = Config()
             dim = [0, 0]
             dim[self.fock.index] = int(self.fock.dimensions)
             dim[self.polarization.index] = 2
             matrix_form = self.composite_vector.reshape(dim[0], dim[1])
-            probabilities = np.sum(
-                np.abs(matrix_form) ** 2, axis=self.polarization.index
-            )
-            assert np.isclose(
-                np.sum(probabilities), 1.0
-            ), "Probabilities do not sum to 1."
-            axis = np.arange(dim[self.fock.index])
-            outcome = np.random.choice(axis, p=probabilities)
+            fock_probabilities = jnp.sum(
+                jnp.abs(matrix_form)**2, axis = self.polarization.index)
+            assert jnp.isclose(jnp.sum(fock_probabilities), 1.0)
+            fock_axis = jnp.arange(dim[self.fock.index])
+            key = C.random_key
+            fock_outcome = jax.random.choice(key, a=fock_axis, p=fock_probabilities)
+
+            polarization_probabilities = jnp.abs(matrix_form[fock_outcome, :]) **2
+            polarization_probabilities /= jnp.sum(polarization_probabilities)
+
+            polarization_axis = jnp.arange(dim[self.polarization.index])
+            key = C.random_key
+            polarization_outcome = jax.random.choice(key, a=polarization_axis, p=polarization_probabilities)
+            outcome = (int(fock_outcome), int(polarization_outcome))
         elif self.composite_matrix is not None:
+            C = Config()
             dim = [0, 0]
             dim[self.fock.index] = int(self.fock.dimensions)
             dim[self.polarization.index] = 2
-            tf = self.composite_matrix.reshape(dim[0], dim[1], dim[0], dim[1])
-            if self.fock.index == 0:
-                tf = np.trace(tf, axis1=1, axis2=3)
-            else:
-                tf = np.trace(tf, axis1=0, axis2=2)
-            probabilities = np.abs(np.diagonal(tf))
-            axis = np.arange(dim[self.fock.index])
-            outcome = np.random.choice(axis, p=probabilities)
+            matrix_form = self.composite_matrix.reshape(
+                dim[self.fock.index], dim[self.polarization.index],
+                dim[self.fock.index], dim[self.polarization.index]
+            ).transpose(0,2,1,3)
+            fock_probabilities = jnp.einsum('ijkk->ij', matrix_form)
+            fock_probabilities = jnp.sum(jnp.real(matrix_form), axis=(2, 3))
+            fock_probabilities = jnp.sum(fock_probabilities, axis=1)
+            fock_probabilities = fock_probabilities.real
+            assert jnp.isclose(jnp.sum(fock_probabilities), 1)
+            fock_axis = jnp.arange(dim[self.fock.index])
+            key = C.random_key
+            fock_outcome = jax.random.choice(
+                key, a=fock_axis, p=fock_probabilities
+            )
+
+            polarization_probabilities = jnp.diag(matrix_form[fock_outcome, fock_outcome, :, :])
+            polarization_probabilities /= jnp.sum(polarization_probabilities)
+            polarization_probabilities = polarization_probabilities.real
+            polarization_axis = jnp.arange(dim[self.polarization.index])
+            key = C.random_key
+            polarization_outcome = jax.random.choice(
+                key,
+                a=polarization_axis,
+                p=polarization_probabilities
+            )
+            outcome = (int(fock_outcome), int(polarization_outcome))
         elif isinstance(self.fock.index, (list, tuple)) and len(self.fock.index) == 2:
             outcome = self.composite_envelope.measure()
         else:
-            outcome = self.fock.measure(non_destructive)
+            outcome = (
+                self.fock.measure(non_destructive, partial=True),
+                self.polarization.measure(non_destructive))
         if not non_destructive:
             self._set_measured(remove_composite)
         return outcome
+
+    def measure_POVM():
+        raise NotImplemented()
+
+    def apply_kraus():
+        raise NotImplemented()
 
     def _set_measured(self, remove_composite=True):
         if self.composite_envelope is not None and remove_composite:
@@ -281,13 +364,3 @@ class Envelope:
         return result
 
 
-class EnvelopeAssignedException(Exception):
-    pass
-
-
-class EnvelopeAlreadyMeasuredException(Exception):
-    pass
-
-
-class MissingTemporalProfileArgumentException(Exception):
-    pass

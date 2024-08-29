@@ -286,7 +286,7 @@ class Polarization(BaseState):
         self.state_vector = None
         self.density_matrix = None
 
-    def measure(self, separate_measurement:bool=False, **kwargs) -> Union[int,None]:
+    def measure(self, non_destructive:bool = False, separate_measurement:bool=False, **kwargs) -> Union[int,None]:
         """
         Measures this state. If the state is not in a product state it will
         produce a measurement, otherwise it will return None.
@@ -313,7 +313,8 @@ class Polarization(BaseState):
                 probs = jnp.array([prob_0, prob_1])
                 key = jax.random.PRNGKey(C.random_seed)
                 result = jax.random.choice(key, a=jnp.array([0,1]), p=probs.ravel())
-                self._set_measured()
+                if not non_destructive:
+                    self._set_measured()
                 return int(result)
             elif self.expansion_level == ExpansionLevel.Matrix:
                 # Extract the diagonal elements
@@ -328,7 +329,8 @@ class Polarization(BaseState):
                     a=jnp.arange(self.density_matrix.shape[0]),
                     p=probabilities
                 )
-                self._set_measured()
+                if not non_destructive:
+                    self._set_measured()
                 return int(result)
         # TODO IF MEASURED WHILE IN PRODUCT STATE IS SHOULD ALSO WORK
         return None # pragme: no cover

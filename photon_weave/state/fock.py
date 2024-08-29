@@ -110,7 +110,7 @@ class Fock(BaseState):
                 self.dimensions = self.label + 3
         if self.expansion_level is ExpansionLevel.Label:
             state_vector = jnp.zeros(int(self.dimensions))
-            state_vector[self.label] = 1
+            state_vector = state_vector.at[self.label].set(1)
             new_state_vector = state_vector[:, jnp.newaxis]
             assert new_state_vector is not None, "Expansion failed"
             self.state_vector = new_state_vector
@@ -359,7 +359,7 @@ class Fock(BaseState):
         if self.measured:
             raise FockAlreadyMeasuredException()
         result:int = -1
-        if isinstance(self.index, int):
+        if isinstance(self.index, int) and not partial:
             assert self.envelope is not None, "Envelope should not be None"
             return self.envelope.measure(remove_composite=remove_composite)
         else:
