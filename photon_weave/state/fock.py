@@ -4,14 +4,24 @@ Fock state
 from __future__ import annotations
 
 import numpy as np
+import jax.numpy as jnp
+import jax
+import uuid
+from typing import TYPE_CHECKING, Optional, Tuple, List
 
+from photon_weave.photon_weave import Config
 from photon_weave.operation.fock_operation import FockOperation, FockOperationType
+from photon_weave._math.ops import (
+    normalize_matrix, normalize_vector, num_quanta_matrix, num_quanta_vector, apply_kraus, kraus_identity_check
+)
 
 from .envelope import EnvelopeAssignedException
 from .expansion_levels import ExpansionLevel
+from .base_state import BaseState
 
 
-class Fock:
+
+class Fock(BaseState):
     """
     Fock class
 
@@ -42,51 +52,21 @@ class Fock:
     expansion_level: ExpansionLevel
         Holds information about the expansion level of this system
     """
+    __slots__ = (
+        "uid", "index", "label", "dimension", "state_vector",
+        "density_matrix", "envelope", "expansions", "expansion_level",
+        "measured")
+
     def __init__(self, envelope: Envelope = None):
-        """
-        Creates Fock object in a vacuum state
-        """
-        self.index = None
-        self.dimensions = -1
-        self.label = 0
-        self.state_vector = None
-        self.density_matrix = None
-        self.envelope = envelope
-        self.expansion_level = ExpansionLevel.Label
+        self.uid: uuid.UUID = uuid.uuid4()
+        self.index: Optional[Union[int, Tuple[int, int]]] = None
+        self.dimensions: int = -1
+        self.label: int = 0
+        self.state_vector: Optional[jnd.ndarray] = None
+        self.density_matrix: Optional[jnd.ndarray] = None
+        self.envelope: Optional["Envelope"] = envelope
+        self.expansion_level : ExpansionLevel = ExpansionLevel.Label
         self.measured = False
-
-    def __repr__(self):
-        """
-        Simple string representation, when printing the Fock state
-        """
-        if self.label is not None:
-            return f"|{self.label}⟩"
-        elif self.state_vector is not None:
-            formatted_vector = "\n".join(
-                [
-                    f"{complex_num.real:.2f} {'+' if complex_num.imag >= 0 else '-'} {abs(complex_num.imag):.2f}j"
-                    for complex_num in self.state_vector.flatten()
-                ]
-            )
-
-            return f"{formatted_vector}"
-        elif self.density_matrix is not None:
-            formatted_matrix = "\n".join(
-                [
-                    "\t".join(
-                        [
-                            f"({num.real:.2f} {'+' if num.imag >= 0 else '-'} {abs(num.imag):.2f}j)"
-                            for num in row
-                        ]
-                    )
-                    for row in self.density_matrix
-                ]
-            )
-            return f"{formatted_matrix}"
-        elif self.index is not None:
-            return "System is part of the Envelope"
-        else:
-            return "Invalid Fock object"
 
     def __eq__(self, other: Fock):
         """
@@ -114,14 +94,6 @@ class Fock:
             return False
         return False
 
-    def assign_envelope(self, envelope: Envelope):
-        from .envelope import Envelope
-
-        assert isinstance(envelope, Envelope)
-        if self.envelope is not None:
-            raise EnvelopeAssignedException("Envelope can't be reassigned")
-        self.envelope = envelope
-
     def expand(self):
         """
         Expands the representation. If the state is stored in
@@ -144,8 +116,43 @@ class Fock:
             self.state_vector = None
             self.expansion_level = ExpansionLevel.Matrix
 
+    def contract(self, final: ExpansionLevel = ExpansionLevel.Label, tol:float=1e-6) -> None:
+        """
+        Attempts to contract the representation to the level defined in `final`argument.
 
-    def extract(self, index: int):
+        Parameters
+        ----------
+        final: ExpansionLevel
+            Expected expansion level after contraction
+        tol: float
+            Tolerance when comparing matrices
+        """
+        if self.expansion_level is ExpansionLevel.Matrix and final < ExpansionLevel.Matrix:
+            # Check if the state is pure state
+            assert self.density_matrix is not None, "Density matrix should not be None"
+            state_squared = jnp.matmul(self.density_matrix, self.density_matrix)
+            state_trace = jnp.trace(state_squared)
+            if jnp.abs(state_trace-1) < tol:
+                # The state is pure
+                eigenvalues, eigenvectors = jnp.linalg.eigh(self.density_matrix)
+                pure_state_index = jnp.argmax(jnp.abs(eigenvalues -1.0) < tol)
+                assert pure_state_index is not None, "pure_state_index should not be None"
+                self.state_vector = eigenvectors[:, pure_state_index].reshape(-1,1)
+                # Normalizing the phase
+                assert self.state_vector is not None, "self.state_vector should not be None"
+                phase = jnp.exp(-1j * jnp.angle(self.state_vector[0]))
+                self.state_vector = self.state_vector*phase
+                self.density_matrix = None
+                self.expansion_level = ExpansionLevel.Vector
+        if self.expansion_level is ExpansionLevel.Vector and final < ExpansionLevel.Vector:
+            assert self.state_vector is not None, "self.state_vector should not be None"
+            ones = jnp.where(self.state_vector == 1)[0]
+            if ones.size == 1:
+                self.label = ones[0]
+                self.state_vector = None
+                self.expansion_level = ExpansionLevel.Label
+
+    def extract(self, index: Union[int, Tuple[int, int]]) -> None:
         """
         This method is called, when the state is
         joined into a product space. Then the
@@ -199,33 +206,17 @@ class Fock:
         self._execute_apply(operation)
 
     @property
-    def _num_quanta(self):
+    def _num_quanta(self) -> int:
         """
         The highest possible measurement outcome.
         returns highest basis with non_zero probability
         """
+        if self.label is not None:
+            return self.label
         if self.state_vector is not None:
-            non_zero_indices = np.nonzero(self.state_vector)[
-                0
-            ]  # Get indices of non-zero elements
-            highest_non_zero_index_vector = non_zero_indices[-1]
-            return highest_non_zero_index_vector
+            return num_quanta_vector(self.state_vector)
         if self.density_matrix is not None:
-            non_zero_rows = np.any(self.density_matrix != 0, axis=1)
-            non_zero_cols = np.any(self.density_matrix != 0, axis=0)
-
-            highest_non_zero_index_row = (
-                np.where(non_zero_rows)[0][-1] if np.any(non_zero_rows) else None
-            )
-            highest_non_zero_index_col = (
-                np.where(non_zero_cols)[0][-1] if np.any(non_zero_cols) else None
-            )
-
-            # Determine the overall highest index
-            highest_non_zero_index_matrix = max(
-                highest_non_zero_index_row, highest_non_zero_index_col
-            )
-            return highest_non_zero_index_matrix
+            return num_quanta_matrix(self.density_matrix)
 
     def _execute_apply(self, operation: FockOperation):
         """
@@ -243,19 +234,16 @@ class Fock:
 
         if operation.renormalize:
             self.normalize()
-
-    def normalize(self):
+    def normalize(self) -> None:
         """
         Normalizes the state.
         """
         if self.density_matrix is not None:
-            trace_rho = np.trace(self.density_matrix)
-            self.density_matrix = self.density_matrix / trace_rho
-        if self.state_vector is not None:
-            norm_psi = np.linalg.norm(self.state_vector)
-            self.state_vector = self.state_vector / norm_psi
+            self.density_matrix = normalize_matrix(self.density_matrix)
+        elif self.state_vector is not None:
+            self.state_vector = normalize_vector(self.state_vector)
 
-    def resize(self, new_dimensions:int):
+    def resize(self, new_dimensions:int) -> bool:
         """
         Resizes the state to the new_dimensions
 
@@ -263,35 +251,43 @@ class Fock:
         ----------
         new_dimensions: int
             New size to change to
+
+        Returns
+        -------
+        bool
+            True if resizes was successful
         """
+        success = False
         if self.label is not None:
             self.dimensions = new_dimensions
-            return
-        # Pad
-        if self.dimensions < new_dimensions:
+            success = True
+        elif self.dimensions < new_dimensions:
             pad_size = new_dimensions - self.dimensions
             if self.state_vector is not None:
-                self.state_vector = np.pad(
+                self.state_vector = jnp.pad(
                     self.state_vector,
                     ((0, pad_size), (0, 0)),
                     "constant",
                     constant_values=(0,),
                 )
+                success = True
             if self.density_matrix is not None:
-                self.density_matrix = np.pad(
+                self.density_matrix = jnp.pad(
                     self.density_matrix,
                     ((0, pad_size), (0, pad_size)),
                     "constant",
                     constant_values=0,
                 )
+                success = True
         # Truncate
         elif self.dimensions > new_dimensions:
             pad_size = new_dimensions - self.dimensions
             if self.state_vector is not None:
-                if np.all(self.state_vector[new_dimensions:] == 0):
+                if jnp.all(self.state_vector[new_dimensions:] == 0):
                     self.state_vector = self.state_vector[:new_dimensions]
+                    success = True
             if self.density_matrix is not None:
-                bottom_rows_zero = np.all(self.density_matrix[new_dimensions:, :] == 0)
+                bottom_rows_zero = jnp.all(self.density_matrix[new_dimensions:, :] == 0)
                 right_columns_zero = np.all(
                     self.density_matrix[:, new_dimensions:] == 0
                 )
@@ -299,7 +295,9 @@ class Fock:
                     self.density_matrix = self.density_matrix[
                         :new_dimensions, :new_dimensions
                     ]
+                    success = True
         self.dimensions = new_dimensions
+        return success
 
     def set_index(self, minor:int, major:int=-1):
         """
@@ -342,23 +340,82 @@ class Fock:
         """
         if self.measured:
             raise FockAlreadyMeasuredException()
-        outcome = None
+        result = None
         if isinstance(self.index, int):
             return self.envelope.measure(remove_composite=remove_composite)
         else:
+            C = Config()
             match self.expansion_level:
                 case ExpansionLevel.Label:
-                    outcome = self.label
+                    result = self.label
                 case ExpansionLevel.Vector:
-                    probabilities = np.abs(self.state_vector.flatten()) ** 2
-                    outcome = np.random.choice(len(probabilities), p=probabilities)
+                    assert self.state_vector is not None, "self.state_vector should not be None"
+                    probs = jnp.abs(self.state_vector.flatten()) ** 2
+                    probs = probs.ravel()
+                    assert jnp.isclose(sum(probs), 1)
+                    key = jax.random.PRNGKey(C.random_seed)
+                    result = jax.random.choice(key, a=jnp.array(
+                        list(range(len(probs)))),
+                        p=probs)
                 case ExpansionLevel.Matrix:
-                    probabilities = np.real(np.diag(self.density_matrix))
-                    outcome = np.random.choice(len(probabilities), p=probabilities)
-        if not partial:
+                    assert self.density_matrix is not None, "self.density_matrix should not be None"
+                    probs = jnp.diag(self.density_matrix).real
+                    probs = probs / jnp.sum(probs)
+                    key = jax.random.PRNGKey(C.random_seed)
+                    result = jax.random.choice(
+                        key,
+                        a=jnp.arange(self.density_matrix.shape[0]),
+                        p=probs
+                    )
+        if not partial and self.envelope:
             self.envelope._set_measured(remove_composite=remove_composite)
         self._set_measured()
-        return outcome
+        return int(result)
+
+    def measure_POVM(self, operators:List[Union[np.ndarray, jnp.ndarray]]) -> int:
+        """
+        Positive Operation-Valued Measurement
+
+        Parameters
+        ----------
+        *operators: Union[np.ndarray, jnp.Array]
+            
+
+        Returns
+        -------
+        int
+            The index of the measurement outcome
+        """
+        if self.index is None:
+            if self.expansion_level == ExpansionLevel.Label:
+                self.expand()
+
+            if self.expansion_level == ExpansionLevel.Vector:
+                self.expand()
+
+            # Compute probabilities p(i) = Tr(E_i * rho) for each POVM operator E_i
+            assert self.density_matrix is not None, "self.density_matrix should not be None"
+            probabilities = jnp.array([
+                jnp.trace(jnp.matmul(op, self.density_matrix)).real for op in operators
+            ])
+
+            # Normalize probabilities (handle numerical issues)
+            probabilities = probabilities / jnp.sum(probabilities)
+
+            # Generate a random key
+            C = Config()
+            key = jax.random.PRNGKey(C.random_seed)
+
+            # Sample the measurement outcome
+            measurement_result = jax.random.choice(
+                key,
+                a=jnp.arange(len(operators)),
+                p=probabilities
+            )
+            self._set_measured()
+            return int(measurement_result)
+        # TODO IF MEASURED WHILE IN PRODUCT STATE IT SHOULD ALSO WORK
+        return None
 
     def _set_measured(self, **kwargs):
         """
@@ -384,8 +441,7 @@ class Fock:
         """
         if self.index is None:
             if not self.label is None:
-                self.expand()
-
+                return self.label
             if not self.state_vector is None:
                 return self.state_vector
             elif not self.density_matrix is None:
@@ -397,6 +453,7 @@ class Fock:
         elif len(self.index) == 2:
             state = self.envelope.composite_envelope._trace_out(self, destructive=False)
             return state
+
 
 
 class FockAlreadyMeasuredException(Exception):

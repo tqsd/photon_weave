@@ -122,3 +122,61 @@ def kraus_identity_check(operators: List[Union[np.ndarray, jnp.ndarray]], tol: f
         jnp.matmul(jnp.conjugate(K.T),K) for K in operators
     )
     return jnp.allclose(sum_kraus, identity_matrix, atol=tol)
+
+@jit
+def normalize_vector(vector: Union[jnp.ndarray, np.ndarray]) -> jnp.ndarray:
+    """
+    Normalizes the given vector and returns it
+    Parameters
+    ----------
+    vector: Union[jnp.ndarray, np.ndarray]
+        Vector which should be normalied
+    """
+    trace = jnp.trace(vector)
+    return vector/trace
+
+@jit
+def normalize_matrix(vector: Union[jnp.ndarray, np.ndarray]) -> jnp.ndarray:
+    """
+    Normalizes the given matrix and returns it
+    Parameters
+    ----------
+    vector: Union[jnp.ndarray, np.ndarray]
+        Vector which should be normalied
+    """
+    norm = jnp.linalg.norm(vector)
+    return vector/norm
+
+def num_quanta_vector(vector: Union[jnp.ndarray, np.ndarray]) -> int:
+    """
+    Returns highest possible measurement outcome
+    Parameters
+    ----------
+    vector: Union[jnp.ndarray, np.ndarray]
+        vector for which the max possible quantua has to be calculated
+    """
+    non_zero_indices = jnp.nonzero(vector)[0]
+    return non_zero_indices[-1]
+
+def num_quanta_matrix(matrix: Union[jnp.ndarray, np.ndarray]) -> int:
+    """
+    Returns highest possible measurement outcome
+    Parameters
+    ----------
+    matrix: Union[jnp.ndarray, np.ndarray]
+        matrix for which the max possible quantua has to be calculated
+    """
+    non_zero_rows = jnp.any(matrix != 0, axis=1)
+    non_zero_cols = jnp.any(matrix != 0, axis=0)
+
+    highest_non_zero_index_row = (
+        jnp.where(non_zero_rows)[0][-1] if jnp.any(non_zero_rows) else None
+    )
+    highest_non_zero_index_col = (
+        jnp.where(non_zero_cols)[0][-1] if jnp.any(non_zero_cols) else None
+    )
+    # Determine the overall highest index
+    highest_non_zero_index_matrix = max(
+        highest_non_zero_index_row, highest_non_zero_index_col
+    )
+    return highest_non_zero_index_matrix
