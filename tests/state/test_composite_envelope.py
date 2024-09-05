@@ -696,9 +696,8 @@ class TestCompositeEnvelopeMeasurementsMatrix(unittest.TestCase):
         self.assertTrue(env2.measured)
 
     def test_big_product_state_measurement(self) -> None:
-        print("\n----START----")
         C = Config()
-        C.set_seed = 120
+        C.set_seed(120)
         env1 = Envelope()
         env2 = Envelope()
         env3 = Envelope()
@@ -731,7 +730,7 @@ class TestCompositeEnvelopeMeasurementsMatrix(unittest.TestCase):
 
         outcomes = env2.measure()
         self.assertEqual(outcomes[env2.fock], 2)
-        self.assertEqual(outcomes[env2.polarization], 0)
+        self.assertEqual(outcomes[env2.polarization], 1)
 
         outcomes = env3.measure()
         self.assertEqual(outcomes[env3.fock], 3)
