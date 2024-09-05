@@ -1,5 +1,6 @@
 import unittest
 from typing import Union
+import numpy as np
 import jax.numpy as jnp
 
 from photon_weave.photon_weave import Config
@@ -317,26 +318,136 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
         self.assertIsNone(env.polarization.state_vector)
         self.assertIsNone(env.fock.state_vector)
 
+    def test_reorder(self) -> None:
+        """
+        Test the reorder method, the method should
+        reorder the spaces in the tensor (kron) product
+        accoring to the parameters
+        """
+        env=Envelope()
+        env.reorder([env.fock, env.polarization])
+        # Nothing should change, because the envelope is not combined
+        self.assertIsNone(env.fock.index)
+        self.assertIsNone(env.polarization.index)
+        with self.assertRaises(ValueError) as context:
+            env.reorder([Fock()])
+        with self.assertRaises(ValueError) as context:
+            env.reorder([env.fock, env.fock])
+        with self.assertRaises(ValueError) as context:
+            env.reorder([env.fock, env.polarization, Fock()])
+        env.fock.label = 1
+        env.fock.dimensions = 3
+        env.combine()
+        test_vector = jnp.copy(env.composite_vector)
+        env.reorder([env.fock, env.polarization])
+        self.assertTrue(
+            jnp.allclose(
+                env.composite_vector,
+                test_vector
+            )
+        )
+        env.reorder([env.polarization, env.fock])
+        self.assertTrue(
+            jnp.allclose(
+                env.composite_vector,
+                jnp.array(
+                    [[0],[1],[0],[0],[0],[0]]
+                )
+            )
+        )
+        self.assertEqual(env.fock.index, 1)
+        self.assertEqual(env.polarization.index, 0)
+
+        env.expand()
+        env.reorder([env.fock, env.polarization])
+        self.assertTrue(
+            jnp.allclose(
+                env.composite_matrix,
+                jnp.array(
+                    [[0,0,0,0,0,0],
+                     [0,0,0,0,0,0],
+                     [0,0,1,0,0,0],
+                     [0,0,0,0,0,0],
+                     [0,0,0,0,0,0],
+                     [0,0,0,0,0,0]]
+                )
+            )
+        )
+        self.assertEqual(env.fock.index, 0)
+        self.assertEqual(env.polarization.index, 1)
+
+        # Reorder with only one parameter given
+        env = Envelope()
+        env.fock.dimensions = 3
+        env.fock.label = 1
+        env.combine()
+        # should not reorder, since by default fock is first
+        env.reorder([env.fock])
+
+        self.assertTrue(
+            jnp.allclose(
+                env.composite_vector,
+                jnp.array(
+                    [[0],[0],[1],[0],[0],[0]]
+                )
+            )
+        )
+        self.assertEqual(env.fock.index, 0)
+        self.assertEqual(env.polarization.index, 1)
+
+        env.reorder([env.polarization])
+        self.assertTrue(
+            jnp.allclose(
+                env.composite_vector,
+                jnp.array(
+                    [[0],[1],[0],[0],[0],[0]]
+                )
+            )
+        )
+        self.assertEqual(env.fock.index, 1)
+        self.assertEqual(env.polarization.index, 0)
+
+        # Try with matrix form
+        env.expand()
+        env.reorder([env.fock])
+        self.assertTrue(
+            jnp.allclose(
+                env.composite_matrix,
+                jnp.array(
+                    [[0,0,0,0,0,0],
+                     [0,0,0,0,0,0],
+                     [0,0,1,0,0,0],
+                     [0,0,0,0,0,0],
+                     [0,0,0,0,0,0],
+                     [0,0,0,0,0,0]]
+                )
+            )
+        )
+        self.assertEqual(env.fock.index, 0)
+        self.assertEqual(env.polarization.index, 1)
+
 
 class TestEnvelopeMeausrement(unittest.TestCase):
     def test_measurement_separate(self) -> None:
         env = Envelope()
         m = env.measure()
-        self.assertEqual(m, (0,0))
+        self.assertEqual(m[env.fock], 0)
+        self.assertEqual(m[env.polarization], 0)
 
         pol = Polarization(PolarizationLabel.V)
         fock = Fock()
         fock.label = 1
         env = Envelope(polarization=pol, fock=fock)
         m = env.measure()
-        self.assertEqual(m, (1,1))
-        
+        self.assertEqual(m[env.fock], 1)
+        self.assertEqual(m[env.polarization], 1)
 
     def test_measurement_combined_vector(self) -> None:
         env = Envelope()
         env.combine()
         m = env.measure()
-        self.assertEqual(m, (0,0))
+        self.assertEqual(m[env.fock], 0)
+        self.assertEqual(m[env.polarization], 0)
 
         pol = Polarization(PolarizationLabel.V)
         fock = Fock()
@@ -344,7 +455,8 @@ class TestEnvelopeMeausrement(unittest.TestCase):
         env = Envelope(polarization=pol, fock=fock)
         env.combine()
         m = env.measure()
-        self.assertEqual(m, (1,1))
+        self.assertEqual(m[env.fock], 1)
+        self.assertEqual(m[env.polarization], 1)
 
         C = Config()
         C.set_seed(1)
@@ -355,7 +467,8 @@ class TestEnvelopeMeausrement(unittest.TestCase):
         env = Envelope(polarization=pol, fock=fock)
         env.combine()
         m = env.measure()
-        self.assertEqual(m, (1,0), "Should measure (1,0) wiht the seed 1")
+        self.assertEqual(m[env.fock], 1)
+        self.assertEqual(m[env.polarization], 0)
 
     def test_measurement_combined_matrix(self) -> None:
         C = Config()
@@ -363,7 +476,8 @@ class TestEnvelopeMeausrement(unittest.TestCase):
         env.combine()
         env.expand()
         m = env.measure()
-        self.assertEqual(m, (0,0))
+        self.assertEqual(m[env.fock], 0)
+        self.assertEqual(m[env.polarization], 0)
 
         C.set_seed(1)
         env=Envelope()
@@ -374,6 +488,169 @@ class TestEnvelopeMeausrement(unittest.TestCase):
         env.expand()
         m = env.measure()
         self.assertTrue(env.measured)
-        self.assertEqual(m, (5,0))
-        with self.assertRaises(EnvelopeAlreadyMeasuredException):
+        self.assertEqual(m[env.fock], 5)
+        self.assertEqual(m[env.polarization], 0)
+        with self.assertRaises(EnvelopeAlreadyMeasuredException) as context:
             env.measure()
+
+    def test_povm_measurement_exceptions(self) -> None:
+        env = Envelope()
+        with self.assertRaises(ValueError):
+            env.measure_POVM(operators = [], states=[env.fock, env.fock])
+        with self.assertRaises(ValueError):
+            env.measure_POVM(operators = [], states=[env.polarization, env.polarization])
+        with self.assertRaises(ValueError):
+            env.measure_POVM(operators = [], states=[env.polarization, env.fock, Fock()])
+        with self.assertRaises(ValueError):
+            env.measure_POVM(operators = [], states=[Polarization(), Fock()])
+        with self.assertRaises(ValueError):
+            env.measure_POVM(operators = [], states=[env.fock, Polarization()])
+        with self.assertRaises(ValueError):
+            env.measure_POVM(operators = [], states=[Fock(), env.polarization])
+            
+    def test_POVM_measurement_not_combined(self) -> None:
+        """
+        Test POVM measurement, when fock and polarization spaces
+        are not in a product space.
+        """
+        env = Envelope()
+        env.fock.dimensions = 2
+        op1 = jnp.array(
+            [[1,0],
+             [0,0]]
+        )
+        op2 = jnp.array(
+            [[0,0],
+             [0,1]]
+        )
+        m = env.measure_POVM(operators=[op1, op2], states = [env.polarization])
+        self.assertEqual(m, 0)
+        m = env.measure_POVM(operators=[op1, op2], states = [env.fock])
+        self.assertEqual(m, 0)
+
+    def test_POVM_measurement_combined_partial(self) -> None:
+        env = Envelope()
+        env.fock.dimensions = 2
+        env.combine()
+
+        op1 = jnp.array(
+            [[1,0],
+             [0,0]]
+        )
+        op2 = jnp.array(
+            [[0,0],
+             [0,1]]
+        )
+        m = env.measure_POVM(operators=[op1, op2],states= [env.polarization])
+        print(m)
+
+    def test_POVM_measurement_combined_full(self) -> None:
+        env = Envelope()
+        env.fock.dimensions = 2
+        op1 = jnp.array( #|0>|H> -> We should measure this
+            [[1,0,0,0],
+             [0,0,0,0],
+             [0,0,0,0],
+             [0,0,0,0]]
+        )
+        op2 = jnp.array( #|1>|H>
+            [[0,0,0,0],
+             [0,0,0,0],
+             [0,0,1,0],
+             [0,0,0,0]]
+        )
+        op3 = jnp.array( #|0>|V>
+            [[0,0,0,0],
+             [0,1,0,0],
+             [0,0,0,0],
+             [0,0,0,0]]
+        )
+        op4 = jnp.array( #|1>|V>
+            [[0,0,0,0],
+             [0,0,0,0],
+             [0,0,0,0],
+             [0,0,0,1]]
+        )
+        m = env.measure_POVM(
+            operators=[op1,op2,op3,op4],
+            states=[env.fock, env.polarization],
+            destructive=True)
+        self.assertEqual(m,0)
+
+class TestEnvelopeKraus(unittest.TestCase):
+    def test_envelope_kraus_exceptions(self) -> None:
+        env = Envelope()
+
+        # Test exception with non unique states given
+        with self.assertRaises(ValueError):
+            env.apply_kraus(operators=[], states=[env.fock, env.fock])
+        with self.assertRaises(ValueError):
+            env.apply_kraus(operators=[], states=[env.polarization, env.polarization])
+
+        # Test exception with too many states given
+        with self.assertRaises(ValueError):
+            env.apply_kraus(operators=[], states=[env.polarization, env.fock, Fock()])
+
+        # Test exception with states that are not part of the envelope
+        with self.assertRaises(ValueError):
+            env.apply_kraus(operators=[], states=[Polarization(), env.fock])
+        with self.assertRaises(ValueError):
+            env.apply_kraus(operators=[], states=[env.polarization, Fock()])
+        with self.assertRaises(ValueError):
+            env.apply_kraus(operators=[], states=[Polarization(), Fock()])
+
+    def test_envelope_kraus_not_combined(self) -> None:
+        """
+        Test the application of Quantum Channel (kraus) in
+        the case where the envelope is not combined,
+        polarization and fock spaces are separate
+        """
+        env = Envelope()
+        env.fock.dimensions=3
+        env.apply_kraus(operators=[np.array([[0,1],[1,0]])], states=[env.polarization])
+        self.assertEqual(env.polarization.label, PolarizationLabel.V)
+        self.assertEqual(env.fock.label, 0)
+        op1 = jnp.array([[0,0,0],[1,0,0],[0,0,0]])
+        op2 = jnp.array([[0,0,0],[0,0,0],[0,1,0]])
+        op3 = jnp.array([[0,0,0],[0,0,0],[0,0,1]])
+        env.apply_kraus(operators=[op1, op2, op3], states=[env.fock])
+        self.assertEqual(env.polarization.label, PolarizationLabel.V)
+        self.assertEqual(env.fock.label, 1)
+
+    def test_envelope_kraus(self) -> None:
+        env = Envelope()
+        env.fock.dimensions=2
+        op1 = jnp.array([[0,0,0,0],
+                         [1,0,0,0],
+                         [0,0,0,0],
+                         [0,0,0,0]])
+        op2 = jnp.array([[0,0,0,0],
+                         [0,1,0,0],
+                         [0,0,1,0],
+                         [0,0,0,1]])
+        env.apply_kraus(operators = [op1, op2], states=[env.fock, env.polarization])
+        self.assertTrue(
+            jnp.allclose(
+                env.composite_matrix,
+                jnp.array(
+                    [[0,0,0,0],
+                     [0,1,0,0],
+                     [0,0,0,0],
+                     [0,0,0,0]]
+                )
+            )
+        )
+        self.assertEqual(env.fock.index, 0)
+        self.assertEqual(env.polarization.index, 1)
+
+        # Kraus operator dimensions missmatch
+        with self.assertRaises(ValueError):
+            env.apply_kraus(
+                operators = [jnp.array([[0,0,0,0,0],[0,1,0,0,0],[0,0,0,0,0],[0,0,0,0,0]])],
+                states=[env.fock, env.polarization])
+
+        # Kraus operators do not sum to one
+        with self.assertRaises(ValueError):
+            env.apply_kraus(
+                operators = [op1],
+                states=[env.fock, env.polarization])

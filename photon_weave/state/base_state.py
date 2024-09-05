@@ -8,7 +8,10 @@ from photon_weave._math.ops import kraus_identity_check, apply_kraus
 
 class BaseState(ABC):
 
-    __slots__ = ("label", "state_vector", "density_matrix", "__dict__")
+    __slots__ = ("label", "uid", "state_vector", "density_matrix", "__dict__")
+
+    def __hash__(self):
+        return hash(self.uid)
 
     def __repr__(self) -> str:
         if self.label is not None:
@@ -48,10 +51,8 @@ class BaseState(ABC):
             formatted_matrix = "\n".join(formatted_matrix)
 
             return f"{formatted_matrix}"
-        elif self.index is not None:
-            return "System is part of the Envelope"
         else:
-            return "Object is not representable" # pragma: no cover
+            return str(self.uid)
 
     def apply_kraus(self, operators: List[Union[np.ndarray, jnp.ndarray]], identity_check:bool=True) -> None:
         """

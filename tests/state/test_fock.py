@@ -144,13 +144,14 @@ class TestFockSmallFunctions(unittest.TestCase):
     def test_normalization(self) -> None:
         fock = Fock()
         fock.expand()
-        fock.state_vector[0][0] = 2
+        #fock.state_vector[0][0] = 2
+        fock.state_vector.at[0,0].set(2)
         fock.normalize()
         self.assertEqual(fock.state_vector[0][0], 1)
         fock = Fock()
         fock.expand()
         fock.expand()
-        fock.density_matrix[0][0] = 2
+        fock.density_matrix.at[0,0].set(2)
         fock.normalize()
         self.assertEqual(fock.density_matrix[0][0], 1)
 
@@ -367,7 +368,7 @@ class TestFockMeasurement(unittest.TestCase):
             f = Fock()
             f.label = i
             m = f.measure()
-            self.assertEqual(m, i)
+            self.assertEqual(m[f], i)
 
     def test_general_measurement_vector(self) -> None:
         for i in range(10):
@@ -375,7 +376,7 @@ class TestFockMeasurement(unittest.TestCase):
             f.label = i
             f.expand()
             m = f.measure()
-            self.assertEqual(m, i)
+            self.assertEqual(m[f], i)
 
     def test_general_measurement_matrix(self) -> None:
         for i in range(10):
@@ -384,7 +385,7 @@ class TestFockMeasurement(unittest.TestCase):
             f.expand()
             f.expand()
             m = f.measure()
-            self.assertEqual(m, i)
+            self.assertEqual(m[f], i)
 
     def test_superposition_vector(self) -> None:
         f = Fock()
@@ -396,7 +397,7 @@ class TestFockMeasurement(unittest.TestCase):
         C = Config()
         C.set_seed(1)
         m = f.measure()
-        self.assertEqual(m, 1, "Should be 1 with seed 1")
+        self.assertEqual(m[f], 1, "Should be 1 with seed 1")
         f = Fock()
         f.dimensions = 2
         f.expand()
@@ -405,7 +406,7 @@ class TestFockMeasurement(unittest.TestCase):
         )
         C.set_seed(3)
         m = f.measure()
-        self.assertEqual(m, 0, "Should be 1 with seed 3")
+        self.assertEqual(m[f], 0, "Should be 1 with seed 3")
 
     def test_superposition_matrix(self) -> None:
         f = Fock()
@@ -418,7 +419,7 @@ class TestFockMeasurement(unittest.TestCase):
         C = Config()
         C.set_seed(1)
         m = f.measure()
-        self.assertEqual(m, 1, "Should be 1 with seed 1")
+        self.assertEqual(m[f], 1, "Should be 1 with seed 1")
         f = Fock()
         f.dimensions = 2
         f.expand()
@@ -428,7 +429,7 @@ class TestFockMeasurement(unittest.TestCase):
         f.expand()
         C.set_seed(3)
         m = f.measure()
-        self.assertEqual(m, 0, "Should be 1 with seed 3")
+        self.assertEqual(m[f], 0, "Should be 1 with seed 3")
 
     def test_double_measurement(self) -> None:
         f = Fock()

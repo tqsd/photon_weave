@@ -204,7 +204,7 @@ class TestPolarizationSmallFunctions(unittest.TestCase):
         pol = Polarization()
         pol.extract(1)
         representation = pol.__repr__()
-        self.assertEqual(representation, "System is part of the Envelope")
+        self.assertEqual(representation, str(pol.uid))
 
 
 class TestPolarizationMeasurement(unittest.TestCase):
@@ -215,7 +215,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
     def test_measure_H_state_vector(self) -> None:
         pol = Polarization(PolarizationLabel.H)
         m = pol.measure()
-        self.assertEqual(m,0, "Measurement outcome when measuring H must always be 0")
+        self.assertEqual(m[pol],0, "Measurement outcome when measuring H must always be 0")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
         for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
             self.assertIsNone(item)
@@ -225,7 +225,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         pol.expand()
         pol.expand()
         m = pol.measure()
-        self.assertEqual(m,0, "Measurement outcome when measuring H must always be 0")
+        self.assertEqual(m[pol],0, "Measurement outcome when measuring H must always be 0")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
         for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
             self.assertIsNone(item)
@@ -233,7 +233,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
     def test_measure_V_state_vector(self) -> None:
         pol = Polarization(PolarizationLabel.V)
         m = pol.measure()
-        self.assertEqual(m,1, "Measurement outcome when measuring H must always be 1")
+        self.assertEqual(m[pol],1, "Measurement outcome when measuring H must always be 1")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
         for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
             self.assertIsNone(item)
@@ -243,7 +243,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         pol.expand()
         pol.expand()
         m = pol.measure()
-        self.assertEqual(m,1, "Measurement outcome when measuring H must always be 1")
+        self.assertEqual(m[pol],1, "Measurement outcome when measuring H must always be 1")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
         for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
             self.assertIsNone(item)
@@ -253,7 +253,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         C.set_seed(1)
         pol = Polarization(PolarizationLabel.R)
         m = pol.measure()
-        self.assertEqual(m,1, "Measurement outcome when measuring R must always be 1, when seed is set to 1")
+        self.assertEqual(m[pol],1, "Measurement outcome when measuring R must always be 1, when seed is set to 1")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
         for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
             self.assertIsNone(item)
@@ -262,7 +262,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         pol = Polarization(PolarizationLabel.R)
         pol.expand()
         m = pol.measure()
-        self.assertEqual(m,0, "Measurement outcome when measuring R must always be 0, when seed is set to 3")
+        self.assertEqual(m[pol],0, "Measurement outcome when measuring R must always be 0, when seed is set to 3")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
         for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
             self.assertIsNone(item)
@@ -274,7 +274,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         pol.expand()
         pol.expand()
         m = pol.measure()
-        self.assertEqual(m,1, "Measurement outcome when measuring R must always be 1, when seed is set to 1")
+        self.assertEqual(m[pol],1, "Measurement outcome when measuring R must always be 1, when seed is set to 1")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
         for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
             self.assertIsNone(item)
@@ -284,7 +284,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         pol.expand()
         pol.expand()
         m = pol.measure()
-        self.assertEqual(m,0, "Measurement outcome when measuring R must always be 0, when seed is set to 3")
+        self.assertEqual(m[pol],0, "Measurement outcome when measuring R must always be 0, when seed is set to 3")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
         for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
             self.assertIsNone(item)
@@ -294,7 +294,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         C.set_seed(1)
         pol = Polarization(PolarizationLabel.L)
         m = pol.measure()
-        self.assertEqual(m,1, "Measurement outcome when measuring L must always be 1, when seed is set to 1")
+        self.assertEqual(m[pol],1, "Measurement outcome when measuring L must always be 1, when seed is set to 1")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
         for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
             self.assertIsNone(item)
@@ -303,7 +303,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         pol = Polarization(PolarizationLabel.R)
         pol.expand()
         m = pol.measure()
-        self.assertEqual(m,0, "Measurement outcome when measuring L must always be 0, when seed is set to 3")
+        self.assertEqual(m[pol],0, "Measurement outcome when measuring L must always be 0, when seed is set to 3")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
         for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
             self.assertIsNone(item)
@@ -315,7 +315,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         pol.expand()
         pol.expand()
         m = pol.measure()
-        self.assertEqual(m,1, "Measurement outcome when measuring L must always be 1, when seed is set to 1")
+        self.assertEqual(m[pol],1, "Measurement outcome when measuring L must always be 1, when seed is set to 1")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
         for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
             self.assertIsNone(item)
@@ -324,7 +324,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         pol = Polarization(PolarizationLabel.R)
         pol.expand()
         m = pol.measure()
-        self.assertEqual(m,0, "Measurement outcome when measuring L must always be 0, when seed is set to 3")
+        self.assertEqual(m[pol],0, "Measurement outcome when measuring L must always be 0, when seed is set to 3")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
         for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
             self.assertIsNone(item)

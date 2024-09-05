@@ -7,13 +7,16 @@ Envelope
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import Optional, Union
+from typing import Optional, Union, Tuple, List
+import logging
+import uuid
 
 import numpy as np
 from scipy.integrate import quad
 import jax.numpy as jnp
 import jax
 
+from photon_weave._math.ops import kraus_identity_check, apply_kraus
 from photon_weave.photon_weave import Config
 from photon_weave.constants import C0, gaussian
 from photon_weave.operation.generic_operation import GenericOperation
@@ -23,6 +26,8 @@ from photon_weave.state.exceptions import (
     EnvelopeAssignedException,
     MissingTemporalProfileArgumentException
 )
+
+logger = logging.getLogger()
 
 class TemporalProfile(Enum):
     Gaussian = (gaussian, {"mu": 0, "sigma": 1, "omega": None})
@@ -50,6 +55,11 @@ class TemporalProfileInstance:
 
 
 class Envelope:
+
+    __slots__ = (
+        "uid", "composite_vector", "composite_matrix",
+        "measured", "wavelength", "temporal_profile", "__dict__"
+    )
     def __init__(
         self,
         wavelength: float = 1550,
@@ -60,6 +70,9 @@ class Envelope:
             sigma=42.45 * 10 ** (-15),  # 100 fs pulse
         ),
     ):
+        self.uid: uuid.UUID = uuid.uuid4()
+        self.composite_envelope_id = None
+        logger.info("Creating Envelope with uid %s", self.uid)
         if fock is None:
             from .fock import Fock
 
@@ -77,7 +90,7 @@ class Envelope:
 
         self.composite_vector = None
         self.composite_matrix = None
-        self.composite_envelope = None
+        self.composite_envelope_id = None
         self.measured = False
         self.wavelength = wavelength
         self.temporal_profile = temporal_profile
@@ -161,7 +174,22 @@ class Envelope:
             self.polarization.extract(1)
 
     def extract(self, state) -> None:
-        raise NotImplementedError("Extract method is not implemented for the envelope")
+        raise NotImplementedError("Extract method is not implemented for the envelope") # pragma: no cover
+
+    @property
+    def composite_envelope(self) -> Union['CompositeEnvelope', None]:
+        """
+        Property, which return appropriate composite envelope
+        """
+        from photon_weave.state.composite_envelope import CompositeEnvelope
+        if self.composite_envelope_id is not None:
+            ce = CompositeEnvelope._instances[self.composite_envelope_id][0]
+            assert ce is not None, "Composite Envelope should exist"
+            return ce
+        return None
+
+    def set_composite_envelope_id(self, uid: uuid.UUID):
+        self.composite_envelope_id = uid
 
     @property
     def expansion_level(self) -> Union[ExpansionLevel, int]:
@@ -183,12 +211,14 @@ class Envelope:
                 self.composite_vector.flatten(), jnp.conj(self.composite_vector.flatten())
             )
             self.composite_vector = None
+            self.fock.expansion_level = ExpansionLevel.Matrix
+            self.polarization.expansion_level = ExpansionLevel.Matrix
         if self.composite_vector is None and self.composite_matrix is None:
             self.fock.expand()
             self.polarization.expand()
 
     def separate(self):
-        raise NotImplementedError("Sperate method is not implemented for the envelope class")
+        raise NotImplementedError("Sperate method is not implemented for the envelope class") # pragma: no cover
 
     def apply_operation(self, operation: GenericOperation) -> None:
         """
@@ -259,10 +289,12 @@ class Envelope:
     def measure(self, non_destructive=False, remove_composite=True) -> Tuple[int, int]:
         """
         Measures the number of particles in the space
+
         """
         if self.measured:
             raise EnvelopeAlreadyMeasuredException()
         outcome = [-1,-1]
+        outcomes = {}
         if self.composite_vector is not None:
             C = Config()
             dim = [0, 0]
@@ -282,7 +314,10 @@ class Envelope:
             polarization_axis = jnp.arange(dim[self.polarization.index])
             key = C.random_key
             polarization_outcome = jax.random.choice(key, a=polarization_axis, p=polarization_probabilities)
-            outcome = (int(fock_outcome), int(polarization_outcome))
+            outcomes[self.fock] = int(fock_outcome)
+            outcomes[self.polarization] =  int(polarization_outcome)
+            self.fock._set_measured()
+            self.polarization._set_measured()
         elif self.composite_matrix is not None:
             C = Config()
             dim = [0, 0]
@@ -313,27 +348,255 @@ class Envelope:
                 a=polarization_axis,
                 p=polarization_probabilities
             )
-            outcome = (int(fock_outcome), int(polarization_outcome))
-        elif isinstance(self.fock.index, (list, tuple)) and len(self.fock.index) == 2:
-            outcome = self.composite_envelope.measure()
-        else:
-            outcome = (
-                self.fock.measure(non_destructive, partial=True),
-                self.polarization.measure(non_destructive))
+            outcomes[self.fock] =int(fock_outcome)
+            outcomes[self.polarization] =  int(polarization_outcome)
+            self.fock._set_measured()
+            self.polarization._set_measured()
+        for s in [self.fock, self.polarization]:
+            if isinstance(s.index, (list, tuple)) and len(s.index)==2:
+                if not s.measured:
+                    out = self.composite_envelope.measure(s)
+                    for key, value in out.items():
+                        if value is not None:
+                            outcomes[key] = value
+            else:
+                if not s.measured:
+                    out = s.measure()
+                    for key, value in out.items():
+                        outcomes[key] = value
         if not non_destructive:
             self._set_measured(remove_composite)
-        return outcome
+        return outcomes
 
-    def measure_POVM():
-        raise NotImplemented()
+    def measure_POVM(self, operators: List[Union[np.ndarray, jnp.ndarray]],
+                     states:Tuple[Union[np.ndarray, jnp.ndarray],
+                                  Optional[Union[np.ndarray, jnp.ndarray]]],
+                     destructive:bool=False) -> int:
+        """
+        Positive Operation-Valued Measurement,
+        POVM measurement does not destroy the quantum object by default.
 
-    def apply_kraus():
-        raise NotImplemented()
+        Parameters
+        ----------
+        operators: List[Union[np.ndarray, jnp.ndarray]]
+        states:Tuple[Union[np.ndarray, jnp.ndarray],
+                     Optional[Union[np.ndarray, jnp.ndarray]]
+            States on which the POVM measurement should be carried out,
+            Order of the states must resemble order of the operator tensoring
+        destructive: bool
+            If True then after the measurement the density matrix is discarded
 
+        Returns
+        -------
+        int
+            The index of the measurement corresponding to the outcome
+        """
+        from photon_weave.state.polarization import Polarization
+        from photon_weave.state.fock import Fock
+        if len(states) == 2:
+            if ((isinstance(states[0], Fock) and isinstance(states[1], Fock)) or
+                (isinstance(states[0], Polarization) and isinstance(states[1], Polarization))):
+                raise ValueError("Given states have to be unique")
+        elif len(states) > 2:
+            raise ValueError("Too many states given")
+        for s in states:
+            if s is not self.polarization and s is not self.fock:
+                raise ValueError("Given states have to be members of the envelope, use env.fock and env.polarization")
+        # Handle partial measurement
+        if len(states) == 1 and self.composite_matrix is None and self.composite_vector is None:
+            if isinstance(states[0], Fock):
+                outcome = self.fock.measure_POVM(operators)
+            elif isinstance(states[0], Polarization):
+                outcome = self.polarization.measure_POVM(operators)
+            return outcome
+
+        if self.composite_matrix is None and self.composite_vector is None:
+            self.combine()
+
+        if self.composite_vector is not None and self.composite_matrix is None:
+            self.expand()
+        self.reorder(states.copy())
+        C = Config()
+        # Handle POVM measurement when both spaces are measured
+        if len(states) == 2:
+            probabilities = jnp.array([
+                jnp.trace(jnp.matmul(op, self.composite_matrix)).real for op in operators
+            ])
+            probabilities = probabilities / jnp.sum(probabilities)
+            key = C.random_key
+
+            measurement_result = jax.random.choice(
+                key,
+                a = jnp.arange(len(operators)),
+                p = probabilities
+            )
+            if destructive:
+                self._set_measured()
+            return int(measurement_result)
+        elif len(states) == 1:
+            # Perform partial measurement
+            self.reorder([self.fock, self.polarization])
+            if isinstance(states[0], Polarization):
+                # Trace Out Fock Space
+                reduced_state = jnp.trace(
+                    self.composite_matrix.reshape(self.fock.dimensions,2,self.fock.dimensions,2),
+                    axis1=1, axis2=3
+                )
+            elif isinstance(states[0], Fock):
+                # Trace Out Fock Space
+                reduced_state = jnp.trace(
+                    self.composite_matrix.reshape(self.fock.dimensions,2,self.fock.dimensions,2),
+                    axis1=0, axis2=2
+                )
+
+            probabilities = jnp.array([
+                jnp.trace(jnp.matmul(op, reduced_state)).real for op in operators
+            ])
+            probabilities = probabilities / jnp.sum(probabilities)
+            key = C.random_key
+            measurement_result = jax.random.choice(
+                key,
+                a=jnp.arange(len(operators)),
+                p=probabilities
+            )
+            selected_operator = operators[int(measurement_result)]
+            post_measurement_state = jnp.matmul(
+                selected_operator,
+                jnp.matmul(reduced_state, selected_operator.T))
+
+            if states[0] is self.polarization:
+                operator1 = jnp.kron(jnp.eye(self.fock.dimensions), selected_operator)
+                operator2 = jnp.kron(jnp.eye(self.fock.dimensions), jnp.transpose(jnp.conj(selected_operator)))
+            elif state[0] is self.fock:
+                operator1 = jnp.kron(selected_operator, jnp.eye(self.fock.dimensions))
+                operator2 = jnp.kron(jnp.transpose(jnp.conj(selected_operator)), jnp.eye(self.fock.dimensions))
+
+            self.composite_matrix = jnp.matmul(operator1, jnp.matmul(self.composite_matrix, operator2))
+            self.composite_matrix /= jnp.trace(self.composite_matrix)
+            
+            if destructive:
+                self._set_measured()
+
+
+
+
+    def apply_kraus(self,
+                    operators: List[Union[np.ndarray, jnp.ndarray]],
+                    states: Tuple[Union["Fock", "Polarization"], Union["Polarization", "Fock"]]) -> None:
+        """
+        Apply Kraus operator to the envelope.
+
+        Parameters
+        ----------
+        operators: List[Union[np.ndarray, jnp.ndarray]]
+            List of Kraus operators
+        states:
+        """
+        from photon_weave.state.polarization import Polarization
+        from photon_weave.state.fock import Fock
+        if len(states) == 2:
+            if ((isinstance(states[0], Fock) and isinstance(states[1], Fock)) or
+                (isinstance(states[0], Polarization) and isinstance(states[1], Polarization))):
+                raise ValueError("Given states have to be unique")
+        elif len(states) > 2:
+            raise ValueError("Too many states given")
+        for s in states:
+            if s is not self.polarization and s is not self.fock:
+                raise ValueError("Given states have to be members of the envelope, use env.fock and env.polarization")
+
+        # Handle partial application 
+        if len(states) == 1 and self.composite_matrix is None and self.composite_vector is None:
+            if isinstance(states[0], Fock):
+                self.fock.apply_kraus(operators)
+            elif isinstance(states[0], Polarization):
+                self.polarization.apply_kraus(operators)
+            return
+
+        # Combine the states if Kraus operators are applied to both states
+        if self.composite_vector is None and self.composite_matrix is None:
+            self.combine()
+
+        # Reorder
+        self.reorder(states)
+
+        # Kraus operators are only applied to the density matrices
+        if self.composite_vector is not None and self.composite_matrix is None:
+            self.expand()
+
+        # Check operators
+        dim = self.composite_matrix.shape[0]
+        for op in operators:
+            if op.shape != (dim, dim):
+                raise ValueError(f"Kraus operator has incorrect dimension")
+
+        if not kraus_identity_check(operators):
+            raise ValueError("Kraus operators do not sum to the identity sum K^dagg K != I")
+
+        self.composite_matrix = apply_kraus(self.composite_matrix, operators)
+        self.contract()
+
+    def reorder(self, states: Tuple[Union["Fock", "Polarization"], Union["Fock", "Polarization"]]) -> None:
+        """
+        Changes the order of states in the product state
+        """
+        from photon_weave.state.polarization import Polarization
+        from photon_weave.state.fock import Fock
+        if len(states) == 2:
+            if ((isinstance(states[0], Fock) and isinstance(states[1], Fock)) or
+                (isinstance(states[0], Polarization) and isinstance(states[1], Polarization))):
+                raise ValueError("Given states have to be unique")
+        elif len(states) > 2:
+            raise ValueError("Too many states given")
+
+        for s in states:
+            if s is not self.polarization and s is not self.fock:
+                raise ValueError("Given states have to be members of the envelope, use env.fock and env.polarization")
+
+        if (self.composite_matrix is None) and (self.composite_vector is None):
+            logger.info("States not combined noting to do", self.uid)
+            return
+        if len(states) == 1:
+            if states[0] is self.fock:
+                states.append(self.polarization)
+            elif states[0] is self.polarization:
+                states.append(self.fock)
+
+        current_order = [None, None]
+        current_order[self.fock.index] = self.fock
+        current_order[self.polarization.index] = self.polarization
+
+        if current_order[0] is states[0] and current_order[1] is states[1]:
+            logger.info("States already in correct order", self.uid)
+            return
+            
+        current_shape = [0,0]
+        current_shape[self.fock.index] = self.fock.dimensions
+        current_shape[self.polarization.index] = 2
+
+        if not self.composite_vector is None:
+            tmp_vector = self.composite_vector.reshape((current_shape[0], current_shape[1]))
+            tmp_vector = jnp.transpose(tmp_vector, (1,0))
+            self.composite_vector = tmp_vector.reshape(-1,1)
+            self.fock.index, self.polarization.index = self.polarization.index, self.fock.index
+        elif not self.composite_matrix is None:
+            tmp_matrix = self.composite_matrix.reshape(
+                current_shape[0], current_shape[1], current_shape[0], current_shape[1]
+            )
+            tmp_matrix = jnp.transpose(tmp_matrix, (1,0,3,2))
+            self.composite_matrix = tmp_matrix.reshape((current_shape[0]*current_shape[1] for i in range(2)))
+            self.fock.index, self.polarization.index = self.polarization.index, self.fock.index
+
+
+    def contract(self) -> None:
+        """
+        Attempt contracting the state, if the state is encoded in matrix form
+        """
+        pass
+    
     def _set_measured(self, remove_composite=True):
         if self.composite_envelope is not None and remove_composite:
             self.composite_envelope.envelopes.remove(self)
-            self.composite_envelope = None
+            self.composite_envelope_id = None
         self.measured = True
         self.composite_vector = None
         self.composite_matrix = None

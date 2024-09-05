@@ -56,7 +56,7 @@ class Fock(BaseState):
         Holds information about the expansion level of this system
     """
     __slots__ = (
-        "uid", "index", "label", "dimension", "state_vector",
+        "uid", "index", "label", "dimensions", "state_vector",
         "density_matrix", "envelope", "expansions", "expansion_level",
         "measured")
 
@@ -70,6 +70,9 @@ class Fock(BaseState):
         self.envelope: Optional["Envelope"] = envelope
         self.expansion_level : Optional[ExpansionLevel] = ExpansionLevel.Label
         self.measured = False
+
+    def __hash__(self):
+        return hash(self.uid)
 
     def __eq__(self, other: Any) -> bool:
         """
@@ -359,9 +362,9 @@ class Fock(BaseState):
         if self.measured:
             raise FockAlreadyMeasuredException()
         result:int = -1
-        if isinstance(self.index, int) and not partial:
+        if self.index is not None:
             assert self.envelope is not None, "Envelope should not be None"
-            return self.envelope.measure(remove_composite=remove_composite)
+            return self.envelope.measure()
         else:
             C = Config()
             match self.expansion_level:
@@ -389,10 +392,19 @@ class Fock(BaseState):
                         a=jnp.arange(self.density_matrix.shape[0]),
                         p=probs
                     ))
+        outcomes = {}
+        outcomes[self] = int(result)
+        self._set_measured()
+
+        if self.envelope is not None:
+            if not self.envelope.polarization.measured:
+                out = self.envelope.polarization.measure()
+                for key, value in out.items():
+                    outcomes[key] = value
+        
         if not partial and self.envelope:
             self.envelope._set_measured(remove_composite=remove_composite)
-        self._set_measured()
-        return int(result)
+        return outcomes
 
     def measure_POVM(self, operators:List[Union[np.ndarray, jnp.ndarray]]) -> int:
         """

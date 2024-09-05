@@ -66,7 +66,7 @@ class Polarization(BaseState):
         If the state was measured than measured is True
     """
     __slots__ = (
-        "uid", "index", "label", "dimension", "state_vector",
+        "uid", "index", "label", "dimensions", "state_vector",
         "density_matrix", "envelope", "expansions", "expansion_level",
         "measured")
 
@@ -76,7 +76,7 @@ class Polarization(BaseState):
         envelope: Union["Envelope", None] = None,
     ):
         self.uid: uuid.UUID = uuid.uuid4()
-        logger.info("Creating polarization with id %s", self.uid)
+        logger.info("Creating polarization with uid %s", self.uid)
         self.index: Optional[Union[int, Tuple[int,int]]] = None
         self.label: Optional[PolarizationLabel] = polarization
         self.dimensions: int = 2
@@ -84,7 +84,7 @@ class Polarization(BaseState):
         self.density_matrix :Optional[jnp.ndarray] = None
         self.envelope :Optional["Envelope"] = envelope
         self.expansion_level : ExpansionLevel = ExpansionLevel.Label
-        self.measured: bool = True
+        self.measured: bool = False
 
 
     def expand(self) -> None:
@@ -285,6 +285,7 @@ class Polarization(BaseState):
         self.expansion_level = None
         self.state_vector = None
         self.density_matrix = None
+        self.index = None
 
     def measure(self, non_destructive:bool = False, separate_measurement:bool=False, **kwargs) -> Union[int,None]:
         """
@@ -300,7 +301,10 @@ class Polarization(BaseState):
         Union[int,None]
             Measurement Outcome
         """
-        if self.index is None:
+        if self.index is not None:
+            assert self.envelope is not None
+            return self.envelope.measure()
+        elif self.index is None:
             # Measure in this state
             C = Config()
             if self.expansion_level == ExpansionLevel.Label:
@@ -315,7 +319,7 @@ class Polarization(BaseState):
                 result = jax.random.choice(key, a=jnp.array([0,1]), p=probs.ravel())
                 if not non_destructive:
                     self._set_measured()
-                return int(result)
+                return {self:int(result)}
             elif self.expansion_level == ExpansionLevel.Matrix:
                 # Extract the diagonal elements
                 assert self.density_matrix is not None, "self.density_matrix should not be None"
@@ -331,7 +335,7 @@ class Polarization(BaseState):
                 )
                 if not non_destructive:
                     self._set_measured()
-                return int(result)
+                return {self:int(result)}
         # TODO IF MEASURED WHILE IN PRODUCT STATE IS SHOULD ALSO WORK
         return None # pragme: no cover
 
@@ -341,8 +345,7 @@ class Polarization(BaseState):
 
         Parameters
         ----------
-        *operators: Union[np.ndarray, jnp.Array]
-            
+        operators: Union[np.ndarray, jnp.Array]
 
         Returns
         -------
@@ -367,7 +370,7 @@ class Polarization(BaseState):
 
             # Generate a random key
             C = Config()
-            key = jax.random.PRNGKey(C.random_seed)
+            key = C.random_key
 
             # Sample the measurement outcome
             measurement_result = jax.random.choice(

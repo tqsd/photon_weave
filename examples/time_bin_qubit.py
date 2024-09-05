@@ -5,6 +5,9 @@ from photon_weave.operation.composite_operation import (
 from photon_weave.operation.fock_operation import FockOperation, FockOperationType
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.envelope import Envelope
+from photon_weave.logging import setup_logging
+
+setup_logging()
 
 env1 = Envelope()
 op = FockOperation(operation=FockOperationType.Creation)
