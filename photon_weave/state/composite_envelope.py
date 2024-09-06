@@ -3,7 +3,6 @@ import numpy as np
 import itertools
 import jax
 import jax.numpy as jnp
-import itertools
 import uuid
 from typing import Union, List, Optional, Dict
 import threading
@@ -11,6 +10,8 @@ from dataclasses import dataclass, field, InitVar
 
 from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.photon_weave import Config
+from photon_weave._math.ops import kraus_identity_check
+
 
 
 class FockOrPolarizationExpectedException(Exception):
@@ -37,10 +38,14 @@ class ProductState:
     """
     Stores Product state and references to its constituents
     """
+    uid: uuid.UUID = field(default_factory=uuid.uuid4)
     state: jnp.ndarray = field(default_factory=jnp.ndarray)
     expansion_level: ExpansionLevel = field(default_factory=ExpansionLevel)
     state_objs: List[Union['Fock', 'Polarization']] = field(default_factory=list)
     container: 'CompositeEnvelopeContainer' = field(default_factory=lambda: CompositeEnvelopeContainer)
+
+    def __hash__(self):
+        return hash(self.uid)
 
     def expand(self) -> None:
         """
@@ -250,8 +255,65 @@ class ProductState:
     def measure_POVM(self, states, operators) -> list[int]:
         pass
 
-    def apply_kraus(self, states, operators) -> None:
-        pass
+    def apply_kraus(self, operators:List[Union[np.ndarray, jnp.ndarray]],
+                    *states:List[Union['Fock', 'Polarization']],) -> None:
+        """
+        Applies the Kraus oeprators to the selected states, called by the apply_kraus
+        method in CopositeEnvelope
+
+        Parameters
+        ----------
+        operators: operators:List[Union[np.ndarray, jnp.ndarray]]
+            List of operators to be applied, must be tensored using kron
+        *states:List[Union[Fock, Polarization]]
+            List of states to apply the operators to, the tensoring order in operators
+            must follow the order of the states in this list
+        """
+        if self.expansion_level == ExpansionLevel.Vector:
+            K = jnp.array(operators)
+            shape = [s.dimensions for s in self.state_objs] + [1]
+            op_shape = [s.dimensions for s in states] * 2
+
+            # Computing transpose pattern
+            transpose_pattern = []
+            for i in range(len(states)):
+                transpose_pattern.append(i)
+                transpose_pattern.append(i+len(states))
+                
+            operators = [op.reshape(op_shape).transpose(*transpose_pattern) for op in operators]
+            ps = self.state.reshape(shape)
+            # Constructing einsum string
+            einsum_str = [[],[],[]]
+            c1 = itertools.count(start=0)
+
+            einsum_states = {}
+            for s in self.state_objs:
+                c = next(c1)
+                einsum_states[s] = [c]
+                einsum_str[1].append(c)
+            ed = next(c1)
+            einsum_str[1].append(ed)
+            for s in states:
+                c = next(c1)
+                einsum_str[0].append(c)
+                einsum_states[s].append(c)
+                einsum_str[0].append(einsum_states[s][0])
+
+            for s in self.state_objs:
+                if len(einsum_states[s])>1:
+                    einsum_str[2].append(einsum_states[s][1])
+                else:
+                    einsum_str[2].append(einsum_states[s][0])
+            einsum_str[2].append(ed)
+
+            einsum_str = [ "".join([chr(97+i) for i in s]) for s in einsum_str]
+            einsum_str = f"{einsum_str[0]},{einsum_str[1]}->{einsum_str[2]}"
+            for op in operators:
+                ps = jnp.einsum(einsum_str, op, ps)
+            self.state = ps.flatten().reshape(-1,1)
+            
+
+
 
     @property
     def is_empty(self) -> bool:
@@ -324,7 +386,7 @@ class CompositeEnvelopeContainer:
         Checks if a product state is empty and if so
         removes it
         """
-        for state in self.states:
+        for state in self.states[:]:
             if state.is_empty:
                 self.states.remove(state)
 
@@ -422,7 +484,7 @@ class CompositeEnvelope:
 
         # Check for the types
         for so in state_objs:
-            assert isinstance(so, Fock) or isinstance(so, Polarization), f"got {type(so)}, expected {t}"
+            assert isinstance(so, Fock) or isinstance(so, Polarization), f"got {type(so)}, expected Polarization or Fock type"
 
         # Check if the states are already in the same product space
         for ps in self.states:
@@ -441,6 +503,8 @@ class CompositeEnvelope:
             for i, ps in enumerate(self.product_states):
                 if state in ps.state_objs:
                     existing_product_states.append(ps)
+        # Removing duplicate product states
+        existing_product_states = list(set(existing_product_states))
         """
         Ensure all states have the same expansion levels
         """
@@ -482,10 +546,12 @@ class CompositeEnvelope:
                     state_vector_or_matrix = jnp.kron(
                         state_vector_or_matrix, so.envelope.composite_vector
                     )
+                    so.envelope.composite_vector = None
                 else:
                     state_vector_or_matrix = jnp.kron(
                         state_vector_or_matrix, so.envelope.composite_matrix
                     )
+                    so.envelope.composite_matrix = None
                 indices = [None, None]
                 indices[so.envelope.fock.index] = so.envelope.fock
                 indices[so.envelope.polarization.index] = so.envelope.polarization
@@ -545,7 +611,7 @@ class CompositeEnvelope:
         ps = [p for p in self.states if all(so in p.state_objs for so in ordered_states)][0]
 
         # Create order
-        new_order = ps.state_objs.copy()
+        new_order = [s for s in ps.state_objs]
         for i, ordered_state in enumerate(ordered_states):
             if new_order.index(ordered_state) != i:
                 tmp = new_order[i]
@@ -554,7 +620,18 @@ class CompositeEnvelope:
                 new_order[old_idx] = tmp
         ps.reorder(*new_order)
 
-    def measure(self, *states: List[Union['Fock', 'Polarization']]) -> List[int]:
+    def measure(self, *states: List[Union['Fock', 'Polarization']]) -> Dict[Union['Polarization', 'Fock'], int]:
+        """
+        Projective Measurement
+        Given list of states will be measured, measurement is destructive
+        TODO: Measurement may not be destructive for all states (qubit?)
+              later on
+
+        Parameters
+        ----------
+        *states: List[Union[Fock, Polarization]]
+            List of states to be measured
+        """
         product_states = [p for p in self.states if any(so in p.state_objs for so in states)]
         outcomes = {}
         for ps in product_states:
@@ -566,5 +643,54 @@ class CompositeEnvelope:
         self._containers[self.uid].remove_empty_product_states()
         return outcomes
 
+    def measure_POVM(self):
+        pass
+
+    def apply_kraus(self, operators:List[Union[np.ndarray, jnp.ndarray]],
+                    *states:List[Union['Fock', 'Polarization']],
+                    identity_check:bool=True) -> None:
+        """
+        Apply kraus operator to the given states
+        The product state is automatically expanded to the density matrix
+        representation. The order of tensoring in the operators should be the same
+        as the order of the given states. The order of the states in the product
+        state is changed to reflect the order of the given states.
+
+        Parameters
+        ----------
+        operators: List[Union[np.ndarray, jnp.ndarray]]
+            List of all Kraus operators
+        *states: List[Union[Fock, Polarization]]
+            List of the states, that the channel should be applied to
+        identity_check: bool
+            True by default, if true the method checks if kraus condition holds
+        """
+
+        # Check if dimensions match
+        dim = jnp.prod(jnp.array([s.dimensions for s in states]))
+        for op in operators:
+            if op.shape != (dim, dim):
+                raise ValueError(f"At least on Kraus operator has incorrect dimensions: {op.shape}, expected({dim},{dim})")
+
+        # Check the identity sum 
+        if identity_check:
+            if not kraus_identity_check(operators):
+                raise ValueError("Kraus operators do not sum to the identity")
 
 
+        # Get product states
+        product_states = [p for p in self.states if any(so in p.state_objs for so in states)]
+        ps = None
+        if len(product_states)>1:
+            all_states = [s for s in states]
+            for p in product_states:
+                all_states.extend([s for s in p.state_objs])
+            self.combine(*all_states)
+            ps = [p for p in self.states if any(so in p.state_objs for so in states)][0]
+        else:
+            ps = product_states[0]
+
+        # Make sure the order of the states in tensoring is correct
+        self.reorder(*states)
+
+        ps.apply_kraus(operators, *states)

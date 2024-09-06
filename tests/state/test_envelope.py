@@ -542,7 +542,6 @@ class TestEnvelopeMeausrement(unittest.TestCase):
              [0,1]]
         )
         m = env.measure_POVM(operators=[op1, op2],states= [env.polarization])
-        print(m)
 
     def test_POVM_measurement_combined_full(self) -> None:
         env = Envelope()

@@ -1,5 +1,7 @@
 import unittest
 import jax.numpy as jnp
+import jax
+from typing import List, Union
 
 from photon_weave.photon_weave import Config
 from photon_weave.state.composite_envelope import CompositeEnvelope, CompositeEnvelopeContainer
@@ -109,6 +111,19 @@ class TestCompositeEnvelopeInitialization(unittest.TestCase):
 
         self.assertEqual(ce1.uid, ce2.uid)
 
+    def test_initialization_with_combined_envelope(self) -> None:
+        """
+        Test the case, when the combined envelope is combined with
+        the composite envelope
+        """
+        env1 = Envelope()
+        env1.combine()
+        env2 = Envelope()
+        ce = CompositeEnvelope(env1,env2)
+        ce.combine(env1.fock, env2.fock)
+        self.assertEqual(ce.product_states[0].state_objs, [env1.fock, env1.polarization, env2.fock])
+        self.assertIsNone(env1.composite_vector)
+        self.assertIsNone(env1.composite_matrix)
         
 class TestStateCombining(unittest.TestCase):
     """
@@ -736,3 +751,115 @@ class TestCompositeEnvelopeMeasurementsMatrix(unittest.TestCase):
         self.assertEqual(outcomes[env3.fock], 3)
         self.assertEqual(outcomes[env3.polarization], 1)
         self.assertEqual(ce.product_states, [])
+
+class TestPOVMMeasurement(unittest.TestCase):
+    def test_simple_POVM_test(self) -> None:
+        env = Envelope()
+        env.fock.uid = "f1"
+        env.polarization.uid = "p1"
+
+class TestKrausApply(unittest.TestCase):
+    def get_the_last_kraus_operator(self, operators: List[jnp.ndarray]):
+        dim = operators[0].shape[0]
+        identity = jnp.eye(dim)
+
+        sum_operators = jnp.zeros((dim,dim))
+        for op in operators:
+            sum_operators += jnp.matmul(op.T.conj(), op)
+
+        remaining = identity - sum_operators
+        assert jnp.all(jnp.linalg.eigvals(remaining)>=0)
+        last_kraus = jax.scipy.linalg.sqrtm(remaining)
+        return last_kraus
+
+    def test_kraus_apply_vector_full(self) -> None:
+        env1 = Envelope()
+        env2 = Envelope()
+        env1.fock.dimensions = 2
+        env2.fock.dimensions = 2
+
+        ce = CompositeEnvelope(env1,env2)
+        ce.combine(env1.fock, env2.fock)
+
+        op = jnp.array(
+            [[0,0,0,0],
+             [0,0,0,0],
+             [0,0,0,0],
+             [1,0,0,0]]
+        )
+
+        last_op = self.get_the_last_kraus_operator([op])
+        operators  = [op, last_op]
+        ce.apply_kraus(operators, env1.fock, env2.fock)
+        self.assertTrue(
+            jnp.allclose(
+                ce.product_states[0].state,
+                jnp.array(
+                    [[0],[0],[0],[1]]
+                )
+            )
+        )
+
+    def test_kraus_apply_vector_partial(self) -> None:
+        env1 = Envelope()
+        env2 = Envelope()
+        env3 = Envelope()
+        env1.fock.dimensions = 2
+        env1.fock.uid = "f1"
+        env2.fock.dimensions = 2
+        env2.fock.uid = "f2"
+        env3.fock.dimensions = 2
+        env3.fock.uid = "f3"
+
+        ce = CompositeEnvelope(env1,env2,env3)
+        ce.combine(env1.fock, env2.fock, env3.fock)
+
+        op = jnp.array(
+            [[0,0],
+             [1,0]]
+        )
+        last_op = self.get_the_last_kraus_operator([op])
+
+        ce.apply_kraus([op,last_op], env3.fock)
+        self.assertEqual(
+            (env3.fock, env2.fock, env1.fock),
+            ce.product_states[0].state_objs
+        )
+        self.assertTrue(
+            jnp.allclose(
+                ce.product_states[0].state,
+                jnp.array(
+                    [[0],[0],[0],[0],[1],[0],[0],[0]]
+                ),
+            )
+        )
+
+    def test_kraus_apply_with_two_product_states(self) -> None:
+        env1 = Envelope()
+        env2 = Envelope()
+        env1.fock.dimensions = 2
+        env1.fock.uid = "f1"
+        env1.polarization.uid = "p1"
+        env2.fock.dimensions = 2
+        env2.fock.uid = "f2"
+        env2.polarization.uid = "p2"
+
+        ce = CompositeEnvelope(env1,env2)
+        ce.combine(env1.fock, env2.polarization)
+        ce.combine(env1.polarization, env2.fock)
+
+        op = jnp.array(
+            [[0,0,0,0],
+             [0,0,0,0],
+             [0,0,0,0],
+             [1,0,0,0]]
+        )
+        last_op = self.get_the_last_kraus_operator([op])
+
+        ce.apply_kraus([op, last_op], env1.fock, env2.fock)
+        self.assertTrue(
+            jnp.allclose(
+                ce.product_states[0].state,
+                jnp.array([[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[1],[0],[0],[0]])
+            )
+        )
