@@ -314,8 +314,8 @@ class Polarization(BaseState):
                 prob_0 = jnp.abs(self.state_vector[0])**2
                 prob_1 = jnp.abs(self.state_vector[1])**2
                 assert jnp.isclose(prob_0 + prob_1, 1.0)
-                probs = jnp.array([prob_0, prob_1])
-                key = jax.random.PRNGKey(C.random_seed)
+                probs = jnp.array([prob_0[0], prob_1[0]])
+                key = C.random_key
                 result = jax.random.choice(key, a=jnp.array([0,1]), p=probs.ravel())
                 if not non_destructive:
                     self._set_measured()
@@ -327,7 +327,7 @@ class Polarization(BaseState):
                 # Normalize
                 probabilities = probabilities / jnp.sum(probabilities)
                 # Generate a random key
-                key = jax.random.PRNGKey(C.random_seed)
+                key = C.random_key
                 result = jax.random.choice(
                     key,
                     a=jnp.arange(self.density_matrix.shape[0]),

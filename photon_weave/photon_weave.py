@@ -17,6 +17,7 @@ class Config:
             self._initialized = True  # Prevents reinitialization
             self._random_seed = random.randint(0, sys.maxsize)
             self._key = jax.random.PRNGKey(self._random_seed)
+            self._contractions = True
 
     def set_seed(self, seed: int) -> None:
         """
@@ -40,3 +41,10 @@ class Config:
         """
         key, self._key = jax.random.split(self._key)
         return key
+
+    def set_contraction(self, cs:bool) -> None:
+        self._contractions = cs
+
+    @property
+    def contractions(self) -> bool:
+        return self._contractions
