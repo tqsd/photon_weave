@@ -376,7 +376,7 @@ class Fock(BaseState):
                     probs = jnp.abs(self.state_vector.flatten()) ** 2
                     probs = probs.ravel()
                     assert jnp.isclose(sum(probs), 1)
-                    key = jax.random.PRNGKey(C.random_seed)
+                    key = C.random_key
                     result = int(jax.random.choice(
                         key,
                         a=jnp.array(
@@ -386,7 +386,7 @@ class Fock(BaseState):
                     assert self.density_matrix is not None, "self.density_matrix should not be None"
                     probs = jnp.diag(self.density_matrix).real
                     probs = probs / jnp.sum(probs)
-                    key = jax.random.PRNGKey(C.random_seed)
+                    key = C.random_key
                     result = int(jax.random.choice(
                         key,
                         a=jnp.arange(self.density_matrix.shape[0]),
@@ -438,7 +438,7 @@ class Fock(BaseState):
 
             # Generate a random key
             C = Config()
-            key = jax.random.PRNGKey(C.random_seed)
+            key = C.random_key
 
             # Sample the measurement outcome
             measurement_result = jax.random.choice(

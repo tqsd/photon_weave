@@ -1,16 +1,62 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, TYPE_CHECKING
 import numpy as np
 import jax.numpy as jnp
 from uuid import UUID
 
 from photon_weave._math.ops import kraus_identity_check, apply_kraus
+from photon_weave.state.expansion_levels import ExpansionLevel
+
+if TYPE_CHECKING:
+    from photon_weave.state.polarization import Polarization, PolarizationLabel
 
 class BaseState(ABC):
 
-    __slots__ = ("label", "_uid", "_state_vector", "density_matrix", "__dict__", "_expansion_level", "_index")
+    __slots__ = (
+        "label", "_uid", "_state_vector", "density_matrix",
+        "__dict__", "_expansion_level", "_index", "_dimensions",
+        "_measured"
+    )
 
+    @property
+    def uid(self) -> Union[str, UUID]:
+        return self._uid
+
+    @uid.setter
+    def uid(self, state_vector: Union[UUID, str]) -> None:
+        self._uid= uid
+
+    @property
+    @abstractmethod
+    def dimensions(self) -> int:
+        pass
+
+    @property
+    def expansion_level(self) -> int:
+        return self._expansion_level
+
+    @expansion_level.setter
+    def expansion_level(self, expansion_level: 'ExpansionLevel') -> None:
+        self._expansion_level = expansion_level
+
+    @property
+    def index(self) -> Union[None, int, Tuple[int, int]]:
+        return self._index
+
+    @index.setter
+    def index(self, index : Union[None, int, Tuple[int, int]]) -> None:
+        self._index = index
+
+    @property
+    def dimensions(self) -> Union[int, 'PolarizationLabel']:
+        return self._dimensions
+
+    @dimensions.setter
+    def dimensions(self, dimensions: int) -> None:
+        self._dimensions = dimensions 
+
+    # Dunder methods
     def __hash__(self):
         return hash(self.uid)
 
@@ -84,47 +130,6 @@ class BaseState(ABC):
     @abstractmethod
     def expand(self) -> None:
         pass
-    
-    @property
-    @abstractmethod
-    def dimensions(self) -> int:
-        pass
-
-    @property
-    @abstractmethod
-    def expansion_level(self) -> int:
-        pass
-
-    @expansion_level.setter
-    def expansion_level(self, expansion_level: 'ExpansionLevel') -> None:
-        self._expansion_level = expansion_level
-
-    @property
-    @abstractmethod
-    def index(self) -> Union[None, int, Tuple[int, int]]:
-        pass
-
-    @index.setter
-    def index(self, index : Union[None, int, Tuple[int, int]]) -> None:
-        self._index = expansion_level
-    @property
-
-    @abstractmethod
-    def state_vector(self) -> jnp.ndarray:
-        pass
-
-    @state_vector.setter
-    def state_vector(self, state_vector: jnp.ndarray) -> None:
-        self._state_vector = state_vector
-
-    
-    @abstractmethod
-    def uid(self) -> jnp.ndarray:
-        pass
-
-    @state_vector.setter
-    def uid(self, state_vector: Union[UUID, str]) -> None:
-        self._uid= uid
 
 
     @abstractmethod
@@ -134,3 +139,39 @@ class BaseState(ABC):
     @abstractmethod
     def extract(self, index:Union[int, Tuple[int, int]]) -> None:
         pass
+
+    def contract(self, final: ExpansionLevel = ExpansionLevel.Label, tol:float=1e-6) -> None:
+        """
+        Attempts to contract the representation to the level defined in `final`argument.
+
+        Parameters
+        ----------
+        final: ExpansionLevel
+            Expected expansion level after contraction
+        tol: float
+            Tolerance when comparing matrices
+        """
+        if self.expansion_level is ExpansionLevel.Matrix and final < ExpansionLevel.Matrix:
+            # Check if the state is pure state
+            assert self.density_matrix is not None, "Density matrix should not be None"
+            state_squared = jnp.matmul(self.density_matrix, self.density_matrix)
+            state_trace = jnp.trace(state_squared)
+            if jnp.abs(state_trace-1) < tol:
+                # The state is pure
+                eigenvalues, eigenvectors = jnp.linalg.eigh(self.density_matrix)
+                pure_state_index = jnp.argmax(jnp.abs(eigenvalues -1.0) < tol)
+                assert pure_state_index is not None, "pure_state_index should not be None"
+                self.state_vector = eigenvectors[:, pure_state_index].reshape(-1,1)
+                # Normalizing the phase
+                assert self.state_vector is not None, "self.state_vector should not be None"
+                phase = jnp.exp(-1j * jnp.angle(self.state_vector[0]))
+                self.state_vector = self.state_vector*phase
+                self.density_matrix = None
+                self.expansion_level = ExpansionLevel.Vector
+        if self.expansion_level is ExpansionLevel.Vector and final < ExpansionLevel.Vector:
+            assert self.state_vector is not None, "self.state_vector should not be None"
+            ones = jnp.where(self.state_vector == 1)[0]
+            if ones.size == 1:
+                self.label = int(ones[0])
+                self.state_vector = None
+                self.expansion_level = ExpansionLevel.Label
