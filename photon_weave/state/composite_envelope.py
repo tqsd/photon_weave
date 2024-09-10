@@ -14,10 +14,10 @@ from photon_weave._math.ops import kraus_identity_check
 
 # For static type checks
 if TYPE_CHECKING:
-    from photon_weave.state.envelope import Envelope
-    from photon_weave.state.fock import Fock
-    from photon_weave.state.polarization import Polarization
-    from photon_weave.state.base_state import BaseState
+    from photon_weave.state.envelope import Envelope # pragma: no cover
+    from photon_weave.state.fock import Fock # pragma: no cover
+    from photon_weave.state.polarization import Polarization # pragma: no cover
+    from photon_weave.state.base_state import BaseState # pragma: no cover
 
 @dataclass(slots=True)
 class ProductState:
@@ -559,7 +559,7 @@ class ProductState:
                 (new_dims, new_dims))
             return traced_out_state
         else:
-            raise ValueError("Something went wrong")
+            raise ValueError("Something went wrong") #pragma: no cover
 
 
     @property
