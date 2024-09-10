@@ -63,8 +63,8 @@ class Envelope:
     def __init__(
         self,
         wavelength: float = 1550,
-        fock: Optional["Fock"] = None,
-        polarization: Optional["Polarization"] = None,
+        fock: "Fock" = None,
+        polarization: "Polarization" = None,
         temporal_profile: TemporalProfileInstance = TemporalProfile.Gaussian.with_params(
             mu=0,
             sigma=42.45 * 10 ** (-15),  # 100 fs pulse

@@ -4,7 +4,7 @@ import itertools
 import jax
 import jax.numpy as jnp
 import uuid
-from typing import Union, List, Optional, Dict, Tuple
+from typing import Union, List, Optional, Dict, Tuple, TYPE_CHECKING, cast, Callable
 import threading
 from dataclasses import dataclass, field, InitVar
 
@@ -12,20 +12,25 @@ from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.photon_weave import Config
 from photon_weave._math.ops import kraus_identity_check
 
-
+# For static type checks
+if TYPE_CHECKING:
+    from photon_weave.state.envelope import Envelope
+    from photon_weave.state.fock import Fock
+    from photon_weave.state.polarization import Polarization
+    from photon_weave.state.base_state import BaseState
 
 @dataclass(slots=True)
 class ProductState:
     """
     Stores Product state and references to its constituents
     """
+    expansion_level: ExpansionLevel
+    container: 'CompositeEnvelopeContainer'
     uid: uuid.UUID = field(default_factory=uuid.uuid4)
-    state: jnp.ndarray = field(default_factory=jnp.ndarray)
-    expansion_level: ExpansionLevel = field(default_factory=ExpansionLevel)
-    state_objs: List[Union['Fock', 'Polarization']] = field(default_factory=list)
-    container: 'CompositeEnvelopeContainer' = field(default_factory=lambda: CompositeEnvelopeContainer)
+    state: jnp.ndarray = field(default_factory=lambda: jnp.array([[1]]))
+    state_objs: List['BaseState'] = field(default_factory=list)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.uid)
 
     def expand(self) -> None:
@@ -65,10 +70,16 @@ class ProductState:
                 state.expansion_level = ExpansionLevel.Vector
             self.expansion_level = ExpansionLevel.Vector
 
-    def reorder(self, *ordered_states) -> None:
+    def reorder(self, *ordered_states:'BaseState') -> None:
         """
         Changes the order of tensoring, all ordered states need to be given
+
+        Parameters
+        ----------
+        *ordered_states: 'BaseState'
+            States ordered in the new order
         """
+        from photon_weave.state.base_state import BaseState
         assert all(so in ordered_states for so in self.state_objs), "All state objects need to be given"
         old_dims = [os.dimensions for os in ordered_states]
         if self.expansion_level == ExpansionLevel.Vector:
@@ -94,11 +105,20 @@ class ProductState:
 
         self.container.update_all_indices()
 
-    def measure(self, *states:Optional[List[Union['Fock', 'Polarization']]]) -> Dict[Union['Fock', 'Polarization'],int]:
+    def measure(self, *states:'BaseState') -> Dict['BaseState',int]:
         """
         Measure given states in this product space
-        """
 
+        Parameters
+        ----------
+        *states: BaseState
+            States that should be measured
+
+        Returns
+        -------
+        Dict[BaseState, int]
+           Dictionary of outcomes
+        """
         assert all(so in self.state_objs for so in states), "All state objects need to be in product state"
         outcomes = {}
         C = Config()
@@ -107,11 +127,12 @@ class ProductState:
         # Also include the envelope other states
         other_states = []
         for s in states:
-            if s.envelope is not None:
-                if s is s.envelope.fock:
-                    other_states.append(s.envelope.polarization)
-                elif s is s.envelope.polarization:
-                    other_states.append(s.envelope.fock)
+            if hasattr(s,"envelope"):
+                if s.envelope is not None:
+                    if s is s.envelope.fock:
+                        other_states.append(s.envelope.polarization)
+                    elif s is s.envelope.polarization:
+                        other_states.append(s.envelope.fock)
         other_states_in_product_space = [s for s in other_states if s in self.state_objs]
         state_list = [s for s in states]
         state_list.extend(other_states_in_product_space)
@@ -125,19 +146,18 @@ class ProductState:
             for idx, state in enumerate(state_list):
                 # Constructing the einsum str
                 counter = itertools.count(start=0)
-                einsum = [[],[]]
+                einsum_list: List[List[int]] = [[],[]]
                 for so in remaining_states:
                     c = next(counter)
                     if so is state:
-                        einsum[1].append(c)
-                    einsum[0].append(c)
+                        einsum_list[1].append(c)
+                    einsum_list[0].append(c)
                 c = next(counter)
-                einsum[0].append(c)
-                einsum[1].append(c)
-                einsum = [[chr(97+x) for x in ep] for ep in einsum]
-                einsum = ["".join(x) for x in einsum]
-                einsum = "->".join(einsum)
-
+                einsum_list[0].append(c)
+                einsum_list[1].append(c)
+                einsum_list_str = [[chr(97+x) for x in ep] for ep in einsum_list]
+                einsum_tmp = ["".join(x) for x in einsum_list_str]
+                einsum = "->".join(einsum_tmp)
                 # Project the state with einsum
                 projected_state = jnp.einsum(einsum, ps)
 
@@ -151,7 +171,7 @@ class ProductState:
                     a=jnp.array(list(range(state.dimensions))),
                     p=probabilities
                 ))
-                indices = [slice(None)]*len(ps.shape)
+                indices: List[Union[slice, int]] = [slice(None)]*len(ps.shape)
                 indices[remaining_states.index(state)] = outcomes[state]
                 ps = ps[tuple(indices)]
                 remaining_states.remove(state)
@@ -169,16 +189,16 @@ class ProductState:
             for idx, state in enumerate(state_list):
                 # Constructing the einsum str
                 counter = itertools.count(start=0)
-                einsum = [[],[]]
+                einsum_list = [[],[]]
                 for _ in range(2):
                     for so in remaining_states:
                         c = next(counter)
                         if so is state:
-                            einsum[1].append(c)
-                        einsum[0].append(c)
-                einsum = [[chr(97+x) for x in ep] for ep in einsum]
-                einsum = ["".join(x) for x in einsum]
-                einsum = "->".join(einsum)
+                            einsum_list[1].append(c)
+                        einsum_list[0].append(c)
+                einsum_list_str = [[chr(97+x) for x in ep] for ep in einsum_list]
+                einsum_str = ["".join(x) for x in einsum_list_str]
+                einsum = "->".join(einsum_str)
 
                 # Project the state with einsum
                 projected_state = jnp.einsum(einsum, ps)
@@ -197,7 +217,7 @@ class ProductState:
                 state_index = remaining_states.index(state)
                 row_idx = state_index
                 col_idx = state_index + len(remaining_states)
-                indices = [slice(None)]*len(ps.shape)
+                indices: List[Union[slice, int]] = [slice(None)]*len(ps.shape)
                 indices[row_idx] = outcomes[state]
                 indices[col_idx] = outcomes[state]
                 ps = ps[tuple(indices)]
@@ -229,7 +249,7 @@ class ProductState:
         # Remove the state objs from the states 
         for so in remove_states:
             so._set_measured()
-            if so.envelope is not None:
+            if hasattr(so, 'envelope') and so.envelope is not None:
                 so.envelope._set_measured()
             if so in self.state_objs:
                 # This can be skipped in coverage
@@ -242,9 +262,9 @@ class ProductState:
         return outcomes
 
     def measure_POVM(self, operators:List[Union[np.ndarray, jnp.ndarray]],
-                     *states:List[Union['Fock', 'Polarization']],
+                     *states:'BaseState',
                      destructive: bool = True,
-                     ) -> Tuple[int, Dict[Union['Fock', 'Polarization'], int]]:
+                     ) -> Tuple[int, Dict['BaseState', int]]:
         """
         Perform a POVM measurement.
 
@@ -252,7 +272,7 @@ class ProductState:
         ----------
         operators: List[Union[np.ndarray, jnp.ndarray]]
             List of POVM operators
-        *states: List[Union[Fock, Polarization]]
+        *states: BaseState
             List of states, on which the POVM measurement should be executed
             The order of the states must reflect the order of tensoring of
             individual hilbert space in the individual operator
@@ -283,11 +303,9 @@ class ProductState:
             *transpose_pattern(self.state_objs)
         )
 
-        # Get the probabilities
-        probabilities = []
         # Construct Einstein Sum String
-        einsum_str = [[],[],[],[]]
-        einsum_states = {s:[] for s in self.state_objs}
+        einsum_list:List[List[int]] = [[],[],[],[]]
+        einsum_states:Dict['BaseState',List[int]] = {s:[] for s in self.state_objs}
         c1 = itertools.count(start=0)
 
         # Marking down the state indices
@@ -295,35 +313,37 @@ class ProductState:
             for i in range(2):
                 c = next(c1)
                 einsum_states[s].append(c)
-                einsum_str[1].append(c)
-                einsum_str[3].append(c)
+                einsum_list[1].append(c)
+                einsum_list[3].append(c)
 
         # Marking down the first operator indices
         for i, s in enumerate(states):
             c = next(c1)
-            einsum_str[0].append(c)
-            einsum_str[0].append(einsum_states[s][0])
-            einsum_str[3][i*len(states)] = c
+            einsum_list[0].append(c)
+            einsum_list[0].append(einsum_states[s][0])
+            einsum_list[3][i*len(states)] = c
 
         # Marking the second operator indices:
         for i,s in enumerate(states):
             c = next(c1)
-            einsum_str[2].append(c)
-            einsum_str[2].append(einsum_states[s][1])
-            einsum_str[3][i*len(states)+1] = c
+            einsum_list[2].append(c)
+            einsum_list[2].append(einsum_states[s][1])
+            einsum_list[3][i*len(states)+1] = c
 
         # Assembling the einstein sum
-        einsum_str = [ "".join([chr(97+i) for i in s]) for s in einsum_str]
-        einsum_str = f"{einsum_str[0]},{einsum_str[1]},{einsum_str[2]}->{einsum_str[3]}"
+        einsum_tmp= [ "".join([chr(97+i) for i in s]) for s in einsum_list]
+        einsum_str = f"{einsum_tmp[0]},{einsum_tmp[1]},{einsum_tmp[2]}->{einsum_tmp[3]}"
         
         dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
+        # Get the probabilities
+        prob_list: List[float] =[]
         for op in operators:
             prob_state = jnp.einsum(einsum_str, op, ps, jnp.conj(op)).transpose(
                 *transpose_pattern(self.state_objs)).reshape((dims, dims))
-            probabilities.append(float(jnp.trace(prob_state)))
+            prob_list.append(float(jnp.trace(prob_state)))
 
         # Normalize the probabilities
-        probabilities = jnp.array(probabilities)
+        probabilities = jnp.array(prob_list)
         probabilities /= jnp.sum(probabilities)
 
         C = Config()
@@ -331,7 +351,7 @@ class ProductState:
         outcome = int(jax.random.choice(
             key,
             a=jnp.array(list(range(len(operators)))),
-            p=probabilities
+            p=jnp.array(probabilities)
         ))
 
         # Construct Post Measurement state
@@ -342,17 +362,18 @@ class ProductState:
         other_outcomes = {}
         if destructive:
             # Get correct Composite Envelope
-            other_outcomes = CompositeEnvelope._instances[self.container.composite_uid][0].measure(
-                *states
-            )
-            for s in states:
-                del other_outcomes[s]
+            if isinstance(CompositeEnvelope._instances[self.container.composite_uid], list):
+                other_outcomes = CompositeEnvelope._instances[self.container.composite_uid][0].measure(
+                    *states
+                )
+                for s in states:
+                    del other_outcomes[s]
         if C.contractions:
             self.contract()
         return (outcome, other_outcomes)
 
     def apply_kraus(self, operators:List[Union[np.ndarray, jnp.ndarray]],
-                    *states:List[Union['Fock', 'Polarization']],) -> None:
+                    *states:'BaseState') -> None:
         """
         Applies the Kraus oeprators to the selected states, called by the apply_kraus
         method in CopositeEnvelope
@@ -361,7 +382,7 @@ class ProductState:
         ----------
         operators: operators:List[Union[np.ndarray, jnp.ndarray]]
             List of operators to be applied, must be tensored using kron
-        *states:List[Union[Fock, Polarization]]
+        *states:BaseState
             List of states to apply the operators to, the tensoring order in operators
             must follow the order of the states in this list
         """
@@ -379,31 +400,31 @@ class ProductState:
             operators = [op.reshape(op_shape).transpose(*transpose_pattern) for op in operators]
             ps = self.state.reshape(shape)
             # Constructing einsum string
-            einsum_str = [[],[],[]]
+            einsum_list_list:List[List[int]] = [[],[],[]]
             c1 = itertools.count(start=0)
 
             einsum_states = {}
             for s in self.state_objs:
                 c = next(c1)
                 einsum_states[s] = [c]
-                einsum_str[1].append(c)
+                einsum_list_list[1].append(c)
             ed = next(c1)
-            einsum_str[1].append(ed)
+            einsum_list_list[1].append(ed)
             for s in states:
                 c = next(c1)
-                einsum_str[0].append(c)
+                einsum_list_list[0].append(c)
                 einsum_states[s].append(c)
-                einsum_str[0].append(einsum_states[s][0])
+                einsum_list_list[0].append(einsum_states[s][0])
 
             for s in self.state_objs:
                 if len(einsum_states[s])>1:
-                    einsum_str[2].append(einsum_states[s][1])
+                    einsum_list_list[2].append(einsum_states[s][1])
                 else:
-                    einsum_str[2].append(einsum_states[s][0])
-            einsum_str[2].append(ed)
+                    einsum_list_list[2].append(einsum_states[s][0])
+            einsum_list_list[2].append(ed)
 
-            einsum_str = [ "".join([chr(97+i) for i in s]) for s in einsum_str]
-            einsum_str = f"{einsum_str[0]},{einsum_str[1]}->{einsum_str[2]}"
+            einsum_list_str:List[str] = [ "".join([chr(97+i) for i in s]) for s in einsum_list_list]
+            einsum_str = f"{einsum_list_str[0]},{einsum_list_str[1]}->{einsum_list_str[2]}"
             for op in operators:
                 ps = jnp.einsum(einsum_str, op, ps)
             self.state = ps.flatten().reshape(-1,1)
@@ -411,7 +432,7 @@ class ProductState:
 
             op_shape = [s.dimensions for s in states]*2
 
-            transpose_pattern = lambda x: [item for i in range(len(x)) for item in [i,i+len(x)]]
+            tp:Callable[[Tuple['BaseState',...]], List[int]] = lambda x: [item for i in range(len(x)) for item in [i,i+len(x)]]
 
             #transpose_pattern = []
             #for i in range(len(states)):
@@ -419,9 +440,9 @@ class ProductState:
             #    transpose_pattern.append(i+len(states))
 
             ps = self.state.reshape([s.dimensions for s in self.state_objs]*2)
-            operators = [op.reshape(op_shape).transpose(*transpose_pattern(states)) for op in operators]
+            operators = [op.reshape(op_shape).transpose(*tp(states)) for op in operators]
             # Constructing einsum string
-            einsum_str = [[],[],[],[]]
+            einsum_list_list= [[],[],[],[]]
             einsum_states = {s:[] for s in self.state_objs}
             c1 = itertools.count(start=0)
 
@@ -430,26 +451,26 @@ class ProductState:
                 for i in range(2):
                     c = next(c1)
                     einsum_states[s].append(c)
-                    einsum_str[1].append(c)
-                    einsum_str[3].append(c)
+                    einsum_list_list[1].append(c)
+                    einsum_list_list[3].append(c)
 
             # Marking down the first operator indices
             for i, s in enumerate(states):
                 c = next(c1)
-                einsum_str[0].append(c)
-                einsum_str[0].append(einsum_states[s][0])
-                einsum_str[3][i*len(states)] = c
+                einsum_list_list[0].append(c)
+                einsum_list_list[0].append(einsum_states[s][0])
+                einsum_list_list[3][i*len(states)] = c
 
             # Marking the second operator indices:
             for i,s in enumerate(states):
                 c = next(c1)
-                einsum_str[2].append(c)
-                einsum_str[2].append(einsum_states[s][1])
-                einsum_str[3][i*len(states)+1] = c
+                einsum_list_list[2].append(c)
+                einsum_list_list[2].append(einsum_states[s][1])
+                einsum_list_list[3][i*len(states)+1] = c
 
             # Assembling the einstein sum
-            einsum_str = [ "".join([chr(97+i) for i in s]) for s in einsum_str]
-            einsum_str = f"{einsum_str[0]},{einsum_str[1]},{einsum_str[2]}->{einsum_str[3]}"
+            einsum_list= [ "".join([chr(97+i) for i in s]) for s in einsum_list_list]
+            einsum_str = f"{einsum_list[0]},{einsum_list[1]},{einsum_list[2]}->{einsum_list[3]}"
 
             for op in operators:
                 ps = jnp.einsum(einsum_str, op, ps, jnp.conj(op))
@@ -457,14 +478,14 @@ class ProductState:
 
             # Change the state back to the matrix form
             #transpose_pattern = get_transpose_pattern(self.state_objs)
-            ps = ps.transpose(*transpose_pattern(self.state_objs))
+            ps = ps.transpose(*tp(tuple(self.state_objs)))
             self.state = ps.reshape(dims, dims)
             C = Config()
             if C.contractions:
                 self.contract()
 
 
-    def trace_out(self, *states: List[Union['Fock', 'Polarization']]) -> jnp.ndarray:
+    def trace_out(self, *states: 'BaseState') -> jnp.ndarray:
         """
         Traces out the rest of the states from the product state and returns
         the resultint matrix or vector. If given states are in sparate product
@@ -472,7 +493,7 @@ class ProductState:
 
         Parameters
         ----------
-        *states: List[Union[Fock, Polarization]]
+        *states: BaseState
 
         Returns
         -------
@@ -486,29 +507,27 @@ class ProductState:
             ps = self.state.reshape(shape)
 
             # Compute einsum string
-            einsum_str = [[],[]]
+            einsum_list_list:List[List[int]] = [[],[]]
             c1 = itertools.count(start=0)
             for so in self.state_objs:
                 if not so in states:
                     c = next(c1)
-                    einsum_str[0].append(c)
+                    einsum_list_list[0].append(c)
                 else:
                     c = next(c1)
-                    einsum_str[0].append(c)
-                    einsum_str[1].append(c)
+                    einsum_list_list[0].append(c)
+                    einsum_list_list[1].append(c)
             c = next(c1)
-            einsum_str[0].append(c)
-            einsum_str[1].append(c)
-            einsum_str = [[chr(97+x) for x in string] for string in einsum_str]
-            einsum_str = ["".join(s) for s in einsum_str]
-            einsum_str = f"{einsum_str[0]}->{einsum_str[1]}"
+            einsum_list_list[0].append(c)
+            einsum_list_list[1].append(c)
+            einsum_list = [[chr(97+x) for x in string] for string in einsum_list_list]
+            einsum_str = ["".join(s) for s in einsum_list]
+            einsum = f"{einsum_str[0]}->{einsum_str[1]}"
 
 
-            traced_out_state = jnp.einsum(einsum_str, ps)
+            traced_out_state = jnp.einsum(einsum, ps)
             traced_out_state = traced_out_state.reshape((-1, 1))
             return traced_out_state
-
-
         elif self.expansion_level == ExpansionLevel.Matrix:
             transpose_pattern = lambda x: [item for i in range(len(x)) for item in [i,i+len(x)]]
 
@@ -518,27 +537,29 @@ class ProductState:
             )
 
             # Compute einstein sum string
-            einsum_str = [[],[]]
+            einsum_list_list = [[],[]]
             c1 = itertools.count(start=0)
             for so in self.state_objs:
                 if not so in states:
                     c = next(c1)
-                    einsum_str[0].extend([c,c])
+                    einsum_list_list[0].extend([c,c])
                 else:
-                    c = [next(c1), next(c1)]
-                    einsum_str[0].extend(c)
-                    einsum_str[1].extend(c)
+                    cl = [next(c1), next(c1)]
+                    einsum_list_list[0].extend(cl)
+                    einsum_list_list[1].extend(cl)
 
-            einsum_str = [[chr(97+x) for x in string] for string in einsum_str]
-            einsum_str = ["".join(s) for s in einsum_str]
-            einsum_str = f"{einsum_str[0]}->{einsum_str[1]}"
+            einsum_list = [[chr(97+x) for x in string] for string in einsum_list_list]
+            einsum_str = ["".join(s) for s in einsum_list]
+            einsum = f"{einsum_str[0]}->{einsum_str[1]}"
 
             new_dims = jnp.prod(jnp.array([s.dimensions for s in states]))
 
-            traced_out_state = jnp.einsum(einsum_str, ps)
+            traced_out_state = jnp.einsum(einsum, ps)
             traced_out_state = traced_out_state.transpose(transpose_pattern(states)).reshape(
                 (new_dims, new_dims))
             return traced_out_state
+        else:
+            raise ValueError("Something went wrong")
 
 
     @property
@@ -553,9 +574,9 @@ class ProductState:
 class CompositeEnvelopeContainer:
     composite_uid: uuid.UUID
     envelopes: List['Envelope'] = field(default_factory=list)
-    states: List[Optional[ProductState]] = field(default_factory=list)
+    states: List[ProductState] = field(default_factory=list)
 
-    def append_states(self, other: 'CompositeEnvelopeContainer'):
+    def append_states(self, other: 'CompositeEnvelopeContainer') -> None:
         """
         Appnds the states of two composite envelope containers
         Parameters
@@ -573,8 +594,9 @@ class CompositeEnvelopeContainer:
         removes it
         """
         for state in self.states[:]:
-            if state.is_empty:
-                self.states.remove(state)
+            if state is not None:
+                if state.is_empty:
+                    self.states.remove(state)
 
     def update_all_indices(self) -> None:
         """
@@ -583,7 +605,8 @@ class CompositeEnvelopeContainer:
         """
         for state_index, state in enumerate(self.states):
             for i,so in enumerate(state.state_objs):
-                so.extract((state_index, i))
+                if so is not None:
+                    so.extract((state_index, i))
 
 
 class CompositeEnvelope:
@@ -591,22 +614,24 @@ class CompositeEnvelope:
     Composite Envelope is a pointer to a container, which includes the state
     Multiple Composite enveopes can point to the same containers.
     """
-    _containers = {}
-    _instances = {}
+    _containers: Dict[Union['str', uuid.UUID], CompositeEnvelopeContainer] = {}
+    _instances: Dict[Union['str', uuid.UUID], List['CompositeEnvelope']] = {}
 
-    def __init__(self, *envelopes: Optional[List[Union['CompositeEnvelope', 'Envelope']]]) -> 'CompositeEnvelope':
+    def __init__(self, *states: List[Union['CompositeEnvelope', 'Envelope']]):
         from photon_weave.state.envelope import Envelope
         self.uid = uuid.uuid4()
         # Check if there are composite envelopes in the argument list
-        composite_envelopes = [e for e in envelopes if isinstance(e, CompositeEnvelope)]
-        envelopes = [e for e in envelopes if isinstance(e, Envelope)]
+        composite_envelopes:List[CompositeEnvelope] = [e for e in states if isinstance(e, CompositeEnvelope)]
+        envelopes:List[Envelope] = [e for e in states if isinstance(e, Envelope)]
         for e in envelopes:
             if (e.composite_envelope is not None and
                 e.composite_envelope not in composite_envelopes):
+                assert isinstance(e.composite_envelope, CompositeEnvelope), "e.composite_envelope should be CompositeEnvelope type"
                 composite_envelopes.append(e.composite_envelope)
 
         ce_container = None
         for ce in composite_envelopes:
+            assert isinstance(ce, CompositeEnvelope), "ce should be CompositeEnvelope type"
             if ce_container is None:
                 ce_container = CompositeEnvelope._containers[ce.uid]
             else:
@@ -616,6 +641,8 @@ class CompositeEnvelope:
             ce_container = CompositeEnvelopeContainer(self.uid)
         for e in envelopes:
             if e not in ce_container.envelopes:
+                assert e is not None, "Envelope e should not be None"
+                assert isinstance(e, Envelope), "e should be of type Envelope"
                 ce_container.envelopes.append(e)
         CompositeEnvelope._containers[self.uid] = ce_container
         if not CompositeEnvelope._instances.get(self.uid):
@@ -627,18 +654,18 @@ class CompositeEnvelope:
         return f"CompositeEnvelope(uid={self.uid}, envelopes={[e.uid for e in self.envelopes]}, state_objects={[s.uid for s in self.state_objs]})"
 
     @property
-    def envelopes(self):
+    def envelopes(self) -> List['Envelope']:
         return CompositeEnvelope._containers[self.uid].envelopes
 
     @property
-    def state_objs(self) -> List[Union['Fock', 'Polarization']]:
+    def state_objs(self) -> List['BaseState']:
         state_objs = []
         for e in self.envelopes:
             state_objs.extend([e.fock, e.polarization])
         return state_objs
 
     @property
-    def product_states(self) -> List[Optional[ProductState]]:
+    def product_states(self) -> List[ProductState]:
         return CompositeEnvelope._containers[self.uid].states
         
     @property
@@ -646,7 +673,7 @@ class CompositeEnvelope:
         return CompositeEnvelope._containers[self.uid]
 
     @property
-    def states(self) -> List[Optional[Union['Fock', 'Polarization']]]:
+    def states(self) -> List[ProductState]:
         return CompositeEnvelope._containers[self.uid].states
 
     def update_composite_envelope_pointers(self) -> None:
@@ -656,13 +683,13 @@ class CompositeEnvelope:
         for envelope in self.envelopes:
             envelope.set_composite_envelope_id(self.uid)
 
-    def combine(self, *state_objs: Union['Fock', 'Polarization']) -> None:
+    def combine(self, *state_objs: 'BaseState') -> None:
         """
         Combines given states into a product state.
 
         Parameters
         ----------
-        state_objs: Union['Fock', 'Polarization']
+        state_objs: BaseState
            Accepts many state_objs
         """
         from photon_weave.state.polarization import Polarization
@@ -686,7 +713,7 @@ class CompositeEnvelope:
         """
         existing_product_states = []
         for state in state_objs:
-            for i, ps in enumerate(self.product_states):
+            for ps in self.product_states:
                 if state in ps.state_objs:
                     existing_product_states.append(ps)
         # Removing duplicate product states
@@ -709,7 +736,7 @@ class CompositeEnvelope:
             if obj.index is None:
                 while obj.expansion_level < minimum_expansion_level:
                     obj.expand()
-            elif isinstance(obj.index, int):
+            elif isinstance(obj.index, int) and hasattr(obj, 'envelope'):
                 while obj.expansion_level < minimum_expansion_level:
                     obj.envelope.expand()
 
@@ -727,7 +754,7 @@ class CompositeEnvelope:
             state_order.extend(product_state.state_objs)
             product_state.state_objs = []
         for so in target_state_objs:
-            if so.envelope is not None and so.index is not None and not isinstance(so.index, tuple):
+            if hasattr(so, 'envelope') and so.envelope is not None and so.index is not None and not isinstance(so.index, tuple):
                 if minimum_expansion_level is ExpansionLevel.Vector:
                     state_vector_or_matrix = jnp.kron(
                         state_vector_or_matrix, so.envelope.composite_vector
@@ -741,7 +768,8 @@ class CompositeEnvelope:
                 indices = [None, None]
                 indices[so.envelope.fock.index] = so.envelope.fock
                 indices[so.envelope.polarization.index] = so.envelope.polarization
-                state_order.extend(indices)
+                assert all(x is not None for x in indices), "Indices must not be None at this point"
+                state_order.extend(cast(List['BaseState'],indices))
             if so.index is None:
                 if minimum_expansion_level is ExpansionLevel.Vector:
                     state_vector_or_matrix = jnp.kron(
@@ -758,10 +786,9 @@ class CompositeEnvelope:
         """
         ps = ProductState(
             expansion_level = minimum_expansion_level,
+            container = self._containers[self.uid],
             state = state_vector_or_matrix,
-            state_objs = state_order,
-            container = self._containers[self.uid]
-
+            state_objs = state_order
         )
 
         CompositeEnvelope._containers[self.uid].states.append(ps)
@@ -772,7 +799,7 @@ class CompositeEnvelope:
         self.container.remove_empty_product_states()
         self.container.update_all_indices()
 
-    def reorder(self, *ordered_states: List[Optional[Union["Fock", "Polarization"]]]) -> None:
+    def reorder(self, *ordered_states: 'BaseState') -> None:
         """
         Changes the order of the states in the produce space
         If not all states are given, the given states will be
@@ -781,7 +808,7 @@ class CompositeEnvelope:
 
         Parameters
         ----------
-        ordered_states: List[Optional[Fock, Polarization]]
+        *ordered_states: BaseState
             ordered list of states
         """
 
@@ -806,7 +833,7 @@ class CompositeEnvelope:
                 new_order[old_idx] = tmp
         ps.reorder(*new_order)
 
-    def measure(self, *states: List[Union['Fock', 'Polarization']]) -> Dict[Union['Polarization', 'Fock'], int]:
+    def measure(self, *states: 'BaseState') -> Dict['BaseState', int]:
         """
         Projective Measurement
         Given list of states will be measured, measurement is destructive
@@ -815,10 +842,16 @@ class CompositeEnvelope:
 
         Parameters
         ----------
-        *states: Dict[Union[Polarization, Fock], int]
+        *states: BaseState
             Dictionary of measurement outcomes, with space as key and int as result
+
+        Returns
+        -------
+        Dict['BaseState', int]
+            Measurement outcome for all measured states, (also implicitly measured states)
         """
         product_states = [p for p in self.states if any(so in p.state_objs for so in states)]
+        outcomes: Dict['BaseState', int]
         outcomes = {}
         for ps in product_states:
             ps_states = [so for so in states if so in ps.state_objs]
@@ -830,9 +863,9 @@ class CompositeEnvelope:
         return outcomes
 
     def measure_POVM(self, operators:List[Union[np.ndarray, jnp.ndarray]],
-                     *states:List[Union['Fock', 'Polarization']],
+                     *states: 'BaseState',
                      destructive: bool = True,
-                     ) -> int:
+                     ) -> Tuple[int, Dict['BaseState', int]]:
         """
         Perform a POVM measurement.
 
@@ -880,7 +913,7 @@ class CompositeEnvelope:
         return outcome
 
     def apply_kraus(self, operators:List[Union[np.ndarray, jnp.ndarray]],
-                    *states:List[Union['Fock', 'Polarization']],
+                    *states:'BaseState',
                     identity_check:bool=True) -> None:
         """
         Apply kraus operator to the given states
@@ -893,7 +926,7 @@ class CompositeEnvelope:
         ----------
         operators: List[Union[np.ndarray, jnp.ndarray]]
             List of all Kraus operators
-        *states: List[Union[Fock, Polarization]]
+        *states: BaseState
             List of the states, that the channel should be applied to
         identity_check: bool
             True by default, if true the method checks if kraus condition holds
@@ -928,7 +961,7 @@ class CompositeEnvelope:
 
         ps.apply_kraus(operators, *states)
 
-    def trace_out(self, *states: List[Union['Fock', 'Polarization']]) -> jnp.ndarray:
+    def trace_out(self, *states: Union['BaseState']) -> jnp.ndarray:
         """
         Traces out the rest of the states from the product state and returns
         the resultint matrix or vector. If given states are in sparate product
@@ -936,7 +969,7 @@ class CompositeEnvelope:
 
         Parameters
         ----------
-        *states: List[Union[Fock, Polarization]]
+        *states: Union[Fock, Polarization]
 
         Returns
         -------
@@ -945,15 +978,16 @@ class CompositeEnvelope:
             in the order in which the states are given
         """
         product_states = [p for p in self.states if any(so in p.state_objs for so in states)]
-        ps = None
+        assert len(product_states) > 0, "No product state found"
+        ps: ProductState
         if len(product_states)>1:
             all_states = [s for s in states]
             for p in product_states:
                 all_states.extend([s for s in p.state_objs])
             self.combine(*all_states)
-            ps = [p for p in self.states if any(so in p.state_objs for so in states)][0]
-        else:
-            ps = product_states[0]
+            product_states = [p for p in self.states if any(so in p.state_objs for so in states)]
+            assert len(product_states) > 0, "Only one product state should exist at this point"
+        ps = product_states[0]
 
         self.reorder(*states)
 

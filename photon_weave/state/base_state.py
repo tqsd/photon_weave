@@ -1,14 +1,15 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Union
+from typing import List, Union, Tuple
 import numpy as np
 import jax.numpy as jnp
+from uuid import UUID
 
 from photon_weave._math.ops import kraus_identity_check, apply_kraus
 
 class BaseState(ABC):
 
-    __slots__ = ("label", "uid", "state_vector", "density_matrix", "__dict__")
+    __slots__ = ("label", "_uid", "_state_vector", "density_matrix", "__dict__", "_expansion_level", "_index")
 
     def __hash__(self):
         return hash(self.uid)
@@ -79,3 +80,57 @@ class BaseState(ABC):
             
         self.density_matrix = apply_kraus(self.density_matrix, operators)
         self.contract()
+
+    @abstractmethod
+    def expand(self) -> None:
+        pass
+    
+    @property
+    @abstractmethod
+    def dimensions(self) -> int:
+        pass
+
+    @property
+    @abstractmethod
+    def expansion_level(self) -> int:
+        pass
+
+    @expansion_level.setter
+    def expansion_level(self, expansion_level: 'ExpansionLevel') -> None:
+        self._expansion_level = expansion_level
+
+    @property
+    @abstractmethod
+    def index(self) -> Union[None, int, Tuple[int, int]]:
+        pass
+
+    @index.setter
+    def index(self, index : Union[None, int, Tuple[int, int]]) -> None:
+        self._index = expansion_level
+    @property
+
+    @abstractmethod
+    def state_vector(self) -> jnp.ndarray:
+        pass
+
+    @state_vector.setter
+    def state_vector(self, state_vector: jnp.ndarray) -> None:
+        self._state_vector = state_vector
+
+    
+    @abstractmethod
+    def uid(self) -> jnp.ndarray:
+        pass
+
+    @state_vector.setter
+    def uid(self, state_vector: Union[UUID, str]) -> None:
+        self._uid= uid
+
+
+    @abstractmethod
+    def _set_measured(self):
+        pass
+
+    @abstractmethod
+    def extract(self, index:Union[int, Tuple[int, int]]) -> None:
+        pass
