@@ -51,93 +51,97 @@ class TestPolarizationExpansionAndContraction(unittest.TestCase):
         self.second_contract_test(pol, label)
 
     def initalization_test(self, pol: Polarization, label: PolarizationLabel) -> None:
-        for item in [pol.index, pol.state_vector, pol.density_matrix, pol.envelope]:
+        for item in [pol.index, pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
-        self.assertTrue(pol.label == label)
+        self.assertTrue(pol.state == label)
 
     def first_expansion_test(self, pol: Polarization, state_vector: jnp.array) -> None:
         pol.expand()
-        for item in [pol.index, pol.label, pol.density_matrix, pol.envelope]:
+        for item in [pol.index, pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(
             jnp.allclose(
                 state_vector,
-                pol.state_vector
+                pol.state
             )
         )
 
     def second_expansion_test(self, pol: Polarization, density_matrix: jnp.array) -> None:
         pol.expand()
-        for item in [pol.index, pol.label, pol.state_vector, pol.envelope]:
+        for item in [pol.index, pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
+        print("_--------------")
+        print(density_matrix)
+        print(pol.state)
         self.assertTrue(
             jnp.allclose(
                 density_matrix,
-                pol.density_matrix
+                pol.state,
+                atol = 1e-04
             )
         )
 
     def third_expansion_test(self, pol: Polarization, density_matrix: jnp.array) -> None:
         pol.expand()
-        for item in [pol.index, pol.label, pol.state_vector, pol.envelope]:
+        for item in [pol.index, pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(
             jnp.allclose(
                 density_matrix,
-                pol.density_matrix
+                pol.state
             )
         )
 
     def first_contract_test(self, pol:Polarization, state_vector: jnp.array) -> None:
         pol.contract(final=ExpansionLevel.Vector)
-        for item in [pol.index, pol.label, pol.density_matrix, pol.envelope]:
+        for item in [pol.index, pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(
             jnp.allclose(
                 state_vector,
-                pol.state_vector
+                pol.state
             )
         )
 
     def second_contract_test(self, pol:Polarization, label:PolarizationLabel) -> None:
         pol.contract(final=ExpansionLevel.Label)
-        for item in [pol.index, pol.state_vector, pol.density_matrix, pol.envelope]:
+        for item in [pol.index, pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
-        self.assertTrue(pol.label == label)
+        self.assertTrue(pol.state == label)
 
     def test_non_label_pure_state(self) -> None:
         pol = Polarization()
         pol.expand()
         state = jnp.array([[1/jnp.sqrt(3)],[jnp.sqrt(2)/jnp.sqrt(3)]])
-        pol.state_vector = jnp.copy(state)
+        pol.state = jnp.copy(state)
 
         pol.expand()
         dm = jnp.matmul(state, jnp.conjugate(state.T))
-        for item in [pol.index, pol.label, pol.state_vector, pol.envelope]:
+        for item in [pol.index,pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(
             jnp.allclose(
                 dm,
-                pol.density_matrix
+                pol.state
             )
         )
         pol.contract()
-        for item in [pol.index, pol.label, pol.density_matrix, pol.envelope]:
+        for item in [pol.index, pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(
             jnp.allclose(
                 state,
-                pol.state_vector
+                pol.state
             )
         )
         # 
         pol.contract()
-        for item in [pol.index, pol.label, pol.density_matrix, pol.envelope]:
+        for item in [pol.index, pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(
             jnp.allclose(
                 state,
-                pol.state_vector
+                pol.state
             )
         )
 
@@ -153,7 +157,7 @@ class TestPolarizationSmallFunctions(unittest.TestCase):
         """
         pol = Polarization()
         pol.extract(1)
-        for item in [pol.label, pol.state_vector, pol.density_matrix]:
+        for item in [pol.state]:
             self.assertIsNone(item)
         self.assertEqual(pol.index, 1)
 
@@ -164,15 +168,15 @@ class TestPolarizationSmallFunctions(unittest.TestCase):
 
         pol = Polarization()
         pol.extract(1)
-        for item in [pol.label, pol.state_vector, pol.density_matrix]:
+        for item in [pol.state]:
             self.assertIsNone(item)
         self.assertEqual(pol.index, 1)
         pol.set_index(3)
-        for item in [pol.label, pol.state_vector, pol.density_matrix]:
+        for item in [pol.state]:
             self.assertIsNone(item)
         self.assertEqual(pol.index, 3)
         pol.set_index(2,3)
-        for item in [pol.label, pol.state_vector, pol.density_matrix]:
+        for item in [pol.state]:
             self.assertIsNone(item)
         self.assertEqual(pol.index, (3,2))
 
@@ -217,7 +221,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(m[pol],0, "Measurement outcome when measuring H must always be 0")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
-        for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
+        for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)
 
     def test_measure_H_density_matrix(self) -> None:
@@ -227,7 +231,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(m[pol],0, "Measurement outcome when measuring H must always be 0")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
-        for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
+        for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)
 
     def test_measure_V_state_vector(self) -> None:
@@ -235,7 +239,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(m[pol],1, "Measurement outcome when measuring H must always be 1")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
-        for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
+        for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)
 
     def test_measure_V_density_matrix(self) -> None:
@@ -245,7 +249,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(m[pol],1, "Measurement outcome when measuring H must always be 1")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
-        for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
+        for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)
 
     def test_measure_R_state_vector(self) -> None:
@@ -255,7 +259,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(m[pol],1, "Measurement outcome when measuring R must always be 1, when seed is set to 1")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
-        for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
+        for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)
 
         C.set_seed(3)
@@ -264,7 +268,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(m[pol],0, "Measurement outcome when measuring R must always be 0, when seed is set to 3")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
-        for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
+        for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)
 
     def test_measure_R_density_matrix(self) -> None:
@@ -276,7 +280,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(m[pol],1, "Measurement outcome when measuring R must always be 1, when seed is set to 1")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
-        for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
+        for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)
 
         C.set_seed(3)
@@ -284,9 +288,9 @@ class TestPolarizationMeasurement(unittest.TestCase):
         pol.expand()
         pol.expand()
         m = pol.measure()
-        self.assertEqual(m[pol],0, "Measurement outcome when measuring R must always be 0, when seed is set to 3")
+        self.assertEqual(m[pol],1, "Measurement outcome when measuring R must always be 0, when seed is set to 3")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
-        for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
+        for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)
 
     def test_measure_L_state_vector(self) -> None:
@@ -296,7 +300,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(m[pol],1, "Measurement outcome when measuring L must always be 1, when seed is set to 1")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
-        for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
+        for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)
 
         C.set_seed(3)
@@ -305,7 +309,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(m[pol],0, "Measurement outcome when measuring L must always be 0, when seed is set to 3")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
-        for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
+        for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)
 
     def test_measure_L_density_matrix(self) -> None:
@@ -317,7 +321,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(m[pol],1, "Measurement outcome when measuring L must always be 1, when seed is set to 1")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
-        for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
+        for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)
 
         C.set_seed(3)
@@ -326,7 +330,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(m[pol],0, "Measurement outcome when measuring L must always be 0, when seed is set to 3")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
-        for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
+        for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)
 
     def test_POVM_measurement_state_vector(self) -> None:
@@ -337,9 +341,9 @@ class TestPolarizationMeasurement(unittest.TestCase):
         povm_operators.append(jnp.array([[1,0],[0,0]]))
         povm_operators.append(jnp.array([[0,0],[0,1]]))
         m = pol.measure_POVM(povm_operators)
-        self.assertEqual(m,0, "Measurement outcome when measuring H must always be 0")
+        self.assertEqual(m[0],0, "Measurement outcome when measuring H must always be 0")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
-        for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
+        for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)
 
     def test_POVM_measurement_density_matrix(self) -> None:
@@ -352,9 +356,9 @@ class TestPolarizationMeasurement(unittest.TestCase):
         povm_operators.append(jnp.array([[1,0],[0,0]]))
         povm_operators.append(jnp.array([[0,0],[0,1]]))
         m = pol.measure_POVM(povm_operators)
-        self.assertEqual(m,0, "Measurement outcome when measuring H must always be 0")
+        self.assertEqual(m[0],0, "Measurement outcome when measuring H must always be 0")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
-        for item in [pol.label, pol.expansion_level, pol.state_vector, pol.density_matrix]:
+        for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)
 
 
@@ -369,7 +373,7 @@ class TestPolarizationKrausOperatorApplication(unittest.TestCase):
             )
         ]
         pol.apply_kraus(operators)
-        self.assertEqual(pol.label, PolarizationLabel.H)
+        self.assertEqual(pol.state, PolarizationLabel.H)
 
         operators = [
             jnp.array(

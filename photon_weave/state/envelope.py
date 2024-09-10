@@ -7,7 +7,7 @@ Envelope
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import Optional, Union, Tuple, List
+from typing import Optional, Union, Tuple, List, TYPE_CHECKING
 import logging
 import uuid
 
@@ -26,6 +26,8 @@ from photon_weave.state.exceptions import (
     EnvelopeAssignedException,
     MissingTemporalProfileArgumentException
 )
+if TYPE_CHECKING:
+    from .base_state import BaseState
 
 logger = logging.getLogger()
 
@@ -286,7 +288,7 @@ class Envelope:
                     op_dagger = operator.conj().T
                     self.composite_matrix = self.composite_matrix @ op_dagger
 
-    def measure(self, non_destructive=False, remove_composite=True) -> Tuple[int, int]:
+    def measure(self, *states: 'BaseState', separate_measurement:bool=False, destructive:bool=True) -> Dict['BaseState', int]:
         """
         Measures the number of particles in the space
 
@@ -369,9 +371,8 @@ class Envelope:
         return outcomes
 
     def measure_POVM(self, operators: List[Union[np.ndarray, jnp.ndarray]],
-                     states:Tuple[Union[np.ndarray, jnp.ndarray],
-                                  Optional[Union[np.ndarray, jnp.ndarray]]],
-                     destructive:bool=False) -> int:
+                     states: 'BaseState',
+                     destructive:bool=False) -> Tuple[int, Dict['BaseState', int]]:
         """
         Positive Operation-Valued Measurement,
         POVM measurement does not destroy the quantum object by default.

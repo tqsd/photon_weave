@@ -7,6 +7,7 @@ from uuid import UUID
 
 from photon_weave._math.ops import kraus_identity_check, apply_kraus
 from photon_weave.state.expansion_levels import ExpansionLevel
+from photon_weave.photon_weave import Config
 
 if TYPE_CHECKING:
     from photon_weave.state.polarization import Polarization, PolarizationLabel
@@ -16,21 +17,28 @@ class BaseState(ABC):
     __slots__ = (
         "label", "_uid", "_state_vector", "density_matrix",
         "__dict__", "_expansion_level", "_index", "_dimensions",
-        "_measured"
+        "_measured", "_composite_envelope"
     )
+
+    @property
+    def composite_envelope(self) -> Union[None, 'CompositeEnvelope']:
+        return self._composite_envelope
+
+    @composite_envelope.setter
+    def composite_envelope(self, composite_envelope:Union[None, 'CompositeEnvelope']) -> None:
+        self._composite_envelope = composite_envelope
 
     @property
     def uid(self) -> Union[str, UUID]:
         return self._uid
 
     @uid.setter
-    def uid(self, state_vector: Union[UUID, str]) -> None:
+    def uid(self, uid: Union[UUID, str]) -> None:
         self._uid= uid
 
     @property
-    @abstractmethod
     def dimensions(self) -> int:
-        pass
+        return self._dimensions
 
     @property
     def expansion_level(self) -> int:
@@ -61,20 +69,22 @@ class BaseState(ABC):
         return hash(self.uid)
 
     def __repr__(self) -> str:
-        if self.label is not None:
-            if isinstance(self.label, Enum):
-                return f"|{self.label.value}⟩"
-            elif isinstance(self.label, int):
-                return f"|{self.label}⟩"
+        if self.expansion_level == ExpansionLevel.Label:
+            if isinstance(self.state, Enum):
+                return f"|{self.state.value}⟩"
+            elif isinstance(self.state, int):
+                return f"|{self.state}⟩"
 
-        elif self.state_vector is not None:
+        if self.index != None:
+            return str(self.uid)
+
+        elif self.expansion_level == ExpansionLevel.Vector:
         # Handle cases where the vector has only one element
-            flattened_vector = self.state_vector.flatten()
             formatted_vector: Union[str, List[str]]
             formatted_vector = "\n".join(
                 [
                     f"⎢ {''.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
-                    for row in self.state_vector
+                    for row in self.state
                 ]
             )
             formatted_vector = formatted_vector.split("\n")
@@ -82,12 +92,12 @@ class BaseState(ABC):
             formatted_vector[-1] = "⎣" + formatted_vector[-1][1:-1] + "⎦"
             formatted_vector = "\n".join(formatted_vector)
             return f"{formatted_vector}"
-        elif self.density_matrix is not None:
+        elif self.expansion_level == ExpansionLevel.Matrix:
             formatted_matrix: Union[str,List[str]]
             formatted_matrix = "\n".join(
                 [
                     f"⎢ {'   '.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
-                    for row in self.density_matrix
+                    for row in self.state
                 ]
             )
 
@@ -98,8 +108,6 @@ class BaseState(ABC):
             formatted_matrix = "\n".join(formatted_matrix)
 
             return f"{formatted_matrix}"
-        else:
-            return str(self.uid)
 
     def apply_kraus(self, operators: List[Union[np.ndarray, jnp.ndarray]], identity_check:bool=True) -> None:
         """
@@ -113,19 +121,20 @@ class BaseState(ABC):
             Signal to check whether or not the operators sum up to identity, True by default
         """
 
-        while self.density_matrix is None:
+        while self.expansion_level < ExpansionLevel.Matrix:
             self.expand()
 
-        dim = self.density_matrix.shape[0]
         for op in operators:
-            if op.shape != (dim, dim):
-                raise ValueError(f"Kraus operator has incorrect dimensions: {op.shape}, expected ({dim},{dim})")
+            if not op.shape == (self.dimensions, self.dimensions):
+                raise ValueError("Operator dimensions do not match state dimensions")
 
         if not kraus_identity_check(operators):
             raise ValueError("Kraus operators do not sum to the identity")
             
-        self.density_matrix = apply_kraus(self.density_matrix, operators)
-        self.contract()
+        self.state = apply_kraus(self.state, operators)
+        C = Config()
+        if C.contractions:
+            self.contract()
 
     @abstractmethod
     def expand(self) -> None:

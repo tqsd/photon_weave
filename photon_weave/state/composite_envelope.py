@@ -683,6 +683,12 @@ class CompositeEnvelope:
         for envelope in self.envelopes:
             envelope.set_composite_envelope_id(self.uid)
 
+    def expand(self, *state_objs: 'BaseState') -> None:
+        pass
+
+    def contract(self, *state_objs: 'BaseState') -> None:
+        pass
+
     def combine(self, *state_objs: 'BaseState') -> None:
         """
         Combines given states into a product state.
