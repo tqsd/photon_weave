@@ -8,7 +8,7 @@ import uuid
 import jax.numpy as jnp
 import jax
 import numpy as np
-from typing import Union, Tuple, Optional, List, Dict
+from typing import Union, Tuple, Optional, List, Dict, overload
 
 from photon_weave._math.ops import apply_kraus, kraus_identity_check
 from photon_weave.photon_weave import Config

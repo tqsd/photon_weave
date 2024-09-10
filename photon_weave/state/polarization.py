@@ -127,7 +127,7 @@ class Polarization(BaseState):
         elif self.expansion_level == ExpansionLevel.Vector:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, 1)
-            self.state = jnp.dot(self.state, self.state.T)
+            self.state = jnp.dot(self.state, jnp.conj(self.state.T))
             self.expansion_level = ExpansionLevel.Matrix
 
     def contract(self, final:ExpansionLevel = ExpansionLevel.Label, tol:float=1e-6) -> None:
@@ -224,6 +224,7 @@ class Polarization(BaseState):
         self.measured = True
         self.state = None
         self.index = None
+        self.expansion_level = None
 
     def measure(self, destructive:bool = True, separate_measurement:bool=False) -> Dict[BaseState, int]:
         """
@@ -284,59 +285,3 @@ class Polarization(BaseState):
         if destructive:
             self._set_measured()
         return results
-
-    def measure_POVM(self, operators:List[Union[np.ndarray, jnp.ndarray]], destructive:bool=True) -> Tuple[int, Dict[BaseState, int]]:
-        """
-        Positive Operation-Valued Measurement
-
-        Parameters
-        ----------
-        operators: Union[np.ndarray, jnp.Array]
-
-        Returns
-        -------
-        int
-            The index of the measurement outcome
-        """
-        if isinstance(self.index, int):
-            assert isinstance(self.envelope, Envelope)
-            return self.envelope.measure_POVM(operators, self)
-        elif isinstance(self.index, tuple) or isinstance(self.index, list):
-            assert isinstance(self.composite_envelope, CompositeEnvelope)
-            return self.composite_envelope.measure_POVM(operators, self, destructive=destructive)
-
-        while self.expansion_level < ExpansionLevel.Matrix:
-            self.expand()
-
-        assert isinstance(self.state, jnp.ndarray)
-        assert self.state.shape == (self.dimensions, self.dimensions)
-
-        # Compute probabilities p(i) = Tr(E_i * rho) for each POVM operator E_i
-        probabilities = jnp.array([
-            jnp.trace(jnp.matmul(op, self.state)).real for op in operators
-        ])
-
-        # Normalize probabilities (handle numerical issues)
-        probabilities = probabilities / jnp.sum(probabilities)
-
-        # Generate a random key
-        C = Config()
-        key = C.random_key
-
-        # Sample the measurement outcome
-        outcome = int(jax.random.choice(
-            key,
-            a=jnp.arange(len(operators)),
-            p=probabilities
-        ))
-
-        self.state = jnp.matmul(
-            operators[outcome], jnp.matmul(
-                self.state,jnp.conj(operators[outcome].T)))
-        self.state = self.state / jnp.trace(self.state)
-        
-        if destructive:
-            self._set_measured()
-
-        return (outcome, {})
-

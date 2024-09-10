@@ -70,9 +70,6 @@ class TestPolarizationExpansionAndContraction(unittest.TestCase):
         pol.expand()
         for item in [pol.index, pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
-        print("_--------------")
-        print(density_matrix)
-        print(pol.state)
         self.assertTrue(
             jnp.allclose(
                 density_matrix,
@@ -288,7 +285,7 @@ class TestPolarizationMeasurement(unittest.TestCase):
         pol.expand()
         pol.expand()
         m = pol.measure()
-        self.assertEqual(m[pol],1, "Measurement outcome when measuring R must always be 0, when seed is set to 3")
+        self.assertEqual(m[pol],0, "Measurement outcome when measuring R must always be 0, when seed is set to 3")
         self.assertTrue(pol.measured, "Polarization must have measurement=True after measurement.")
         for item in [pol.envelope, pol.composite_envelope, pol.state, pol.expansion_level]:
             self.assertIsNone(item)

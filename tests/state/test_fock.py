@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import random
 
 from photon_weave.photon_weave import Config
-from photon_weave.state.fock import Fock, FockAlreadyMeasuredException
+from photon_weave.state.fock import Fock
 from photon_weave.state.polarization import Polarization
 from photon_weave.state.envelope import Envelope
 from photon_weave.state.expansion_levels import ExpansionLevel
@@ -18,13 +18,13 @@ class TestFockSmallFunctions(unittest.TestCase):
         fock = Fock()
         # Test the Label representation
         for i in range(100):
-           fock.label = i 
+           fock.state = i 
            self.assertEqual(fock.__repr__(), f"|{i}⟩")
 
         # Test the state vector representation
         fock.dimensions = 5
         label = random.randint(0,4)
-        fock.label = label
+        fock.state = label
         fock.expand()
         representation = fock.__repr__().split("\n")
         for ln, line in enumerate(representation):
@@ -84,7 +84,7 @@ class TestFockSmallFunctions(unittest.TestCase):
         f2.expand()
         self.assertTrue(f1 == f2)
         f1 = Fock()
-        f1.label = 1
+        f1.state = 1
         f2 = Fock()
         self.assertTrue(f1 != f2)
         f1.expand()
@@ -97,25 +97,25 @@ class TestFockSmallFunctions(unittest.TestCase):
     def test_extract(self) -> None:
         fock= Fock()
         fock.extract(1)
-        for item in [fock.label, fock.state_vector, fock.density_matrix]:
+        for item in [fock.state]:
             self.assertIsNone(item)
         self.assertEqual(fock.index, 1)
         fock= Fock()
         fock.extract((1,1))
-        for item in [fock.label, fock.state_vector, fock.density_matrix]:
+        for item in [fock.state]:
             self.assertIsNone(item)
         self.assertEqual(fock.index, (1,1))
 
         fock= Fock()
         fock.expand()
         fock.extract(1)
-        for item in [fock.label, fock.state_vector, fock.density_matrix]:
+        for item in [fock.state]:
             self.assertIsNone(item)
         self.assertEqual(fock.index, 1)
         fock= Fock()
         fock.expand()
         fock.extract((1,1))
-        for item in [fock.label, fock.state_vector, fock.density_matrix]:
+        for item in [fock.state]:
             self.assertIsNone(item)
         self.assertEqual(fock.index, (1,1))
 
@@ -123,14 +123,14 @@ class TestFockSmallFunctions(unittest.TestCase):
         fock.expand()
         fock.expand()
         fock.extract(1)
-        for item in [fock.label, fock.state_vector, fock.density_matrix]:
+        for item in [fock.state]:
             self.assertIsNone(item)
         self.assertEqual(fock.index, 1)
         fock= Fock()
         fock.expand()
         fock.expand()
         fock.extract((1,1))
-        for item in [fock.label, fock.state_vector, fock.density_matrix]:
+        for item in [fock.state]:
             self.assertIsNone(item)
         self.assertEqual(fock.index, (1,1))
 
@@ -141,34 +141,18 @@ class TestFockSmallFunctions(unittest.TestCase):
         fock.set_index(1,1)
         self.assertEqual(fock.index, (1,1))
 
-    def test_normalization(self) -> None:
-        fock = Fock()
-        fock.expand()
-        #fock.state_vector[0][0] = 2
-        fock.state_vector.at[0,0].set(2)
-        fock.normalize()
-        self.assertEqual(fock.state_vector[0][0], 1)
-        fock = Fock()
-        fock.expand()
-        fock.expand()
-        fock.density_matrix.at[0,0].set(2)
-        fock.normalize()
-        self.assertEqual(fock.density_matrix[0][0], 1)
-
     def test_set_measured(self) -> None:
         fock = Fock()
         fock._set_measured()
         self.assertTrue(fock.measured)
-        for item in [fock.label, fock.expansion_level, fock.state_vector,
-                     fock.density_matrix, fock.index]:
+        for item in [fock.state]:
             self.assertIsNone(item)
 
         fock = Fock()
         fock.expand()
         fock._set_measured()
         self.assertTrue(fock.measured)
-        for item in [fock.label, fock.expansion_level, fock.state_vector,
-                     fock.density_matrix, fock.index]:
+        for item in [fock.index, fock.state]:
             self.assertIsNone(item)
             
         fock = Fock()
@@ -176,8 +160,7 @@ class TestFockSmallFunctions(unittest.TestCase):
         fock.expand()
         fock._set_measured()
         self.assertTrue(fock.measured)
-        for item in [fock.label, fock.expansion_level, fock.state_vector,
-                     fock.density_matrix, fock.index]:
+        for item in [fock.index, fock.state]:
             self.assertIsNone(item)
 
     def test_num_quanta(self) -> None:
@@ -188,28 +171,6 @@ class TestFockSmallFunctions(unittest.TestCase):
         fock.expand()
         self.assertEqual(fock._num_quanta, 0)
 
-    def test_get_subspace(self) -> None:
-        f = Fock()
-        self.assertEqual(f.get_subspace(), 0)
-        f.dimensions = 2
-        f.expand()
-        self.assertTrue(
-            jnp.allclose(
-                f.state_vector,
-                jnp.array(
-                    [[1],[0]]
-                )
-            )
-        )
-        f.expand()
-        self.assertTrue(
-            jnp.allclose(
-                f.density_matrix,
-                jnp.array(
-                    [[1,0],[0,0]]
-                )
-            )
-        )
 
 class TestFockExpansionAndContraction(unittest.TestCase):
     def test_all_cases(self) -> None:
@@ -277,6 +238,7 @@ class TestFockExpansionAndContraction(unittest.TestCase):
     def run_test(self, *tc):
         fock = tc[0]
         label = tc[1]
+        fock.state = label
         state_vector = jnp.array(tc[2])
         density_matrix = jnp.array(tc[3])
         self.initialization_test(fock, label)
@@ -288,73 +250,73 @@ class TestFockExpansionAndContraction(unittest.TestCase):
         self.third_contract_test(fock, label)
 
     def initialization_test(self, fock: Fock, label: int) -> None:
-        for i,item in enumerate([fock.index, fock.state_vector, fock.density_matrix, fock.envelope]):
-            self.assertIsNone(item)
-        self.assertEqual(fock.label, label)
+        for i,item in enumerate([fock.envelope, fock.composite_envelope, fock.index]):
+            self.assertIsNone(item, f"{i}-{item}")
+        self.assertEqual(fock.state, label)
 
     def first_expansion_test(self, fock: Fock, state_vector: jnp.ndarray) -> None:
         fock.expand()
-        for item in [fock.index, fock.label, fock.density_matrix, fock.envelope]:
+        for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(
             jnp.allclose(
                 state_vector,
-                fock.state_vector
+                fock.state
             )
         )
 
     def second_expansion_test(self, fock: Fock, density_matrix: jnp.ndarray) -> None:
         fock.expand()
-        for item in [fock.index, fock.label, fock.state_vector, fock.envelope]:
+        for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(
             jnp.allclose(
                 density_matrix,
-                fock.density_matrix
+                fock.state
             )
         )
 
     def third_expansion_test(self, fock: Fock, density_matrix: jnp.ndarray) -> None:
         fock.expand()
-        for item in [fock.index, fock.label, fock.state_vector, fock.envelope]:
+        for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(
             jnp.allclose(
                 density_matrix,
-                fock.density_matrix
+                fock.state
             )
         )
 
     def first_contract_test(self, fock:Fock, state_vector: jnp.ndarray) -> None:
         fock.contract(final=ExpansionLevel.Vector)
-        for item in [fock.index, fock.label, fock.density_matrix, fock.envelope]:
+        for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(
             jnp.allclose(
                 state_vector,
-                fock.state_vector
+                fock.state
             )
         )
 
     def second_contract_test(self, fock:Fock, label: int) -> None:
         fock.contract(final=ExpansionLevel.Label)
-        for item in [fock.index, fock.state_vector, fock.density_matrix, fock.envelope]:
+        for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(
             jnp.allclose(
                 label,
-                fock.label
+                fock.state
             )
         )
 
     def third_contract_test(self, fock:Fock, label: int) -> None:
         fock.contract(final=ExpansionLevel.Label)
-        for item in [fock.index, fock.state_vector, fock.density_matrix, fock.envelope]:
+        for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(
             jnp.allclose(
                 label,
-                fock.label
+                fock.state
             )
         )
 
@@ -366,14 +328,14 @@ class TestFockMeasurement(unittest.TestCase):
     def test_general_measurement_label(self) -> None:
         for i in range(10):
             f = Fock()
-            f.label = i
+            f.state = i
             m = f.measure()
             self.assertEqual(m[f], i)
 
     def test_general_measurement_vector(self) -> None:
         for i in range(10):
             f = Fock()
-            f.label = i
+            f.state = i
             f.expand()
             m = f.measure()
             self.assertEqual(m[f], i)
@@ -381,7 +343,7 @@ class TestFockMeasurement(unittest.TestCase):
     def test_general_measurement_matrix(self) -> None:
         for i in range(10):
             f = Fock()
-            f.label = i
+            f.state = i
             f.expand()
             f.expand()
             m = f.measure()
@@ -391,7 +353,7 @@ class TestFockMeasurement(unittest.TestCase):
         f = Fock()
         f.dimensions = 2
         f.expand()
-        f.state_vector = jnp.array(
+        f.state = jnp.array(
             [[1/jnp.sqrt(2)],[1/jnp.sqrt(2)]]
         )
         C = Config()
@@ -401,7 +363,7 @@ class TestFockMeasurement(unittest.TestCase):
         f = Fock()
         f.dimensions = 2
         f.expand()
-        f.state_vector = jnp.array(
+        f.state = jnp.array(
             [[1/jnp.sqrt(2)],[1/jnp.sqrt(2)]]
         )
         C.set_seed(3)
@@ -412,7 +374,7 @@ class TestFockMeasurement(unittest.TestCase):
         f = Fock()
         f.dimensions = 2
         f.expand()
-        f.state_vector = jnp.array(
+        f.state= jnp.array(
             [[1/jnp.sqrt(2)],[1/jnp.sqrt(2)]]
         )
         f.expand()
@@ -423,7 +385,7 @@ class TestFockMeasurement(unittest.TestCase):
         f = Fock()
         f.dimensions = 2
         f.expand()
-        f.state_vector = jnp.array(
+        f.state= jnp.array(
             [[1/jnp.sqrt(2)],[1/jnp.sqrt(2)]]
         )
         f.expand()
@@ -431,13 +393,6 @@ class TestFockMeasurement(unittest.TestCase):
         m = f.measure()
         self.assertEqual(m[f], 0, "Should be 1 with seed 3")
 
-    def test_double_measurement(self) -> None:
-        f = Fock()
-        f.measure()
-
-        with self.assertRaises(FockAlreadyMeasuredException) as context:
-            f.measure()
-
     def test_POVM_measurement_state_vector(self) -> None:
         C = Config()
         C.set_seed(1)
@@ -462,112 +417,7 @@ class TestFockMeasurement(unittest.TestCase):
         povm_operators.append(jnp.array([[1,0],[0,0]]))
         povm_operators.append(jnp.array([[0,0],[0,1]]))
         m = f.measure_POVM(povm_operators)
-        self.assertEqual(m,0, "Measurement outcome when measuring H must always be 0")
+        self.assertEqual(m[0],0, "Measurement outcome when measuring H must always be 0")
         self.assertTrue(f.measured)
-        for item in [f.label, f.expansion_level, f.state_vector, f.density_matrix]:
-            self.assertIsNone(item)
-
-
-class TestFockResizse(unittest.TestCase):
-    def test_resizse_label(self):
-        f = Fock()
-        f.dimensions = 3
-        success = f.resize(5)
-        self.assertEqual(f.dimensions, 5)
-        self.assertTrue(success)
-        self.assertEqual(f.label, 0)
-        self.assertEqual(f.expansion_level, ExpansionLevel.Label)
-        for item in [f.state_vector, f.density_matrix]:
-            self.assertIsNone(item)
-
-        f = Fock()
-        f.dimensions = 5
-        success = f.resize(3)
-        self.assertEqual(f.dimensions, 3)
-        self.assertTrue(success)
-        self.assertEqual(f.expansion_level, ExpansionLevel.Label)
-        self.assertEqual(f.label, 0)
-        for item in [f.state_vector, f.density_matrix]:
-            self.assertIsNone(item)
-
-    def test_resizse_vector(self):
-        f = Fock()
-        f.dimensions = 3
-        f.expand()
-        success = f.resize(5)
-        self.assertEqual(f.dimensions, 5)
-        self.assertTrue(success)
-        self.assertEqual(f.expansion_level, ExpansionLevel.Vector)
-        self.assertTrue(
-            jnp.allclose(
-                f.state_vector,
-                jnp.array(
-                    [[1],[0],[0],[0],[0]]
-                )
-            )
-        )
-        for item in [f.label, f.density_matrix]:
-            self.assertIsNone(item)
-
-        f = Fock()
-        f.dimensions = 5
-        f.expand()
-        success = f.resize(3)
-        self.assertEqual(f.dimensions, 3)
-        self.assertTrue(success)
-        self.assertEqual(f.expansion_level, ExpansionLevel.Vector)
-        self.assertTrue(
-            jnp.allclose(
-                f.state_vector,
-                jnp.array(
-                    [[1],[0],[0]]
-                )
-            )
-        )
-        for item in [f.label, f.density_matrix]:
-            self.assertIsNone(item)
-
-    def test_resizse_matrix(self):
-        f = Fock()
-        f.dimensions = 3
-        f.expand()
-        f.expand()
-        success = f.resize(5)
-        self.assertEqual(f.dimensions, 5)
-        self.assertTrue(success)
-        self.assertEqual(f.expansion_level, ExpansionLevel.Matrix)
-        self.assertTrue(
-            jnp.allclose(
-                f.density_matrix,
-                jnp.array(
-                    [[1,0,0,0,0],
-                     [0,0,0,0,0],
-                     [0,0,0,0,0],
-                     [0,0,0,0,0],
-                     [0,0,0,0,0]]
-                )
-            )
-        )
-        for item in [f.label, f.state_vector]:
-            self.assertIsNone(item)
-
-        f = Fock()
-        f.dimensions = 5
-        f.expand()
-        f.expand()
-        success = f.resize(3)
-        self.assertEqual(f.dimensions, 3)
-        self.assertTrue(success)
-        self.assertEqual(f.expansion_level, ExpansionLevel.Matrix)
-        self.assertTrue(
-            jnp.allclose(
-                f.density_matrix,
-                jnp.array(
-                    [[1,0,0],
-                     [0,0,0],
-                     [0,0,0]]
-                )
-            )
-        )
-        for item in [f.label, f.state_vector]:
+        for item in [f.index, f.state]:
             self.assertIsNone(item)

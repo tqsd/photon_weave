@@ -18,6 +18,7 @@ from photon_weave._math.ops import (
 from .envelope import EnvelopeAssignedException
 from .expansion_levels import ExpansionLevel
 from .base_state import BaseState
+from photon_weave.state.composite_envelope import CompositeEnvelope
 
 if TYPE_CHECKING:
     from .envelope import Envelope
@@ -64,15 +65,12 @@ class Fock(BaseState):
         self.uid: uuid.UUID = uuid.uuid4()
         self.index: Optional[Union[int, Tuple[int, int]]] = None
         self.dimensions: int = -1
-        self.label: Optional[int] = 0
-        self.state_vector: Optional[jnp.ndarray] = None
-        self.density_matrix: Optional[jnp.ndarray] = None
+        self.state = 0
         self.envelope: Optional["Envelope"] = envelope
-        self.expansion_level : Optional[ExpansionLevel] = ExpansionLevel.Label
+        self._composite_envelope = None
+        self.expansion_level : ExpansionLevel = ExpansionLevel.Label
         self.measured = False
 
-    def __hash__(self):
-        return hash(self.uid)
 
     def __eq__(self, other: Any) -> bool:
         """
@@ -86,18 +84,13 @@ class Fock(BaseState):
         """
         if not isinstance(other, Fock):
             return False
-        if self.label is not None and other.label is not None:
-            if self.label == other.label:
+        if isinstance(self.state, int) and isinstance(other.state, int):
+            if self.state == other.state:
                 return True
-            return False
-        if self.state_vector is not None and other.state_vector is not None:
-            if np.array_equal(self.state_vector, other.state_vector):
-                return True
-            return False
-        if self.density_matrix is not None and other.density_matrix is not None:
-            if np.array_equal(self.density_matrix, other.density_matrix):
-                return True
-            return False
+        elif isinstance(self.state, jnp.ndarray) and isinstance(other.state, jnp.ndarray):
+            if self.state.shape == other.state.shape:
+                if jnp.allclose(self.state, other.state):
+                    return True
         return False
 
     def expand(self) -> None:
@@ -107,26 +100,32 @@ class Fock(BaseState):
         state is in state_vector, then the state is expanded
         to the state_matrix
         """
+        if isinstance(self.index, int):
+            assert isinstance(self.envelope, Envelope)
+            self.envelope.expand()
+        if isinstance(self.index, tuple) or isinstance(self.index, list):
+            assert isinstance(self.composite_envelope, CompositeEnvelope)
+            self.composite_envelope.expand(self)
+
         if self.dimensions < 0:
             assert self.dimensions is not None, "self.dimensions shoul not be None"
-            if self.label is not None:
-                self.dimensions = self.label + 3
+            if isinstance(self.state, int):
+                self.dimensions = self.state + 3
+
         if self.expansion_level is ExpansionLevel.Label:
+            assert isinstance(self.state, int)
             state_vector = jnp.zeros(int(self.dimensions))
-            state_vector = state_vector.at[self.label].set(1)
+            state_vector = state_vector.at[self.state].set(1)
             new_state_vector = state_vector[:, jnp.newaxis]
-            assert new_state_vector is not None, "Expansion failed"
-            self.state_vector = new_state_vector
-            self.label = None
+            self.state = new_state_vector
             self.expansion_level = ExpansionLevel.Vector
         elif self.expansion_level is ExpansionLevel.Vector:
-            assert self.state_vector is not None, "self.state_vector should not be None"
+            assert isinstance(self.state, jnp.ndarray)
+            assert self.state.shape == (self.dimensions, 1)
             new_density_matrix = jnp.outer(
-                self.state_vector.flatten(), jnp.conj(self.state_vector.flatten())
+                self.state.flatten(), jnp.conj(self.state.flatten())
             )
-            assert new_density_matrix is not None, "new density matrix should not be None"
-            self.density_matrix = new_density_matrix
-            self.state_vector = None
+            self.state = new_density_matrix
             self.expansion_level = ExpansionLevel.Matrix
 
     def contract(self, final: ExpansionLevel = ExpansionLevel.Label, tol:float=1e-6) -> None:
@@ -142,27 +141,27 @@ class Fock(BaseState):
         """
         if self.expansion_level is ExpansionLevel.Matrix and final < ExpansionLevel.Matrix:
             # Check if the state is pure state
-            assert self.density_matrix is not None, "Density matrix should not be None"
-            state_squared = jnp.matmul(self.density_matrix, self.density_matrix)
+            assert isinstance(self.state, jnp.ndarray)
+            assert self.state.shape == (self.dimensions, self.dimensions)
+            state_squared = jnp.matmul(self.state, self.state)
             state_trace = jnp.trace(state_squared)
             if jnp.abs(state_trace-1) < tol:
                 # The state is pure
-                eigenvalues, eigenvectors = jnp.linalg.eigh(self.density_matrix)
+                eigenvalues, eigenvectors = jnp.linalg.eigh(self.state)
                 pure_state_index = jnp.argmax(jnp.abs(eigenvalues -1.0) < tol)
                 assert pure_state_index is not None, "pure_state_index should not be None"
-                self.state_vector = eigenvectors[:, pure_state_index].reshape(-1,1)
+                self.state = eigenvectors[:, pure_state_index].reshape(-1,1)
                 # Normalizing the phase
-                assert self.state_vector is not None, "self.state_vector should not be None"
-                phase = jnp.exp(-1j * jnp.angle(self.state_vector[0]))
-                self.state_vector = self.state_vector*phase
-                self.density_matrix = None
+                assert self.state is not None, "self.state should not be None"
+                phase = jnp.exp(-1j * jnp.angle(self.state[0]))
+                self.state= self.state*phase
                 self.expansion_level = ExpansionLevel.Vector
         if self.expansion_level is ExpansionLevel.Vector and final < ExpansionLevel.Vector:
-            assert self.state_vector is not None, "self.state_vector should not be None"
-            ones = jnp.where(self.state_vector == 1)[0]
+            assert isinstance(self.state, jnp.ndarray)
+            assert self.state.shape == (self.dimensions, 1)
+            ones = jnp.where(self.state == 1)[0]
             if ones.size == 1:
-                self.label = int(ones[0])
-                self.state_vector = None
+                self.state = int(ones[0])
                 self.expansion_level = ExpansionLevel.Label
 
     def extract(self, index: Union[int, Tuple[int, int]]) -> None:
@@ -173,51 +172,7 @@ class Fock(BaseState):
         state_vector is set to None
         """
         self.index = index
-        self.label = None
-        self.density_matrix = None
-        self.state_vector = None
-
-    def apply_operation(self, operation: FockOperation) -> None:
-        """
-        Applies a specific operation to the state
-
-        Todo
-        ----
-        If the state is in the product space the operation should be
-        Routed to the correct space
-
-        Parameters
-        ----------
-        operation: FockOperation
-            Operation which should be carried out on this state
-        """
-        match operation.operation:
-            case FockOperationType.Creation:
-                if self.label is not None:
-                    self.label += operation.apply_count
-                    return
-            case FockOperationType.Annihilation:
-                if self.label is not None:
-                    self.label -= operation.apply_count
-                    if self.label < 0:
-                        self.label = 0
-                    return
-        min_expansion_level = operation.expansion_level_required()
-        assert self.expansion_level is not None, "self.expansion_level should not be None"
-        while self.expansion_level < min_expansion_level:
-            self.expand()
-
-        cutoff_required = operation.cutoff_required(self._num_quanta)
-        if cutoff_required > self.dimensions:
-            self.resize(cutoff_required)
-
-        match operation.operation:
-            case FockOperationType.Creation:
-                if self._num_quanta + operation.apply_count + 1 > self.dimensions:
-                    self.resize(self._num_quanta + operation.apply_count + 1)
-        operation.compute_operator(self.dimensions)
-
-        self._execute_apply(operation)
+        self.state = None
 
     @property
     def _num_quanta(self) -> int:
@@ -230,95 +185,14 @@ class Fock(BaseState):
         int
             Highest possible measurement outcome, -1 if failed
         """
-        if self.label is not None:
-            return self.label
-        if self.state_vector is not None:
-            return num_quanta_vector(self.state_vector)
-        if self.density_matrix is not None:
-            return num_quanta_matrix(self.density_matrix)
+        if isinstance(self.state, int):
+            return self.state
+        elif isinstance(self.state, jnp.ndarray):
+            if self.state.shape == (self.dimensions, 1):
+                return num_quanta_vector(self.state)
+            elif self.state.shape == (self.dimensions, self.dimensions):
+                return num_quanta_matrix(self.state)
         return -1
-
-    def _execute_apply(self, operation: FockOperation) -> None:
-        """
-        Actually executes the operation
-
-        Todo
-        ----
-        Consider using gpu for this operation
-        """
-        assert operation.operator is not None, "operation.operators must not be None"
-        if self.state_vector is not None:
-            self.state_vector = operation.operator @ self.state_vector
-        if self.density_matrix is not None:
-            self.density_matrix = operation.operator @ self.density_matrix
-            self.density_matrix @= operation.operator.conj().T
-
-        if operation.renormalize:
-            self.normalize()
-    def normalize(self) -> None:
-        """
-        Normalizes the state.
-        """
-        if self.density_matrix is not None:
-            self.density_matrix = normalize_matrix(self.density_matrix)
-        elif self.state_vector is not None:
-            self.state_vector = normalize_vector(self.state_vector)
-
-    def resize(self, new_dimensions:int) -> bool:
-        """
-        Resizes the state to the new_dimensions
-
-        Parameters
-        ----------
-        new_dimensions: int
-            New size to change to
-
-        Returns
-        -------
-        bool
-            True if resizes was successful
-        """
-        success = False
-        if self.label is not None:
-            self.dimensions = new_dimensions
-            success = True
-        elif self.dimensions < new_dimensions:
-            pad_size = new_dimensions - self.dimensions
-            if self.state_vector is not None:
-                self.state_vector = jnp.pad(
-                    self.state_vector,
-                    ((0, pad_size), (0, 0)),
-                    "constant",
-                    constant_values=(0,),
-                )
-                success = True
-            if self.density_matrix is not None:
-                self.density_matrix = jnp.pad(
-                    self.density_matrix,
-                    ((0, pad_size), (0, pad_size)),
-                    "constant",
-                    constant_values=0,
-                )
-                success = True
-        # Truncate
-        elif self.dimensions > new_dimensions:
-            pad_size = new_dimensions - self.dimensions
-            if self.state_vector is not None:
-                if jnp.all(self.state_vector[new_dimensions:] == 0):
-                    self.state_vector = self.state_vector[:new_dimensions]
-                    success = True
-            if self.density_matrix is not None:
-                bottom_rows_zero = jnp.all(self.density_matrix[new_dimensions:, :] == 0)
-                right_columns_zero = np.all(
-                    self.density_matrix[:, new_dimensions:] == 0
-                )
-                if bottom_rows_zero and right_columns_zero:
-                    self.density_matrix = self.density_matrix[
-                        :new_dimensions, :new_dimensions
-                    ]
-                    success = True
-        self.dimensions = new_dimensions
-        return success
 
     def set_index(self, minor:int, major:int=-1) -> None:
         """
@@ -338,160 +212,92 @@ class Fock(BaseState):
         else:
             self.index = minor
 
-    def measure(self, non_destructive:bool=False, remove_composite:bool=True, partial:bool=False) -> int:
+    def measure(self, destructive:bool=True, separate_measurement:bool=False) -> Dict[BaseState, int]:
         """
         Measures the state in the number basis. This Method can be used if the
         state resides in the Envelope or Composite Envelope
 
         Parameters
         ----------
-        non_destructive: bool
-            If True the state won't be destroyed post measurement
-        remove_composite: bool
+        destructive: bool
+            If False the state won't be destroyed post measurement (removed)
+            The state will still be modified due to measurement
+        separate_measurement: bool
             If True and the state is part of the composite envelope
             the state won't be removed from the composite 
-        partial: bool
-            If true then accompanying Polarization space in the envelop
-            won't be measured
 
         Returns
         -------
-        outcome: int
-            Outcome of the measurement, -1 if failed
+        Dict[BaseState, int]
+            Dictionary of outcomes
         """
-        if self.measured:
-            raise FockAlreadyMeasuredException()
-        result:int = -1
+        if isinstance(self.index, int):
+            assert isinstance(self.envelope, Envelope)
+            return self.envelope.measure(
+                self,
+                separate_measurement=separate_measurement,
+                destructive=destructive
+            )
+        if isinstance(self.index, tuple) or isinstance(self.index, list):
+            assert isinstance(self.composite_envelope, CompositeEnvelope)
+            return self.composite_envelope.measure(self)
+
         if self.index is not None:
             assert self.envelope is not None, "Envelope should not be None"
             return self.envelope.measure()
-        else:
-            C = Config()
-            match self.expansion_level:
-                case ExpansionLevel.Label:
-                    assert self.label is not None, "self.label should not be None"
-                    result = self.label
-                case ExpansionLevel.Vector:
-                    assert self.state_vector is not None, "self.state_vector should not be None"
-                    probs = jnp.abs(self.state_vector.flatten()) ** 2
-                    probs = probs.ravel()
-                    assert jnp.isclose(sum(probs), 1)
-                    key = C.random_key
-                    result = int(jax.random.choice(
-                        key,
-                        a=jnp.array(
-                            list(range(len(probs)))),
-                        p=probs))
-                case ExpansionLevel.Matrix:
-                    assert self.density_matrix is not None, "self.density_matrix should not be None"
-                    probs = jnp.diag(self.density_matrix).real
-                    probs = probs / jnp.sum(probs)
-                    key = C.random_key
-                    result = int(jax.random.choice(
-                        key,
-                        a=jnp.arange(self.density_matrix.shape[0]),
-                        p=probs
-                    ))
-        outcomes = {}
+        C = Config()
+        match self.expansion_level:
+            case ExpansionLevel.Label:
+                assert isinstance(self.state, int)
+                result = self.state
+            case ExpansionLevel.Vector:
+                assert isinstance(self.state, jnp.ndarray)
+                assert self.state.shape == (self.dimensions, 1)
+                probs = jnp.abs(self.state.flatten()) ** 2
+                probs = probs.ravel()
+                assert jnp.isclose(sum(probs), 1)
+                key = C.random_key
+                result = int(jax.random.choice(
+                    key,
+                    a=jnp.arange(len(probs)),
+                    p=probs
+                ))
+            case ExpansionLevel.Matrix:
+                assert isinstance(self.state, jnp.ndarray)
+                assert self.state.shape == (self.dimensions, self.dimensions)
+                probs = jnp.diag(self.state).real
+                probs = probs / jnp.sum(probs)
+                key = C.random_key
+                result = int(jax.random.choice(
+                    key,
+                    a=jnp.arange(len(probs)),
+                    p=probs
+                ))
+
+        self.state = result
+        self.expansion_level = ExpansionLevel.Label
+        outcomes: Dict[BaseState, int] = {}
         outcomes[self] = int(result)
-        self._set_measured()
+        if destructive:
+            self._set_measured()
 
         if self.envelope is not None:
             if not self.envelope.polarization.measured:
                 out = self.envelope.polarization.measure()
+                assert isinstance(out, dict)
                 for key, value in out.items():
+                    assert isinstance(key, BaseState)
+                    assert isinstance(value, int)
                     outcomes[key] = value
-        
-        if not partial and self.envelope:
-            self.envelope._set_measured(remove_composite=remove_composite)
         return outcomes
 
-    def measure_POVM(self, operators:List[Union[np.ndarray, jnp.ndarray]]) -> int:
-        """
-        Positive Operation-Valued Measurement
 
-        Parameters
-        ----------
-        *operators: Union[np.ndarray, jnp.Array]
-            
-
-        Returns
-        -------
-        int
-            The index of the measurement outcome, -1 if measurement failed
-        """
-        if self.index is None:
-            if self.expansion_level == ExpansionLevel.Label:
-                self.expand()
-
-            if self.expansion_level == ExpansionLevel.Vector:
-                self.expand()
-
-            # Compute probabilities p(i) = Tr(E_i * rho) for each POVM operator E_i
-            assert self.density_matrix is not None, "self.density_matrix should not be None"
-            probabilities = jnp.array([
-                jnp.trace(jnp.matmul(op, self.density_matrix)).real for op in operators
-            ])
-
-            # Normalize probabilities (handle numerical issues)
-            probabilities = probabilities / jnp.sum(probabilities)
-
-            # Generate a random key
-            C = Config()
-            key = C.random_key
-
-            # Sample the measurement outcome
-            measurement_result = jax.random.choice(
-                key,
-                a=jnp.arange(len(operators)),
-                p=probabilities
-            )
-            self._set_measured()
-            return int(measurement_result)
-        # TODO IF MEASURED WHILE IN PRODUCT STATE IT SHOULD ALSO WORK
-        return -1
+        
 
     def _set_measured(self, **kwargs: Dict[str, Any]) -> None:
         """
         Destroys the state
         """
         self.measured = True
-        self.label = None
-        self.expansion_level = None
-        self.state_vector = None
-        self.density_matrix = None
+        self.state = None
         self.index = None
-
-    def get_subspace(self) -> Union[int,jnp.ndarray]:
-        """
-        Returns the space subspace. If the state is in label representation
-        then it is expanded once. If the state is in product space,
-        then the space will be traced from the product space
-
-        Returns
-        -------
-        state: Union[np.array]
-            The state in the numpy array, or -1 if failed
-        """
-        if self.index is None:
-            if not self.label is None:
-                return self.label
-            if not self.state_vector is None:
-                return self.state_vector
-            elif not self.density_matrix is None:
-                return self.density_matrix
-        elif isinstance(self.index, int):
-            # State is in the Envelope
-            pass
-
-        elif isinstance(self.index, tuple):
-            assert self.envelope is not None, "self.envelope should not be None"
-            assert self.envelope.composite_envelope is not None, "self.envelope.composite_envelope should not be None"
-            state = self.envelope.composite_envelope._trace_out(self, destructive=False)
-            return state
-        return -1
-
-
-
-class FockAlreadyMeasuredException(Exception):
-    pass

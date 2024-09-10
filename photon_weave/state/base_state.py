@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Union, Tuple, TYPE_CHECKING
+from typing import List, Union, Tuple, TYPE_CHECKING, Dict
 import numpy as np
 import jax.numpy as jnp
+import jax
 from uuid import UUID
 
 from photon_weave._math.ops import kraus_identity_check, apply_kraus
@@ -41,7 +42,7 @@ class BaseState(ABC):
         return self._dimensions
 
     @property
-    def expansion_level(self) -> int:
+    def expansion_level(self) -> Union[int, ExpansionLevel]:
         return self._expansion_level
 
     @expansion_level.setter
@@ -184,3 +185,79 @@ class BaseState(ABC):
                 self.label = int(ones[0])
                 self.state_vector = None
                 self.expansion_level = ExpansionLevel.Label
+
+    def measure_POVM(self, operators:List[Union[np.ndarray, jnp.ndarray]], destructive:bool=True, partial:bool=False) -> Tuple[int,Dict['BaseState', int]]:
+        """
+        Positive Operation-Valued Measurement
+
+        Parameters
+        ----------
+        operators: List[Union[np.ndarray, jnp.Array]]
+            List of POVM operators
+        destructive: bool
+            If True measurement is destructive and removed (True by default)
+        partial: bool
+            If True only this state gets measured, if False and part of envelope, the
+            corresponding polarization is measured aswell (False by default)
+
+        Returns
+        -------
+        Tuple[int, Dict[BaseState, int]]
+            Returns a tuple, first element is POVM measurement result, second element
+            is a dictionary with the other potentional measurement outcomes
+        """
+        from photon_weave.state.envelope import Envelope
+
+        if isinstance(self.index, int):
+            assert isinstance(self.envelope, Envelope)
+            return self.envelope.measure_POVM(operators, self, partial=partial)
+        if isinstance(self.index, list) or isinstance(self.index, tuple):
+            assert isinstance(self.composite_envelope, CompositeEnvelope)
+            return self.composite_envelope.measure_POVM(operators, self, partial=partial)
+
+        while self.expansion_level < ExpansionLevel.Matrix:
+            self.expand()
+
+        assert isinstance(self.state, jnp.ndarray)
+        assert self.state.shape == (self.dimensions, self.dimensions)
+
+        # Compute probabilities p(i) = Tr(E_i * rho) for each POVM operator E_i
+        probabilities = jnp.array([
+            jnp.trace(jnp.matmul(op, self.state)).real for op in operators
+        ])
+
+        # Normalize probabilities (handle numerical issues)
+        probabilities = probabilities / jnp.sum(probabilities)
+
+        # Generate a random key
+        C = Config()
+        key = C.random_key
+
+        # Sample the measurement outcome
+        outcome = int(jax.random.choice(
+            key,
+            a=jnp.arange(len(operators)),
+            p=probabilities
+        ))
+
+        result = (outcome, {})
+        if destructive:
+            self._set_measured()
+        else:
+            self.state = jnp.matmul(
+                operators[outcome], jnp.matmul(
+                    self.state,jnp.conj(operators[outcome].T)))
+
+            self.state = self.state / jnp.trace(self.state)
+            self.expansion_level = ExpansionLevel.Matrix
+
+        if not partial:
+            if isinstance(self.envelope, Envelope):
+                out = self.envelope.fock.measure()
+                for k, v in out.items():
+                    result[1][k] = v
+
+        if C.contractions and not destructive:
+            self.contract()
+
+        return result
