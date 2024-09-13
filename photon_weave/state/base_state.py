@@ -76,7 +76,7 @@ class BaseState(ABC):
             elif isinstance(self.state, int):
                 return f"|{self.state}⟩"
 
-        if self.index != None:
+        if self.index != None or self.measured:
             return str(self.uid)
 
         elif self.expansion_level == ExpansionLevel.Vector:

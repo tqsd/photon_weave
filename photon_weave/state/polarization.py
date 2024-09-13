@@ -141,6 +141,10 @@ class Polarization(BaseState):
         tol: float
             Tolerance when comparing matrices
         """
+        from photon_weave.state.envelope import Envelope
+        # If state was measured, then do nothing
+        if self.measured:
+            return
         # If state is in composite envelope conract product state there
         if isinstance(self.index, tuple) or isinstance(self.index, list):
             assert isinstance(self.composite_envelope, CompositeEnvelope)

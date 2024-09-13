@@ -71,6 +71,8 @@ class Fock(BaseState):
         self.expansion_level : ExpansionLevel = ExpansionLevel.Label
         self.measured = False
 
+    def __hash__(self):
+        return hash(self.uid)
 
     def __eq__(self, other: Any) -> bool:
         """
@@ -139,6 +141,9 @@ class Fock(BaseState):
         tol: float
             Tolerance when comparing matrices
         """
+        # If state was measured, then do nothing
+        if self.measured:
+            return
         if self.expansion_level is ExpansionLevel.Matrix and final < ExpansionLevel.Matrix:
             # Check if the state is pure state
             assert isinstance(self.state, jnp.ndarray)
@@ -301,3 +306,4 @@ class Fock(BaseState):
         self.measured = True
         self.state = None
         self.index = None
+        self.expansion_level = None
