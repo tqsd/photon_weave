@@ -65,7 +65,7 @@ class Fock(BaseState):
         self.uid: uuid.UUID = uuid.uuid4()
         self.index: Optional[Union[int, Tuple[int, int]]] = None
         self.dimensions: int = -1
-        self.state = 0
+        self.state: Optional[Union[int, jnp.ndarray]] = 0
         self.envelope: Optional["Envelope"] = envelope
         self._composite_envelope = None
         self.expansion_level : ExpansionLevel = ExpansionLevel.Label
@@ -278,7 +278,6 @@ class Fock(BaseState):
                     a=jnp.arange(len(probs)),
                     p=probs
                 ))
-
         self.state = result
         self.expansion_level = ExpansionLevel.Label
         outcomes: Dict[BaseState, int] = {}

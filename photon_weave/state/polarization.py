@@ -78,9 +78,17 @@ class Polarization(BaseState):
         self._dimensions: int = 2
         self.envelope :Optional["Envelope"] = envelope
         self.expansion_level : ExpansionLevel = ExpansionLevel.Label
-        self.measured: bool = False
+        self._measured: bool = False
         self.composite_envelope = None
         
+
+    @property
+    def measured(self) -> bool:
+        return self._measured
+
+    @measured.setter
+    def measured(self, measured: bool) -> None:
+        self._measured = measured
 
     @property
     def dimensions(self) -> int:

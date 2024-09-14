@@ -22,6 +22,14 @@ class BaseState(ABC):
     )
 
     @property
+    def measured(self) -> bool:
+        return self._measured
+
+    @measured.setter
+    def measured(self, measured: bool) -> None:
+        self._measured = measured
+
+    @property
     def composite_envelope(self) -> Union[None, 'CompositeEnvelope']:
         return self._composite_envelope
 
@@ -207,6 +215,8 @@ class BaseState(ABC):
             is a dictionary with the other potentional measurement outcomes
         """
         from photon_weave.state.envelope import Envelope
+        from photon_weave.state.polarization import Polarization
+        from photon_weave.state.fock import Fock
 
         if isinstance(self.index, int):
             assert isinstance(self.envelope, Envelope)
@@ -253,7 +263,8 @@ class BaseState(ABC):
 
         if not partial:
             if isinstance(self.envelope, Envelope):
-                out = self.envelope.fock.measure()
+                state = self.envelope.fock if isinstance(self, Polarization) else self.envelope.polarization
+                out = state.measure()
                 for k, v in out.items():
                     result[1][k] = v
 
@@ -261,3 +272,32 @@ class BaseState(ABC):
             self.contract()
 
         return result
+
+    def trace_out(self) -> Union[int,'PolarizationLabel',jnp.ndarray]:
+        """
+        Returns the traced out state of this base state instance.
+        If the instance is in envelope it traces out from there.
+        If the instance is in composite envelope then it traces it
+        out from there
+        """
+        from photon_weave.state.envelope import Envelope
+        from photon_weave.state.composite_envelope import CompositeEnvelope
+
+        if self.index is None:
+            assert self.state is not None
+            return self.state
+        elif isinstance(self.index, int):
+            assert hasattr(self, "envelope")
+            env: Envelope = getattr(self, "envelope")
+            assert isinstance(env, Envelope)
+            return env.trace_out(self)
+        elif isinstance(self.index, tuple) or isinstance(self.index, list):
+            assert hasattr(self, "composite_envelope")
+            ce: CompositeEnvelope = getattr(self, "composite_envelope")
+            assert isinstance(ce, CompositeEnvelope)
+            return ce.trace_out(self)
+
+
+    @abstractmethod
+    def measure(self) -> Dict['BaseState', int]:
+        pass
