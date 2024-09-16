@@ -273,7 +273,6 @@ class Envelope:
 
         outcomes = {}
         reshape_shape = []
-        
         if self.state is None:
             for s in [self.polarization, self.fock]:
                 out = s.measure()

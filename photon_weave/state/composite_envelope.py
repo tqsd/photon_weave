@@ -105,20 +105,28 @@ class ProductState:
 
         self.container.update_all_indices()
 
-    def measure(self, *states:'BaseState') -> Dict['BaseState',int]:
+    def measure(self, *states:'BaseState', separate_measurement:bool=False, destructive:bool=True) -> Dict['BaseState',int]:
         """
-        Measure given states in this product space
+        Measures the envelope. If the state is measured partially, then the state are moved to their
+        respective spaces. If the measurement is destructive, then the state is destroyed post measurement.
 
-        Parameters
-        ----------
-        *states: BaseState
-            States that should be measured
+        Parameter
+        ---------
+        *states: Optional[BaseState]
+            Optional, when measuring spaces individualy
+        separate_measurement:bool
+            if True given states will be measured separately and the state which is not measured will be
+            preserved (False by default)
+        destructive: bool 
+            If False, the measurement will not destroy the state after the measurement. The state will still be
+            affected by the measurement (True by default)
 
         Returns
         -------
-        Dict[BaseState, int]
-           Dictionary of outcomes
+        Dict[BaseState,int]
+            Dictionary of outcomes, where the state is key and its outcome measurement is the value (int)
         """
+        from photon_weave.state.custom_state import CustomState
         assert all(so in self.state_objs for so in states), "All state objects need to be in product state"
         outcomes = {}
         C = Config()
@@ -126,16 +134,23 @@ class ProductState:
 
         # Also include the envelope other states
         other_states = []
-        for s in states:
-            if hasattr(s,"envelope"):
-                if s.envelope is not None:
-                    if s is s.envelope.fock:
-                        other_states.append(s.envelope.polarization)
-                    elif s is s.envelope.polarization:
-                        other_states.append(s.envelope.fock)
+        if not separate_measurement:
+            for s in states:
+                if hasattr(s,"envelope"):
+                    if s.envelope is not None:
+                        if s is s.envelope.fock:
+                            other_states.append(s.envelope.polarization)
+                        elif s is s.envelope.polarization:
+                            other_states.append(s.envelope.fock)
         other_states_in_product_space = [s for s in other_states if s in self.state_objs]
         state_list = [s for s in states]
         state_list.extend(other_states_in_product_space)
+
+        # Remove duplicates, while preserving order
+        # Order should be preserved for repeatability
+        # if not different keys are used and repeatability
+        # is lost
+        state_list = list(dict.fromkeys(state_list))
 
         remove_states = [s for s in state_list]
 
@@ -144,6 +159,7 @@ class ProductState:
             shape.append(1)
             ps = self.state.reshape(shape)
             for idx, state in enumerate(state_list):
+                print(f"MEASURING {state.uid}")
                 # Constructing the einsum str
                 counter = itertools.count(start=0)
                 einsum_list: List[List[int]] = [[],[]]
@@ -165,7 +181,10 @@ class ProductState:
                 probabilities = jnp.abs(projected_state.flatten())**2
                 probabilities /= jnp.sum(probabilities)
 
+                print(probabilities)
+
                 key = C.random_key
+                print(key)
                 outcomes[state] = int(jax.random.choice(
                     key,
                     a=jnp.array(list(range(state.dimensions))),
@@ -234,23 +253,14 @@ class ProductState:
             else:
                 self.state = jnp.array([[1]])
 
-
-        for os in other_states:
-            if os.measured:
-                continue
-            if os not in self.state_objs:
-                if isinstance(os.index, tuple):
-                    outcome = os.envelope.composite_envelope.measure(os)
-                else: 
-                    outcome = os.measure()
-                for s, out in outcome.items():
-                    outcomes[s] = out
-
         # Remove the state objs from the states 
         for so in remove_states:
             so._set_measured()
             if hasattr(so, 'envelope') and so.envelope is not None:
                 so.envelope._set_measured()
+            if isinstance(so, CustomState):
+                so.index = None
+                so.state = outcomes[so]
             if so in self.state_objs:
                 # This can be skipped in coverage
                 # States actually get removed immediately when measured
@@ -574,6 +584,7 @@ class ProductState:
 class CompositeEnvelopeContainer:
     composite_uid: uuid.UUID
     envelopes: List['Envelope'] = field(default_factory=list)
+    state_objs: List['BaseState'] = field(default_factory=list)
     states: List[ProductState] = field(default_factory=list)
 
     def append_states(self, other: 'CompositeEnvelopeContainer') -> None:
@@ -601,12 +612,12 @@ class CompositeEnvelopeContainer:
     def update_all_indices(self) -> None:
         """
         Updates all of the indices of the state_objs
-        Note: Might not be necessary
         """
         for state_index, state in enumerate(self.states):
             for i,so in enumerate(state.state_objs):
                 if so is not None:
                     so.extract((state_index, i))
+                    so.composite_envelope = CompositeEnvelope._instances[self.composite_uid][0]
 
 
 class CompositeEnvelope:
@@ -617,12 +628,21 @@ class CompositeEnvelope:
     _containers: Dict[Union['str', uuid.UUID], CompositeEnvelopeContainer] = {}
     _instances: Dict[Union['str', uuid.UUID], List['CompositeEnvelope']] = {}
 
-    def __init__(self, *states: List[Union['CompositeEnvelope', 'Envelope']]):
+    def __init__(self, *states: Union['CompositeEnvelope', 'Envelope', 'CustomState']):
         from photon_weave.state.envelope import Envelope
+        from photon_weave.state.custom_state import CustomState
+        from photon_weave.state.base_state import BaseState
         self.uid = uuid.uuid4()
         # Check if there are composite envelopes in the argument list
         composite_envelopes:List[CompositeEnvelope] = [e for e in states if isinstance(e, CompositeEnvelope)]
-        envelopes:List[Envelope] = [e for e in states if isinstance(e, Envelope)]
+        envelopes: List[Envelope] = [e for e in states if isinstance(e, Envelope)]
+        state_objs: List[Customstate] = []
+        for e in states:
+            if isinstance(e, CustomState):
+                state_objs.append(e)
+            elif isinstance(e, Envelope):
+                state_objs.append(e.fock)
+                state_objs.append(e.polarization)
         for e in envelopes:
             if (e.composite_envelope is not None and
                 e.composite_envelope not in composite_envelopes):
@@ -632,6 +652,7 @@ class CompositeEnvelope:
         ce_container = None
         for ce in composite_envelopes:
             assert isinstance(ce, CompositeEnvelope), "ce should be CompositeEnvelope type"
+            state_objs.extend(ce.state_objs)
             if ce_container is None:
                 ce_container = CompositeEnvelope._containers[ce.uid]
             else:
@@ -644,6 +665,11 @@ class CompositeEnvelope:
                 assert e is not None, "Envelope e should not be None"
                 assert isinstance(e, Envelope), "e should be of type Envelope"
                 ce_container.envelopes.append(e)
+        for s in state_objs:
+            if s.uid not in [x.uid for x in ce_container.state_objs]:
+                ce_container.state_objs.append(s)
+
+            
         CompositeEnvelope._containers[self.uid] = ce_container
         if not CompositeEnvelope._instances.get(self.uid):
             CompositeEnvelope._instances[self.uid] = []
@@ -659,10 +685,7 @@ class CompositeEnvelope:
 
     @property
     def state_objs(self) -> List['BaseState']:
-        state_objs = []
-        for e in self.envelopes:
-            state_objs.extend([e.fock, e.polarization])
-        return state_objs
+        return CompositeEnvelope._containers[self.uid].state_objs
 
     @property
     def product_states(self) -> List[ProductState]:
@@ -700,10 +723,12 @@ class CompositeEnvelope:
         """
         from photon_weave.state.polarization import Polarization
         from photon_weave.state.fock import Fock
+        from photon_weave.state.custom_state import CustomState
+        from photon_weave.state.base_state import BaseState
 
         # Check for the types
         for so in state_objs:
-            assert isinstance(so, Fock) or isinstance(so, Polarization), f"got {type(so)}, expected Polarization or Fock type"
+            assert isinstance(so, BaseState), f"got {type(so)}, expected BaseState"
 
         # Check if the states are already in the same product space
         for ps in self.states:
@@ -723,7 +748,9 @@ class CompositeEnvelope:
                 if state in ps.state_objs:
                     existing_product_states.append(ps)
         # Removing duplicate product states
-        existing_product_states = list(set(existing_product_states))
+        # existing_product_states = list(set(existing_product_states))
+        existing_product_states = list(dict.fromkeys(existing_product_states))
+
         """
         Ensure all states have the same expansion levels
         """
@@ -761,30 +788,37 @@ class CompositeEnvelope:
             product_state.state_objs = []
         for so in target_state_objs:
             if hasattr(so, 'envelope') and so.envelope is not None and so.index is not None and not isinstance(so.index, tuple):
+                assert isinstance(so.envelope.state, jnp.ndarray)
                 if minimum_expansion_level is ExpansionLevel.Vector:
+                    assert so.envelope.state.shape == (so.envelope.dimensions, 1)
                     state_vector_or_matrix = jnp.kron(
-                        state_vector_or_matrix, so.envelope.composite_vector
+                        state_vector_or_matrix, so.envelope.state
                     )
-                    so.envelope.composite_vector = None
+                    so.envelope.state = None
                 else:
+                    assert so.envelope.state.shape == (so.envelope.dimensions, so.envelope.dimensions)
                     state_vector_or_matrix = jnp.kron(
-                        state_vector_or_matrix, so.envelope.composite_matrix
+                        state_vector_or_matrix, so.envelope.state
                     )
-                    so.envelope.composite_matrix = None
+                    so.envelope.state = None
                 indices = [None, None]
                 indices[so.envelope.fock.index] = so.envelope.fock
                 indices[so.envelope.polarization.index] = so.envelope.polarization
                 assert all(x is not None for x in indices), "Indices must not be None at this point"
                 state_order.extend(cast(List['BaseState'],indices))
             if so.index is None:
+                assert isinstance(so.state, jnp.ndarray)
                 if minimum_expansion_level is ExpansionLevel.Vector:
+                    assert so.state.shape == (so.dimensions, 1)
                     state_vector_or_matrix = jnp.kron(
-                        state_vector_or_matrix, so.state_vector
+                        state_vector_or_matrix, so.state
                     )
                 else:
+                    assert so.state.shape == (so.dimensions, so.dimensions)
                     state_vector_or_matrix = jnp.kron(
-                        state_vector_or_matrix, so.density_matrix
+                        state_vector_or_matrix, so.state
                     )
+                so.state = None
                 state_order.append(so)
 
         """
@@ -843,8 +877,6 @@ class CompositeEnvelope:
         """
         Projective Measurement
         Given list of states will be measured, measurement is destructive
-        TODO: Measurement may not be destructive for all states (qubit?)
-              later on
 
         Parameters
         ----------
@@ -856,11 +888,22 @@ class CompositeEnvelope:
         Dict['BaseState', int]
             Measurement outcome for all measured states, (also implicitly measured states)
         """
-        product_states = [p for p in self.states if any(so in p.state_objs for so in states)]
+        from photon_weave.state.fock import Fock
+        from photon_weave.state.polarization import Polarization
+
+        state_list = list(states)
+        for s in state_list:
+            if hasattr(s, 'envelope'):
+                other=s.envelope.fock if isinstance(s, Polarization) else s.envelope.polarization
+                if other not in state_list:
+                    state_list.append(other)
+
+
+        product_states = [p for p in self.states if any(so in p.state_objs for so in state_list)]
         outcomes: Dict['BaseState', int]
         outcomes = {}
         for ps in product_states:
-            ps_states = [so for so in states if so in ps.state_objs]
+            ps_states = [so for so in state_list if so in ps.state_objs]
             out = ps.measure(*ps_states)
             for key, item in out.items():
                 outcomes[key] = item

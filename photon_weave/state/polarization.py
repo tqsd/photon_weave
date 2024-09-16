@@ -79,8 +79,6 @@ class Polarization(BaseState):
         self.envelope :Optional["Envelope"] = envelope
         self.expansion_level : ExpansionLevel = ExpansionLevel.Label
         self._measured: bool = False
-        self.composite_envelope = None
-        
 
     @property
     def measured(self) -> bool:
@@ -252,6 +250,7 @@ class Polarization(BaseState):
         Union[int,None]
             Measurement Outcome
         """
+        from photon_weave.state.composite_envelope import CompositeEnvelope
         # If the state is in the envelope, measure there
         if isinstance(self.index, int):
             assert isinstance(self.envelope, Envelope)
