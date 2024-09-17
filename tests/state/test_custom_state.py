@@ -1,6 +1,7 @@
 import unittest
 import jax.numpy as jnp
 
+from photon_weave.photon_weave import Config
 from photon_weave.state.custom_state import CustomState
 from photon_weave.state.expansion_levels import ExpansionLevel
 
@@ -77,6 +78,8 @@ class TestCusomStateMeasurement(unittest.TestCase):
             self.assertEqual(cs.expansion_level, ExpansionLevel.Label)
 
     def test_measure_POVM(self):
+        C = Config()
+        C.set_contraction(True)
         cs = CustomState(2)
         cs.state = 1
         operators = []

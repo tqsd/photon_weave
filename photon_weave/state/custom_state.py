@@ -8,7 +8,7 @@ import uuid
 import jax.numpy as jnp
 import jax
 import numpy as np
-from typing import Union, Tuple, Optional, List, Dict, overload
+from typing import Union, Tuple, Optional, List, Dict, Any
 
 from photon_weave._math.ops import apply_kraus, kraus_identity_check
 from photon_weave.photon_weave import Config
@@ -110,6 +110,19 @@ class CustomState(BaseState):
                 self.state = int(ones[0])
                 self.expansion_level = ExpansionLevel.Label
 
+    @property
+    def _measured(self) -> bool:
+        return False
+
+    @_measured.setter
+    def _measured(self, measured:bool) -> None:
+        """
+        Configured property, without effect
+        Custom state cannot be destroyed, so
+        measured is without effect
+        """
+        pass
+
     def _set_measured(self) -> None:
         pass
     
@@ -127,10 +140,18 @@ class CustomState(BaseState):
         else:
             raise ValueError("Either set both parameters (minor, major) or none of them")
 
-
-    def measure(self) -> Dict[BaseState, int]:
+    def measure(self, separate_measurement:bool=False, destructive:bool=True) -> Dict[BaseState, int]:
         """
         Measures the state and returns an outcome in a dict
+
+        Parameters
+        ----------
+        separate_measurement: bool
+            Doesn't have any effect, implemented to not defy the signature
+            of the superclass
+        destructive: bool
+            Doesn't have any effect, implemented to not defy the signature
+            of the superclass
 
         Returns
         -------
@@ -177,14 +198,20 @@ class CustomState(BaseState):
                 return {self:out}
         raise ValueError("Something went wrong, this exception should not be raised") # pragma: no cover
 
-    def measure_POVM(self, operators:List[Union[np.ndarray, jnp.ndarray]]) -> Tuple[int, Dict[BaseState, int]]:
+    def measure_POVM(self, operators:List[Union[np.ndarray, jnp.ndarray]], destructive:bool=True, partial:bool=False) -> Tuple[int, Dict[BaseState, int]]:
         """
         Positive Operation-Valued Measurement
 
         Parameters
         ----------
         *operators: Union[np.ndarray, jnp.Array]
-            
+            List of the POVM measurement operators
+        destructive: bool
+            Does not have an effect on custom state, implemented only to satisfy the
+            superclass method signature
+        partial: bool
+            Does not have an effect on custom state, implemented only to satisfy the
+            superclass method signature
 
         Returns
         -------
@@ -199,6 +226,7 @@ class CustomState(BaseState):
         for op in operators:
             assert op.shape == (self.dimensions, self.dimensions)
 
+        assert isinstance(self.expansion_level, ExpansionLevel)
         while self.expansion_level < ExpansionLevel.Matrix:
             self.expand()
 

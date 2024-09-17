@@ -66,19 +66,23 @@ class Polarization(BaseState):
     measured: bool
         If the state was measured than measured is True
     """
+    __slots__ = BaseState.__slots__
     def __init__(
         self,
         polarization: PolarizationLabel = PolarizationLabel.H,
         envelope: Union["Envelope", None] = None,
     ):
+        from photon_weave.state.composite_envelope import CompositeEnvelope
         self.uid: uuid.UUID = uuid.uuid4()
         logger.info("Creating polarization with uid %s", self.uid)
         self.index: Optional[Union[int, Tuple[int,int]]] = None
         self.state: Optional[Union[jnp.ndarray, PolarizationLabel]] = polarization
         self._dimensions: int = 2
         self.envelope :Optional["Envelope"] = envelope
-        self.expansion_level : ExpansionLevel = ExpansionLevel.Label
+        self._expansion_level : Optional[ExpansionLevel] = ExpansionLevel.Label
         self._measured: bool = False
+        self._composite_envelope: Optional[CompositeEnvelope] = None
+
 
     @property
     def measured(self) -> bool:
@@ -236,7 +240,7 @@ class Polarization(BaseState):
         self.index = None
         self.expansion_level = None
 
-    def measure(self, destructive:bool = True, separate_measurement:bool=False) -> Dict[BaseState, int]:
+    def measure(self, separate_measurement:bool=False, destructive:bool = True) -> Dict[BaseState, int]:
         """
         Measures this state. If the state is not in a product state it will
         produce a measurement, otherwise it will return None.

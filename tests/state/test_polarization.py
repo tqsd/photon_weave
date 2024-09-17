@@ -361,6 +361,8 @@ class TestPolarizationMeasurement(unittest.TestCase):
 
 class TestPolarizationKrausOperatorApplication(unittest.TestCase):
     def test_kraus_operators(self):
+        C = Config()
+        C.set_contraction(True)
         pol = Polarization()
         operators = [
             jnp.array(

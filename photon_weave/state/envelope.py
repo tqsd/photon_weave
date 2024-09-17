@@ -38,22 +38,22 @@ logger = logging.getLogger()
 class TemporalProfile(Enum):
     Gaussian = (gaussian, {"mu": 0, "sigma": 1, "omega": None})
 
-    def __init__(self, func: Callable, params: dict):
+    def __init__(self, func: Callable, params: Any):
         self.func = func
-        self.params = params
+        self.parameters = params
 
-    def with_params(self, **kwargs) -> TemporalProfileInstance:
-        params = self.params.copy()
+    def with_params(self, **kwargs: Any) -> TemporalProfileInstance:
+        params = self.parameters.copy()
         params.update(kwargs)
         return TemporalProfileInstance(self.func, params)
 
 
 class TemporalProfileInstance:
-    def __init__(self, func, params) -> None:
+    def __init__(self, func: Callable, params:Dict[Any,Any]) -> None:
         self.func = func
         self.params = params
 
-    def get_function(self, t_a, omega_a) -> Callable:
+    def get_function(self, t_a:float, omega_a:float) -> Callable:
         params = self.params.copy()
         params.update({"t_a": t_a, "omega": omega_a})
 
@@ -171,10 +171,15 @@ class Envelope:
         """
         from photon_weave.state.polarization import Polarization
         from photon_weave.state.fock import Fock
+        from photon_weave.state.envelope import Envelope
+
 
         for s in [self.fock, self.polarization]:
             if s.measured:
                 raise ValueError("Parts of this envelope have already been destructively measured, cannot combine")
+
+        assert isinstance(self.fock.expansion_level, ExpansionLevel)
+        assert isinstance(self.polarization.expansion_level, ExpansionLevel)
         if self.fock.expansion_level == ExpansionLevel.Label:
             self.fock.expand()
         if self.polarization.expansion_level == ExpansionLevel.Label:
@@ -372,8 +377,6 @@ class Envelope:
                         ps = jnp.einsum('ab,cd->abcd', post_measurement,  ps)
                     else:
                         ps = jnp.einsum('ab,cd->abcd', ps,  post_measurement)
-                        
-
 
                 # 2. Measure Polarization Part
                 if (separate_measurement and self.polarization in states) or len(states) == 0 or len(states) == 2:
@@ -415,12 +418,20 @@ class Envelope:
                         self.fock.index = None
                         if destructive:
                             self.polarization._set_measured()
+                        else:
+                            self.polarization.state = jnp.zeros((2,1))
+                            self.polarization.state.at[1,outcomes[self.polarization]].set(1)
+                            self.polarization.index = None
                     if self.polarization not in states:
                         self.polarization.state = jnp.take(ps, outcomes[self.fock], self.fock.index)
                         self.polarization.expansion_level = ExpansionLevel.Vector
                         self.polarization.index = None
                         if destructive:
                             self.fock._set_measured()
+                        else:
+                            self.fock.state = outcomes[self.fock]
+                            self.fock.expansion_level = ExpansionLevel.Label
+                            self.fock.index = None
                 else:
                     if self.fock.index == 0:
                         self.fock.state = jnp.einsum("ijk->ik", ps)
@@ -435,6 +446,10 @@ class Envelope:
                         self.polarization.state = jnp.einsum("ijk->jk", ps)
                     self.polarization.expansion_level = ExpansionLevel.Vector
                     self.polarization.index = None
+                    if destructive:
+                        self._set_measured()
+                        self.polarization._set_measured()
+                        self.fock._set_measured()
             if self.expansion_level == ExpansionLevel.Matrix:
                 if separate_measurement and len(states) == 1:
                     if self.fock not in states:
@@ -474,6 +489,8 @@ class Envelope:
                     self.polarization.index = None
                     if destructive:
                         self._set_measured()
+                        self.fock._set_measured()
+                        self.polarization._set_measured()
             self.polarization.contract()
             self.fock.contract()
 
@@ -642,7 +659,7 @@ class Envelope:
     def apply_kraus(
             self,
             operators: List[Union[np.ndarray, jnp.ndarray]],
-            *states: Union["Fock", "Polarization"]
+            *states: 'BaseState'
     ) -> None:
         """
         Apply Kraus operator to the envelope.
@@ -953,4 +970,5 @@ class Envelope:
 
         return result
 
-
+    def resize_fock(self, new_dimensions: int) -> None:
+        pass

@@ -1,7 +1,6 @@
 import numpy as np
 import scipy.linalg as la
 
-
 def interpreter(expr, context):
     if isinstance(expr, tuple):
         op, *args = expr

@@ -68,10 +68,10 @@ class Fock(BaseState):
         self.state: Optional[Union[int, jnp.ndarray]] = 0
         self.envelope: Optional["Envelope"] = envelope
         self._composite_envelope = None
-        self.expansion_level : ExpansionLevel = ExpansionLevel.Label
+        self.expansion_level : Optional[ExpansionLevel] = ExpansionLevel.Label
         self.measured = False
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.uid)
 
     def __eq__(self, other: Any) -> bool:
@@ -157,7 +157,7 @@ class Fock(BaseState):
                 assert pure_state_index is not None, "pure_state_index should not be None"
                 self.state = eigenvectors[:, pure_state_index].reshape(-1,1)
                 # Normalizing the phase
-                assert self.state is not None, "self.state should not be None"
+                assert isinstance(self.state, jnp.ndarray)
                 phase = jnp.exp(-1j * jnp.angle(self.state[0]))
                 self.state= self.state*phase
                 self.expansion_level = ExpansionLevel.Vector
@@ -217,7 +217,7 @@ class Fock(BaseState):
         else:
             self.index = minor
 
-    def measure(self, destructive:bool=True, separate_measurement:bool=False) -> Dict[BaseState, int]:
+    def measure(self, separate_measurement:bool=False, destructive:bool=True) -> Dict[BaseState, int]:
         """
         Measures the state in the number basis. This Method can be used if the
         state resides in the Envelope or Composite Envelope
@@ -285,18 +285,18 @@ class Fock(BaseState):
         if destructive:
             self._set_measured()
 
-        if self.envelope is not None:
+        if self.envelope is not None and not separate_measurement:
             if not self.envelope.polarization.measured:
-                out = self.envelope.polarization.measure()
+                out = self.envelope.polarization.measure(
+                    separate_measurement=separate_measurement,
+                    destructive=destructive
+                )
                 assert isinstance(out, dict)
-                for key, value in out.items():
-                    assert isinstance(key, BaseState)
-                    assert isinstance(value, int)
-                    outcomes[key] = value
+                for m_key, m_value in out.items():
+                    assert isinstance(m_key, BaseState)
+                    assert isinstance(m_value, int)
+                    outcomes[m_key] = m_value
         return outcomes
-
-
-        
 
     def _set_measured(self, **kwargs: Dict[str, Any]) -> None:
         """
@@ -306,3 +306,76 @@ class Fock(BaseState):
         self.state = None
         self.index = None
         self.expansion_level = None
+
+
+    def resize(self, new_dimensions:bool) -> bool:
+        """
+        Resizes the space to the new dimensions.
+        If the dimensions are more, than the current dimensions, then
+        it gets padded. If the dimensions are less then the current
+        dimensions, then it checks if it can shrink the space.
+
+        Parameters
+        ----------
+        new_dimensions: bool
+            New dimensions to be set
+
+        Returns
+        -------
+        bool
+            True if the resizing was succesfull
+        """
+        from photon_weave.state.envelope import Envelope
+
+        assert isinstance(self.expansion_level, ExpansionLevel)
+
+        if new_dimensions < 1:
+            return False
+
+        if self.index is None:
+            if self.expansion_level is ExpansionLevel.Label:
+                assert isinstance(self.state, int)
+                if self.state > new_dimensions - 1:
+                    return False
+                else:
+                    self.dimensions = new_dimensions
+            elif self.expansion_level is ExpansionLevel.Vector:
+                assert isinstance(self.state, jnp.ndarray)
+                if self.dimensions < new_dimensions:
+                    padding_rows = max(0, new_dimensions - self.dimensions)
+                    self.state = jnp.pad(
+                        self.state,
+                        ((0, padding_rows),
+                         (0,0)),
+                         mode='constant',
+                         constant_values=0)
+                    self.dimensions = new_dimensions
+                    return True
+                num_quanta = num_quanta_vector(self.state)
+                if self.dimensions > new_dimensions and num_quanta < new_dimensions +1:
+                    self.state = self.state[:new_dimensions]
+                    self.dimensions = new_dimensions
+                    return True
+                return False
+            elif self.expansion_level is ExpansionLevel.Matrix:
+                assert isinstance(self.state, jnp.ndarray)
+                assert self.state.shape == (self.dimensions, self.dimensions)
+                if new_dimensions > self.dimensions:
+                    padding_rows = max(0, new_dimensions - self.dimensions)
+                    self.state = jnp.pad(
+                        self.state,
+                        ((0, padding_rows),
+                         (0, padding_rows)),
+                         mode='constant',
+                         constant_values=0)
+                    self.dimensions = new_dimensions
+                    return True
+                num_quanta = num_quanta_matrix(self.state)
+                if new_dimensions < self.dimensions:
+                    self.state = self.state[:new_dimensions,:new_dimensions]
+                    self.dimensions = new_dimensions
+                    return True
+                return False
+        elif isinstance(self.index, tuple):
+            assert isinstance(self.envelope, Envelope)
+            return self.envelope.resize_fock(new_dimensions)

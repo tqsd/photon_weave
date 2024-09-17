@@ -6,7 +6,7 @@ from logging.handlers import RotatingFileHandler
 import os
 import pathlib
 import datetime as dt
-from typing import override
+from typing import override, Any
 
 def setup_logging() -> None:
     """
@@ -46,7 +46,7 @@ class PhotonWeaveJSONFormatter(logging.Formatter):
             self,
             *,
             fmt_keys: dict[str,str] | None = None,
-    ):
+    ) -> None:
         super().__init__()
         self.fmt_keys = fmt_keys if fmt_keys is not None else {}
 
@@ -67,7 +67,7 @@ class PhotonWeaveJSONFormatter(logging.Formatter):
             always_fields["exc_info"] = self.formatException(record.exc_info)
 
         if record.stack_info is not None:
-            always_fields["stack_info"] = self.formatStack(recod.stack_info)
+            always_fields["stack_info"] = self.formatStack(record.stack_info)
 
         message = {
             key: msg_val
@@ -87,7 +87,7 @@ class RotatingFileHandlerWithDir(RotatingFileHandler):
     creates log directory and file if it does not exist
     already
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args:Any, **kwargs:Any) -> None:
         # Ensure the directory exists
         log_file_path = kwargs.get('filename')
         if log_file_path:

@@ -892,6 +892,8 @@ class TestEnvelopeKraus(unittest.TestCase):
         the case where the envelope is not combined,
         polarization and fock spaces are separate
         """
+        C = Config()
+        C.set_contraction(True)
         env = Envelope()
         env.fock.dimensions=3
         env.apply_kraus([np.array([[0,1],[1,0]])], env.polarization)

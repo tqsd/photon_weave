@@ -10,7 +10,6 @@ from photon_weave._math.ops import (
     annihilation_operator,
     creation_operator,
     displacement_operator,
-    matrix_power,
     squeezing_operator,
 )
 from photon_weave.extra import interpreter

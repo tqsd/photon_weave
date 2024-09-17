@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Union, Tuple, TYPE_CHECKING, Dict
+from typing import List, Union, Tuple, TYPE_CHECKING, Dict, Optional
 import numpy as np
 import jax.numpy as jnp
 import jax
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from photon_weave._math.ops import kraus_identity_check, apply_kraus
 from photon_weave.state.expansion_levels import ExpansionLevel
@@ -12,14 +12,36 @@ from photon_weave.photon_weave import Config
 
 if TYPE_CHECKING:
     from photon_weave.state.polarization import Polarization, PolarizationLabel
+    from photon_weave.state.composite_envelope import CompositeEnvelope
+    from photon_weave.state.envelope import Envelope
 
 class BaseState(ABC):
 
     __slots__ = (
-        "label", "_uid", "_state_vector", "density_matrix",
-        "__dict__", "_expansion_level", "_index", "_dimensions",
-        "_measured", "_composite_envelope"
+        "label", "_uid", 
+        "_expansion_level", "_index", "_dimensions",
+        "_measured", "_composite_envelope", "state", "_envelope"
     )
+
+    @abstractmethod
+    def __init__(self) -> None:
+        from photon_weave.state.composite_envelope import CompositeEnvelope
+        from photon_weave.state.envelope import Envelope
+        self._uid: Union[str, UUID] = uuid4()
+        self._expansion_level: Optional[ExpansionLevel] = None
+        self._index: Optional[Union[int, Tuple[int,int]]] = None
+        self._dimensions: int = -1
+        self._composite_envelope: Optional[CompositeEnvelope] = None
+        self._envelope: Optional[Envelope] = None
+        self.state: Optional[Union[int, PolarizationLabel, jnp.ndarray]] = None
+
+    @property
+    def envelope(self) -> Union[None, 'Envelope']:
+        return self._envelope
+
+    @envelope.setter
+    def envelope(self, envelope:Union[None, 'Envelope']) -> None:
+        self._envelope = envelope
 
     @property
     def measured(self) -> bool:
@@ -49,8 +71,12 @@ class BaseState(ABC):
     def dimensions(self) -> int:
         return self._dimensions
 
+    @dimensions.setter
+    def dimensions(self, dimensions: int) -> None:
+        self._dimensions = dimensions 
+
     @property
-    def expansion_level(self) -> Union[int, ExpansionLevel]:
+    def expansion_level(self) -> Optional[Union[int, ExpansionLevel]]:
         return self._expansion_level
 
     @expansion_level.setter
@@ -65,16 +91,8 @@ class BaseState(ABC):
     def index(self, index : Union[None, int, Tuple[int, int]]) -> None:
         self._index = index
 
-    @property
-    def dimensions(self) -> Union[int, 'PolarizationLabel']:
-        return self._dimensions
-
-    @dimensions.setter
-    def dimensions(self, dimensions: int) -> None:
-        self._dimensions = dimensions 
-
     # Dunder methods
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.uid)
 
     def __repr__(self) -> str:
@@ -89,6 +107,7 @@ class BaseState(ABC):
 
         elif self.expansion_level == ExpansionLevel.Vector:
         # Handle cases where the vector has only one element
+            assert isinstance(self.state, jnp.ndarray)
             formatted_vector: Union[str, List[str]]
             formatted_vector = "\n".join(
                 [
@@ -102,6 +121,8 @@ class BaseState(ABC):
             formatted_vector = "\n".join(formatted_vector)
             return f"{formatted_vector}"
         elif self.expansion_level == ExpansionLevel.Matrix:
+            assert isinstance(self.state, jnp.ndarray)
+            assert self.state.shape == (self.dimensions, self.dimensions)
             formatted_matrix: Union[str,List[str]]
             formatted_matrix = "\n".join(
                 [
@@ -117,6 +138,7 @@ class BaseState(ABC):
             formatted_matrix = "\n".join(formatted_matrix)
 
             return f"{formatted_matrix}"
+        return f"{self.uid}"
 
     def apply_kraus(self, operators: List[Union[np.ndarray, jnp.ndarray]], identity_check:bool=True) -> None:
         """
@@ -130,6 +152,7 @@ class BaseState(ABC):
             Signal to check whether or not the operators sum up to identity, True by default
         """
 
+        assert isinstance(self.expansion_level, ExpansionLevel)
         while self.expansion_level < ExpansionLevel.Matrix:
             self.expand()
 
@@ -151,7 +174,7 @@ class BaseState(ABC):
 
 
     @abstractmethod
-    def _set_measured(self):
+    def _set_measured(self) -> None:
         pass
 
     @abstractmethod
@@ -171,27 +194,26 @@ class BaseState(ABC):
         """
         if self.expansion_level is ExpansionLevel.Matrix and final < ExpansionLevel.Matrix:
             # Check if the state is pure state
-            assert self.density_matrix is not None, "Density matrix should not be None"
-            state_squared = jnp.matmul(self.density_matrix, self.density_matrix)
+            assert isinstance(self.state, jnp.ndarray)
+            state_squared = jnp.matmul(self.state, self.state)
             state_trace = jnp.trace(state_squared)
             if jnp.abs(state_trace-1) < tol:
                 # The state is pure
-                eigenvalues, eigenvectors = jnp.linalg.eigh(self.density_matrix)
+                eigenvalues, eigenvectors = jnp.linalg.eigh(self.state)
                 pure_state_index = jnp.argmax(jnp.abs(eigenvalues -1.0) < tol)
                 assert pure_state_index is not None, "pure_state_index should not be None"
-                self.state_vector = eigenvectors[:, pure_state_index].reshape(-1,1)
+                self.state = eigenvectors[:, pure_state_index].reshape(-1,1)
                 # Normalizing the phase
-                assert self.state_vector is not None, "self.state_vector should not be None"
-                phase = jnp.exp(-1j * jnp.angle(self.state_vector[0]))
-                self.state_vector = self.state_vector*phase
-                self.density_matrix = None
+                assert isinstance(self.state, jnp.ndarray)
+                phase = jnp.exp(-1j * jnp.angle(self.state[0]))
+                self.state= self.state*phase
                 self.expansion_level = ExpansionLevel.Vector
         if self.expansion_level is ExpansionLevel.Vector and final < ExpansionLevel.Vector:
-            assert self.state_vector is not None, "self.state_vector should not be None"
-            ones = jnp.where(self.state_vector == 1)[0]
+            assert self.state is not None, "self.state should not be None"
+            assert isinstance(self.state, jnp.ndarray)
+            ones = jnp.where(self.state == 1)[0]
             if ones.size == 1:
-                self.label = int(ones[0])
-                self.state_vector = None
+                self.state = int(ones[0])
                 self.expansion_level = ExpansionLevel.Label
 
     def measure_POVM(self, operators:List[Union[np.ndarray, jnp.ndarray]], destructive:bool=True, partial:bool=False) -> Tuple[int,Dict['BaseState', int]]:
@@ -220,11 +242,12 @@ class BaseState(ABC):
 
         if isinstance(self.index, int):
             assert isinstance(self.envelope, Envelope)
-            return self.envelope.measure_POVM(operators, self, partial=partial)
+            return self.envelope.measure_POVM(operators, self)
         if isinstance(self.index, list) or isinstance(self.index, tuple):
             assert isinstance(self.composite_envelope, CompositeEnvelope)
-            return self.composite_envelope.measure_POVM(operators, self, partial=partial)
+            return self.composite_envelope.measure_POVM(operators, self)
 
+        assert isinstance(self.expansion_level, ExpansionLevel)
         while self.expansion_level < ExpansionLevel.Matrix:
             self.expand()
 
@@ -250,7 +273,7 @@ class BaseState(ABC):
             p=probabilities
         ))
 
-        result = (outcome, {})
+        result:Tuple[int, Dict['BaseState', int]] = (outcome, {})
         if destructive:
             self._set_measured()
         else:
@@ -299,5 +322,5 @@ class BaseState(ABC):
 
 
     @abstractmethod
-    def measure(self) -> Dict['BaseState', int]:
+    def measure(self, separate_measurement:bool=False, destructive:bool=True) -> Dict['BaseState', int]:
         pass

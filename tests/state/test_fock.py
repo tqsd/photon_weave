@@ -1,4 +1,5 @@
 import unittest
+import pytest
 
 import numpy as np
 import jax.numpy as jnp
@@ -421,3 +422,54 @@ class TestFockMeasurement(unittest.TestCase):
         self.assertTrue(f.measured)
         for item in [f.index, f.state]:
             self.assertIsNone(item)
+
+
+class TestFockDimensionChange(unittest.TestCase):
+    @pytest.mark.my_marker
+    def test_fock_dimension_change(self) -> None:
+        f = Fock()
+        f.resize(4)
+        self.assertEqual(f.dimensions, 4)
+        self.assertEqual(f.state, 0)
+
+        f.expand()
+        f.resize(5)
+        self.assertEqual(f.dimensions, 5)
+        self.assertTrue(
+            jnp.allclose(
+                f.state,
+                jnp.array([[1],[0],[0],[0],[0]])
+            )
+        )
+
+        f.resize(2)
+        self.assertEqual(f.dimensions, 2)
+        self.assertTrue(
+            jnp.allclose(
+                f.state,
+                jnp.array([[1],[0]])
+            )
+        )
+
+        f.expand()
+        f.resize(4)
+        self.assertEqual(f.dimensions, 4)
+        self.assertTrue(
+            jnp.allclose(
+                f.state,
+                jnp.array([[1,0,0,0],
+                           [0,0,0,0],
+                           [0,0,0,0],
+                           [0,0,0,0]])
+            )
+        )
+
+        f.resize(2)
+        self.assertEqual(f.dimensions, 2)
+        self.assertTrue(
+            jnp.allclose(
+                f.state,
+                jnp.array([[1,0],
+                           [0,0]])
+            )
+        )

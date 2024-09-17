@@ -16,18 +16,6 @@ def annihilation_operator(cutoff: int) -> np.ndarray:
 def creation_operator(cutoff: int)-> np.ndarray:
     return np.conjugate(annihilation_operator(cutoff=cutoff)).T
 
-
-def matrix_power(mat: np.ndarray, power: int) -> np.ndarray:
-    if power == 1:
-        return mat
-    elif power == 2:
-        return np.dot(mat, mat)
-    elif power == 3:
-        return mat @ mat @ mat
-    else:
-        return np.linalg.matrix_power(mat, power)
-
-
 @njit('complex128[:,::1](complex128[:,::1])', cache=True, parallel=True, fastmath=True)
 def _expm(mat: np.ndarray) -> np.ndarray:
     eigvals, eigvecs = np.linalg.eig(mat)
