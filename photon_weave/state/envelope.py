@@ -17,7 +17,7 @@ from scipy.integrate import quad
 import jax.numpy as jnp
 import jax
 
-from photon_weave._math.ops import kraus_identity_check, apply_kraus
+from photon_weave._math.ops import kraus_identity_check, apply_kraus, num_quanta_matrix, num_quanta_vector
 from photon_weave.photon_weave import Config
 from photon_weave.constants import C0, gaussian
 from photon_weave.operation.generic_operation import GenericOperation
@@ -970,5 +970,82 @@ class Envelope:
 
         return result
 
-    def resize_fock(self, new_dimensions: int) -> None:
-        pass
+    def resize_fock(self, new_dimensions: int) -> bool:
+        """
+        Adjusts the dimension of the fock in the envelope.
+
+        Parameters
+        ----------
+        new_dimensions: int
+            New dimensions to resize to
+
+        Returns
+        -------
+        bool
+            True if resizing succeeded
+        """
+
+        if self.state is None:
+            return self.fock.resize(new_dimensions)
+
+        reshape_shape = [-1,-1]
+        reshape_shape[self.fock.index]=self.fock.dimensions
+        reshape_shape[self.polarization.index]=self.polarization.dimensions
+
+        if self.expansion_level == ExpansionLevel.Vector:
+            assert isinstance(self.state, jnp.ndarray)
+            assert self.state.shape == (self.dimensions, 1)
+            reshape_shape.append(1)
+            ps = self.state.reshape(reshape_shape)
+            if new_dimensions > self.fock.dimensions:
+                padding = new_dimensions - self.fock.dimensions
+                pad_config = [(0,0) for _ in range(ps.ndim)]
+                pad_config[self.fock.index] = (0,padding)
+                ps = jnp.pad(ps, pad_config, mode="constant", constant_values=0)
+                self.state = ps.reshape(-1,1)
+                self.fock.dimensions = new_dimensions
+                return True
+            if new_dimensions < self.fock.dimensions:
+                to = self.trace_out(self.fock)
+                num_quanta = num_quanta_vector(to)
+                if num_quanta >= new_dimensions:
+                    # Cannot hrink because amplitues exist beyond new_dimensions
+                    return False
+                slices = [slice(None)] *  ps.ndim
+                slices[self.fock.index] = slice(0, new_dimensions)
+                ps = ps[tuple(slices)]
+                self.state = ps.reshape(-1,1)
+                self.fock.dimensions = new_dimensions
+                return True
+        if self.expansion_level == ExpansionLevel.Matrix:
+            assert isinstance(self.state, jnp.ndarray)
+            assert self.state.shape == (self.dimensions, self.dimensions)
+            ps = self.state.reshape([*reshape_shape,*reshape_shape]).transpose([0,2,1,3])
+            if new_dimensions > self.fock.dimensions:
+                padding = new_dimensions - self.fock.dimensions
+                pad_config = [
+                    (0,0) for _ in range(ps.ndim)
+                ]
+                pad_config[self.fock.index*2] = (0,padding)
+                pad_config[self.fock.index*2+1] = (0,padding)
+
+                ps = jnp.pad(ps, pad_config, mode="constant", constant_values=0)
+                self.fock.dimensions = new_dimensions
+                ps = ps.transpose([0,2,1,3])
+                self.state = ps.reshape((self.dimensions, self.dimensions))
+                return True
+            if new_dimensions <= self.fock.dimensions:
+                to = self.trace_out(self.fock)
+                num_quanta = num_quanta_matrix(to)
+                if num_quanta >= new_dimensions:
+                    return False
+                slices = [slice(None)]*ps.ndim
+                slices[self.fock.index*2] = slice(0, new_dimensions)
+                slices[self.fock.index*2 + 1] = slice(0, new_dimensions)
+
+                ps = ps[tuple(slices)]
+                ps = ps.transpose([0,2,1,3])
+                self.fock.dimensions = new_dimensions
+                self.state = ps.reshape((self.dimensions, self.dimensions))
+                return True
+        return False # pragma: no cover

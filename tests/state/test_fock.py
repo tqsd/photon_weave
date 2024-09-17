@@ -7,8 +7,9 @@ import random
 
 from photon_weave.photon_weave import Config
 from photon_weave.state.fock import Fock
-from photon_weave.state.polarization import Polarization
+from photon_weave.state.polarization import Polarization, PolarizationLabel
 from photon_weave.state.envelope import Envelope
+from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.expansion_levels import ExpansionLevel
 
 class TestFockSmallFunctions(unittest.TestCase):
@@ -425,7 +426,6 @@ class TestFockMeasurement(unittest.TestCase):
 
 
 class TestFockDimensionChange(unittest.TestCase):
-    @pytest.mark.my_marker
     def test_fock_dimension_change(self) -> None:
         f = Fock()
         f.resize(4)
@@ -473,3 +473,236 @@ class TestFockDimensionChange(unittest.TestCase):
                            [0,0]])
             )
         )
+
+    @pytest.mark.my_marker
+    def test_resize_in_envelope_vector(self) -> None:
+        env = Envelope()
+        env.polarization.state = PolarizationLabel.V
+        env.fock.dimensions = 2
+        env.combine()
+        env.resize_fock(3)
+        self.assertTrue(
+            jnp.allclose(
+                env.state,
+                jnp.array(
+                    [[0],
+                     [1],
+                     [0],
+                     [0],
+                     [0],
+                     [0]]
+                )
+            )
+        )
+        self.assertEqual(env.fock.dimensions, 3)
+
+        s = env.resize_fock(2)
+        self.assertTrue(s)
+        self.assertTrue(
+            jnp.allclose(
+                env.state,
+                jnp.array(
+                    [[0],
+                     [1],
+                     [0],
+                     [0]]
+                )
+            )
+        )
+        self.assertEqual(env.fock.dimensions, 2)
+
+        # Trying the same with the reversed order
+        env = Envelope()
+        env.polarization.state = PolarizationLabel.R
+        env.fock.state = 2
+        env.fock.dimensions = 3
+        env.combine()
+        env.reorder(env.polarization, env.fock)
+
+        s = env.resize_fock(2)
+        self.assertFalse(s)
+        self.assertEqual(env.fock.dimensions, 3)
+
+        s = env.resize_fock(4)
+        self.assertTrue(s)
+        self.assertTrue(
+            jnp.allclose(
+                env.state,
+                jnp.array(
+                    [[0],
+                     [0],
+                     [0],
+                     [0],
+                     [1/jnp.sqrt(2)],
+                     [1j/jnp.sqrt(2)],
+                     [0],
+                     [0]]
+                )
+            )
+        )
+
+
+        s = env.resize_fock(2)
+        self.assertFalse(s)
+        self.assertTrue(
+            jnp.allclose(
+                env.state,
+                jnp.array(
+                    [[0],
+                     [0],
+                     [0],
+                     [0],
+                     [1/jnp.sqrt(2)],
+                     [1j/jnp.sqrt(2)],
+                     [0],
+                     [0]]
+                )
+            )
+        )
+
+        s = env.resize_fock(3)
+        self.assertTrue(
+            jnp.allclose(
+                env.state,
+                jnp.array(
+                    [[0],
+                     [0],
+                     [0],
+                     [0],
+                     [1/jnp.sqrt(2)],
+                     [1j/jnp.sqrt(2)]]
+                )
+            )
+        )
+
+    def test_resize_in_envelope_matrix(self) -> None:
+        env = Envelope()
+        env.fock.dimensions = 2
+        env.fock.state = 1
+        env.polarization.state = PolarizationLabel.R
+        env.combine()
+        env.expand()
+        s = env.resize_fock(3)
+        self.assertTrue(s)
+        self.assertEqual(env.fock.dimensions, 3)
+        self.assertTrue(
+            jnp.allclose(
+                env.state,
+                jnp.array(
+                    [[0,0,0,0,0,0],
+                     [0,0,0,0,0,0],
+                     [0,0,0.5,-0.5j,0,0],
+                     [0,0,0.5j,0.5,0,0],
+                     [0,0,0,0,0,0],
+                     [0,0,0,0,0,0]]
+                )
+            )
+        )
+        s = env.resize_fock(1)
+        self.assertFalse(s)
+        self.assertEqual(env.fock.dimensions, 3)
+
+        s = env.resize_fock(2)
+        self.assertTrue(s)
+        self.assertTrue(
+            jnp.allclose(
+                env.state,
+                jnp.array(
+                    [[0,0,0,0],
+                     [0,0,0,0],
+                     [0,0,0.5,-0.5j],
+                     [0,0,0.5j,0.5]]
+                )
+            )
+        )
+
+    @pytest.mark.my_marker
+    def test_resize_in_composite_envelope_vector(self) -> None:
+        env1 = Envelope()
+        env2 = Envelope()
+        env1.fock.dimensions = 2
+        env1.fock.state = 1
+        env2.polarization.state = PolarizationLabel.R
+
+        ce = CompositeEnvelope(env1,env2)
+        ce.combine(env1.fock, env2.polarization)
+        s = env1.fock.resize(3)
+        self.assertTrue(s)
+        self.assertEqual(env1.fock.dimensions, 3)
+        self.assertTrue(
+            jnp.allclose(
+                ce.product_states[0].state,
+                jnp.array(
+                    [[0],
+                     [0],
+                     [1/jnp.sqrt(2)],
+                     [1j/jnp.sqrt(2)],
+                     [0],
+                     [0]]
+                )
+            )
+        )
+
+        s = ce.resize_fock(1, env1.fock)
+        self.assertFalse(s)
+
+        s = env1.resize_fock(2)
+        self.assertTrue(s)
+        self.assertEqual(env1.fock.dimensions, 2)
+        self.assertTrue(
+            jnp.allclose(
+                ce.product_states[0].state,
+                jnp.array(
+                    [[0],
+                     [0],
+                     [1/jnp.sqrt(2)],
+                     [1j/jnp.sqrt(2)]]
+                )
+            )
+        )
+
+    @pytest.mark.my_marker
+    def test_resize_in_composite_envelope_matrix(self) -> None:
+        env1 = Envelope()
+        env2 = Envelope()
+        env1.fock.dimensions = 2
+        env1.fock.state = 1
+        env2.polarization.state = PolarizationLabel.R
+
+        ce = CompositeEnvelope(env1,env2)
+        ce.combine(env1.fock, env2.polarization)
+        ce.expand(env1.fock)
+        s = ce.resize_fock(3,env1.fock)
+        self.assertTrue(s)
+        self.assertTrue(
+            jnp.allclose(
+                ce.product_states[0].state,
+                jnp.array(
+                    [[0,0,0,0,0,0],
+                     [0,0,0,0,0,0],
+                     [0,0,0.5,-0.5j,0,0],
+                     [0,0,0.5j,0.5,0,0],
+                     [0,0,0,0,0,0],
+                     [0,0,0,0,0,0]]
+                )
+            )
+        )
+        self.assertEqual(env1.fock.dimensions,3)
+
+        s = env1.fock.resize(1)
+        self.assertFalse(s)
+
+        s = env1.fock.resize(2)
+        self.assertTrue(s)
+        self.assertTrue(
+            jnp.allclose(
+                ce.product_states[0].state,
+                jnp.array(
+                    [[0,0,0,0],
+                     [0,0,0,0],
+                     [0,0,0.5,-0.5j],
+                     [0,0,0.5j,0.5]]
+                )
+            )
+        )
+        self.assertEqual(env1.fock.dimensions,2)

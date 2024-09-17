@@ -10,7 +10,7 @@ from dataclasses import dataclass, field, InitVar
 
 from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.photon_weave import Config
-from photon_weave._math.ops import kraus_identity_check
+from photon_weave._math.ops import kraus_identity_check, num_quanta_matrix, num_quanta_vector
 
 # For static type checks
 if TYPE_CHECKING:
@@ -472,7 +472,8 @@ class ProductState:
 
             for op in operators:
                 ps = jnp.einsum(einsum_str, op, ps, jnp.conj(op))
-            dims = sum([s.dimensions for s in self.state_objs])
+            #dims = sum([s.dimensions for s in self.state_objs])
+            dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
 
             # Change the state back to the matrix form
             #transpose_pattern = get_transpose_pattern(self.state_objs)
@@ -559,14 +560,101 @@ class ProductState:
         else:
             raise ValueError("Something went wrong") #pragma: no cover
 
-
     @property
     def is_empty(self) -> bool:
+        """
+        Returns True if the product state is empty (it contains no sates)
+
+        Returns
+        -------
+        bool: True if empty, False if not
+        """
         if len(self.state_objs) == 0:
             return True
         return False
 
+    def resize_fock(self, new_dimensions:int, fock:'Fock') -> bool:
+        """
+        Resizes the space to the new dimensions.
+        If the dimensions are more, than the current dimensions, then
+        it gets padded. If the dimensions are less then the current
+        dimensions, then it checks if it can shrink the space.
 
+        Parameters
+        ----------
+        new_dimensions: bool
+            New dimensions to be set
+        fock: Fock
+            The fock state, for which the dimensions
+            must be changed
+
+        Returns
+        -------
+        bool
+            True if the resizing was succesfull
+        """
+        if self.expansion_level == ExpansionLevel.Vector:
+            shape = [so.dimensions for so in self.state_objs]
+            shape.append(1)
+            ps = self.state.reshape(shape)
+            if new_dimensions > fock.dimensions:
+                padding = new_dimensions - fock.dimensions
+                pad_config = [
+                    (0,0) for _ in range(ps.ndim)
+                ]
+                pad_config[fock.index[1]] = (0,padding)
+                ps = jnp.pad(ps, pad_config, mode="constant", constant_values=0)
+                fock.dimensions = new_dimensions
+                dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
+                self.state = ps.reshape((dims, 1))
+                return True
+            if new_dimensions < fock.dimensions:
+                to = fock.trace_out()
+                num_quanta = num_quanta_vector(to)
+                if num_quanta >= new_dimensions:
+                    return False
+                slices = [slice(None)] * ps.ndim
+                slices[fock.index[1]] = slice(0,new_dimensions)
+                ps = ps[tuple(slices)]
+                fock.dimensions = new_dimensions
+                dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
+                self.state = ps.reshape((dims, 1))
+                return True
+            
+        if self.expansion_level == ExpansionLevel.Matrix:
+            shape = [so.dimensions for so in self.state_objs]
+            transpose_pattern = [
+                item for i in range(len(self.state_objs)) for
+                item in [i,i+len(self.state_objs)]
+            ]
+            ps = self.state.reshape([*shape,*shape]).transpose(transpose_pattern)
+            if new_dimensions > fock.dimensions:
+                padding = new_dimensions - fock.dimensions
+                pad_config = [
+                    (0,0) for _ in range(ps.ndim)
+                ]
+                pad_config[fock.index[1]*len(self.state_objs)] = (0, padding)
+                pad_config[fock.index[1]*len(self.state_objs)+1] = (0, padding)
+                ps = jnp.pad(ps, pad_config, mode="constant", constant_values=0)
+                fock.dimensions = new_dimensions
+                dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
+                ps = ps.transpose(transpose_pattern)
+                self.state = ps.reshape((dims,dims))
+                return True
+            if new_dimensions < fock.dimensions:
+                to = fock.trace_out()
+                num_quanta = num_quanta_matrix(to)
+                if num_quanta >= new_dimensions:
+                    return False
+                slices = [slice(None)]*ps.ndim
+                slices[fock.index[1]*len(self.state_objs)] = slice(0, new_dimensions)
+                slices[fock.index[1]*len(self.state_objs)+1] = slice(0, new_dimensions)
+                ps = ps[tuple(slices)]
+                fock.dimensions = new_dimensions
+                ps = ps.transpose(transpose_pattern)
+                dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
+                self.state = ps.reshape((dims, dims))
+                return True
 
 @dataclass(slots=True)
 class CompositeEnvelopeContainer:
@@ -606,6 +694,10 @@ class CompositeEnvelopeContainer:
                 if so is not None:
                     so.extract((state_index, i))
                     so.composite_envelope = CompositeEnvelope._instances[self.composite_uid][0]
+
+
+
+        
 
 class CompositeEnvelope:
     """
@@ -1125,3 +1217,44 @@ class CompositeEnvelope:
         self.reorder(*states)
 
         return ps.trace_out(*states)
+
+    def resize_fock(self, new_dimensions:int, fock:'Fock') -> bool:
+        """
+        Resizes the space to the new dimensions.
+        If the dimensions are more, than the current dimensions, then
+        it gets padded. If the dimensions are less then the current
+        dimensions, then it checks if it can shrink the space.
+
+        Parameters
+        ----------
+        new_dimensions: bool
+            New dimensions to be set
+        fock: Fock
+            The fock state, for which the dimensions
+            must be changed
+
+        Returns
+        -------
+        bool
+            True if the resizing was succesfull
+        """
+        from photon_weave.state.fock import Fock
+        # Check if fock is Fock type
+        if not isinstance(fock, Fock):
+            raise ValueError("Only Fock spaces can be resized")
+
+        # Check if fock is in this composite envelope
+        if fock not in self.state_objs:
+            raise ValueError("Tried to resizing fock, which is not a part of this envelope")
+
+        if not isinstance(fock.index, tuple):
+            return fock.resize(new_dimensions)
+
+        ps = [ps for ps in self.product_states if fock in ps.state_objs]
+        if len(ps) != 1:
+            raise ValueError("Something went wrong") # pragma : no cover
+
+        ps = ps[0]
+        return ps.resize_fock(new_dimensions, fock)
+
+        

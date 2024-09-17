@@ -376,6 +376,9 @@ class Fock(BaseState):
                     self.dimensions = new_dimensions
                     return True
                 return False
-        elif isinstance(self.index, tuple):
+        elif isinstance(self.index, int):
             assert isinstance(self.envelope, Envelope)
             return self.envelope.resize_fock(new_dimensions)
+        elif isinstance(self.index, tuple):
+            assert isinstance(self.composite_envelope, CompositeEnvelope)
+            return self.composite_envelope.resize_fock(new_dimensions, self)
