@@ -88,37 +88,39 @@ class ProductState:
         assert all(so in ordered_states for so in self.state_objs), "All state objects need to be given"
         old_dims = [os.dimensions for os in ordered_states]
         if self.expansion_level == ExpansionLevel.Vector:
+            # Get the state and reshape it
             shape = [so.dimensions for so in self.state_objs]
+            shape.append(1)
             state = self.state.reshape(shape)
-            new_order = [self.state_objs.index(so) for so in ordered_states]
-            state = jnp.transpose(state, axes=new_order)
+
+            # Generate the Einsum String
+            einsum = ESC.reorder_vector(self.state_objs, ordered_states)
+
+            # Perform the reordering
+            state = jnp.einsum(einsum, state)
+
+            # Reshape and store the state
             self.state = state.reshape(-1,1)
+
+            # Update the new order
             self.state_objs = list(ordered_states)
         elif self.expansion_level == ExpansionLevel.Matrix:
+            # Get the state and reshape it
             shape = [os.dimensions for os in self.state_objs]*2
             state = self.state.reshape(shape)
-            einsum_list_list = [[],[]]
-            einsum_dict = {s:[] for s in self.state_objs}
-            counter = itertools.count(start=0)
-            for i in range(2):
-                for s in self.state_objs:
-                    c = next(counter)
-                    einsum_list_list[0].append(c)
-                    einsum_dict[s].append(c)
-            for i in range(2):
-                for s in ordered_states:
-                    c = einsum_dict[s][i]
-                    einsum_list_list[1].append(c)
 
-            einsum_list = ["".join([chr(97+s) for s in e]) for e in einsum_list_list]
-            einsum_str = f"{einsum_list[0]}->{einsum_list[1]}"
+            # Get the einstein sum string
+            einsum = ESC.reorder_matrix(self.state_objs, ordered_states)
 
-            state = jnp.einsum(einsum_str, state)
+            # Perform reordering
+            state = jnp.einsum(einsum, state)
+
+            # Reshape and reorder self.state_objs to reflect the new order
             new_dims = jnp.prod(jnp.array([s.dimensions for s in ordered_states]))
             self.state = state.reshape((new_dims, new_dims))
-            self.state = self.state.copy()
             self.state_objs = list(ordered_states)
 
+        # Update indices in all of the states in this product space
         self.container.update_all_indices()
 
     def measure(self, *states:'BaseState', separate_measurement:bool=False, destructive:bool=True) -> Dict['BaseState',int]:
@@ -399,101 +401,50 @@ class ProductState:
             must follow the order of the states in this list
         """
         if self.expansion_level == ExpansionLevel.Vector:
-            K = jnp.array(operators)
-            shape = [s.dimensions for s in self.state_objs] + [1]
-            op_shape = [s.dimensions for s in states] * 2
-
-            # Computing transpose pattern
-            transpose_pattern = []
-            for i in range(len(states)):
-                transpose_pattern.append(i)
-                transpose_pattern.append(i+len(states))
-                
-            operators = [op.reshape(op_shape).transpose(*transpose_pattern) for op in operators]
+            # Get the state and reshape it
+            shape = [s.dimensions for s in self.state_objs]
+            shape.append(1)
             ps = self.state.reshape(shape)
-            # Constructing einsum string
-            einsum_list_list:List[List[int]] = [[],[],[]]
-            c1 = itertools.count(start=0)
 
-            einsum_states = {}
-            for s in self.state_objs:
-                c = next(c1)
-                einsum_states[s] = [c]
-                einsum_list_list[1].append(c)
-            ed = next(c1)
-            einsum_list_list[1].append(ed)
-            for s in states:
-                c = next(c1)
-                einsum_list_list[0].append(c)
-                einsum_states[s].append(c)
-                einsum_list_list[0].append(einsum_states[s][0])
-
-            for s in self.state_objs:
-                if len(einsum_states[s])>1:
-                    einsum_list_list[2].append(einsum_states[s][1])
-                else:
-                    einsum_list_list[2].append(einsum_states[s][0])
-            einsum_list_list[2].append(ed)
-
-            einsum_list_str:List[str] = [ "".join([chr(97+i) for i in s]) for s in einsum_list_list]
-            einsum_str = f"{einsum_list_str[0]},{einsum_list_str[1]}->{einsum_list_str[2]}"
-            for op in operators:
-                ps = jnp.einsum(einsum_str, op, ps)
-            self.state = ps.flatten().reshape(-1,1)
-        elif self.expansion_level == ExpansionLevel.Matrix:
-
+            # Reshape the operators
             op_shape = [s.dimensions for s in states]*2
+            operators = [op.reshape(op_shape) for op in operators]
 
-            tp:Callable[[Tuple['BaseState',...]], List[int]] = lambda x: [item for i in range(len(x)) for item in [i,i+len(x)]]
+            # Generate einsum
+            einsum = ESC.apply_operator_vector(self.state_objs, states)
 
-            #transpose_pattern = []
-            #for i in range(len(states)):
-            #    transpose_pattern.append(i)
-            #    transpose_pattern.append(i+len(states))
-
-            ps = self.state.reshape([s.dimensions for s in self.state_objs]*2)
-            operators = [op.reshape(op_shape).transpose(*tp(states)) for op in operators]
-            # Constructing einsum string
-            einsum_list_list= [[],[],[],[]]
-            einsum_states = {s:[] for s in self.state_objs}
-            c1 = itertools.count(start=0)
-
-            # Marking down the state indices
-            for idx, s in enumerate(self.state_objs):
-                for i in range(2):
-                    c = next(c1)
-                    einsum_states[s].append(c)
-                    einsum_list_list[1].append(c)
-                    einsum_list_list[3].append(c)
-
-            # Marking down the first operator indices
-            for i, s in enumerate(states):
-                c = next(c1)
-                einsum_list_list[0].append(c)
-                einsum_list_list[0].append(einsum_states[s][0])
-                einsum_list_list[3][i*len(states)] = c
-
-            # Marking the second operator indices:
-            for i,s in enumerate(states):
-                c = next(c1)
-                einsum_list_list[2].append(c)
-                einsum_list_list[2].append(einsum_states[s][1])
-                einsum_list_list[3][i*len(states)+1] = c
-
-            ein = ESC.apply_operator_matrix(self.state_objs, states)
-            # Assembling the einstein sum
-            einsum_list= [ "".join([chr(97+i) for i in s]) for s in einsum_list_list]
-            einsum_str = f"{einsum_list[0]},{einsum_list[1]},{einsum_list[2]}->{einsum_list[3]}"
+            # Apply all operators
+            resulting_state = jnp.zeros_like(ps)
 
             for op in operators:
-                ps = jnp.einsum(einsum_str, op, ps, jnp.conj(op))
-            #dims = sum([s.dimensions for s in self.state_objs])
+                resulting_state += jnp.einsum(einsum, op, ps)
+            
+            # Reshape the resulting state back into vector and store it
+            self.state = resulting_state.reshape(-1,1)
+
+        elif self.expansion_level == ExpansionLevel.Matrix:
+            # Get the state and reshape it
+            ps = self.state.reshape([s.dimensions for s in self.state_objs]*2)
+
+            # Reshape the operators
+            op_shape = [s.dimensions for s in states]*2
+            operators = [op.reshape(op_shape) for op in operators]
+
+            # Genetate einsum
+            einsum = ESC.apply_operator_matrix(self.state_objs, states)
+
+            # Generate a new state to sum into
+            resulting_state = jnp.zeros_like(ps)
+
+            # Apply all operators
+            for op in operators:
+                resulting_state += jnp.einsum(einsum, op, ps, jnp.conj(op))
+
+            # Compute matrix dimensions
             dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
 
             # Change the state back to the matrix form
-            #transpose_pattern = get_transpose_pattern(self.state_objs)
-            ps = ps.transpose(*tp(tuple(self.state_objs)))
-            self.state = ps.reshape(dims, dims)
+            self.state = resulting_state.reshape(dims, dims)
             C = Config()
             if C.contractions:
                 self.contract()
@@ -515,68 +466,33 @@ class ProductState:
             in the order in which the states are given
         """
         if self.expansion_level == ExpansionLevel.Vector:
-            # Reshape the system
+            # Reshape the vector into tensor
             shape = [s.dimensions for s in self.state_objs] + [1]
             ps = self.state.reshape(shape)
 
             # Compute einsum string
-            einsum_list_list:List[List[int]] = [[],[]]
-            c1 = itertools.count(start=0)
-            for so in self.state_objs:
-                if not so in states:
-                    c = next(c1)
-                    einsum_list_list[0].append(c)
-                else:
-                    c = next(c1)
-                    einsum_list_list[0].append(c)
-                    einsum_list_list[1].append(c)
-            c = next(c1)
-            einsum_list_list[0].append(c)
-            einsum_list_list[1].append(c)
-            einsum_list = [[chr(97+x) for x in string] for string in einsum_list_list]
-            einsum_str = ["".join(s) for s in einsum_list]
-            einsum = f"{einsum_str[0]}->{einsum_str[1]}"
+            einsum = ESC.trace_out_vector(self.state_objs, states)
 
-
+            # Perform the tracing
             traced_out_state = jnp.einsum(einsum, ps)
-            traced_out_state = traced_out_state.reshape((-1, 1))
-            return traced_out_state
+
+            # Reshape and return
+            return traced_out_state.reshape((-1, 1))
         elif self.expansion_level == ExpansionLevel.Matrix:
-            transpose_pattern = lambda x: [item for i in range(len(x)) for item in [i,i+len(x)]]
-            dim = jnp.prod(jnp.array([so.dimensions for so in self.state_objs]))
-            #self.state = self.state.copy()
-            #ps = self.state.reshape([s.dimensions for s in self.state_objs]*2).transpose(
-            #    *transpose_pattern(self.state_objs)
-            #)
+            # Reshape the matrix into tensor
             ps = self.state.reshape([s.dimensions for s in self.state_objs]*2)
 
-
             # Generate einsum string
-            einsum = ESC.trace_out(self.state_objs, states)
-            print(einsum)
-            # Compute einstein sum string
-            #einsum_list_list = [[],[]]
-            #c1 = itertools.count(start=0)
-            #for so in self.state_objs:
-            #    if not so in states:
-            #        c = next(c1)
-            #        einsum_list_list[0].extend([c,c])
-            #    else:
-            #        cl = [next(c1), next(c1)]
-            #        einsum_list_list[0].extend(cl)
-            #        einsum_list_list[1].extend(cl)
+            einsum = ESC.trace_out_matrix(self.state_objs, states)
 
-            #einsum_list = [[chr(97+x) for x in string] for string in einsum_list_list]
-            #einsum_str = ["".join(s) for s in einsum_list]
-            #einsum = f"{einsum_str[0]}->{einsum_str[1]}"
-
-
+            # Perform the tracing
             traced_out_state = jnp.einsum(einsum, ps)
+
+            # Compute the new dimensions
             new_dims = jnp.prod(jnp.array([s.dimensions for s in states]))
+
+            # Reshape and Return
             return traced_out_state.reshape((new_dims, new_dims))
-            #traced_out_state = traced_out_state.transpose(transpose_pattern(states)).reshape(
-            #    (new_dims, new_dims))
-            return traced_out_state
         else:
             raise ValueError("Something went wrong") #pragma: no cover
 
@@ -700,35 +616,20 @@ class ProductState:
             assert isinstance(self.state, jnp.ndarray)
             dims = jnp.prod(jnp.array([so.dimensions for so in self.state_objs]))
             assert self.state.shape == (dims, 1)
+
+            # Get the Reshaped state
             shape.append(1)
             ps = self.state.reshape(shape)
+
+            # Get the operator and Reshape it
+            operator = operation.operator.reshape([s.dimensions for s in states]*2)
+
+            # Generate the Einstein sum string
+            einsum = ESC.apply_operator_vector(self.state_objs, states)
+
             # Constructing einsum string
-            einsum_list_list:List[List[int]] = [[],[],[]]
-            c1 = itertools.count(start=0)
+            ps = jnp.einsum(einsum, operator, ps)
 
-            einsum_states = {}
-            for s in self.state_objs:
-                c = next(c1)
-                einsum_states[s] = [c]
-                einsum_list_list[1].append(c)
-            ed = next(c1)
-            einsum_list_list[1].append(ed)
-            for s in states:
-                c = next(c1)
-                einsum_list_list[0].append(c)
-                einsum_states[s].append(c)
-                einsum_list_list[0].append(einsum_states[s][0])
-
-            for s in self.state_objs:
-                if len(einsum_states[s])>1:
-                    einsum_list_list[2].append(einsum_states[s][1])
-                else:
-                    einsum_list_list[2].append(einsum_states[s][0])
-            einsum_list_list[2].append(ed)
-
-            einsum_list_str:List[str] = [ "".join([chr(97+i) for i in s]) for s in einsum_list_list]
-            einsum_str = f"{einsum_list_str[0]},{einsum_list_str[1]}->{einsum_list_str[2]}"
-            ps = jnp.einsum(einsum_str, operation.operator, ps)
             if not jnp.any(jnp.abs(ps) > 0):
                 raise ValueError("The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?")
             if operation.renormalize:
@@ -739,56 +640,30 @@ class ProductState:
             dims = jnp.prod(jnp.array([so.dimensions for so in self.state_objs]))
             assert self.state.shape == (dims, dims)
 
-            tp:Callable[[Tuple['BaseState',...]], List[int]] = lambda x: [item for i in range(len(x)) for item in [i,i+len(x)]]
+            # Get the State and Reshape it
+            ps = self.state.reshape([*shape, *shape])
 
-            ps = self.state.reshape([*shape, *shape]).transpose(*tp(self.state_objs))
+            # Get the operator and Reshape it
+            operator = operation.operator.reshape([s.dimensions for s in states]*2)
 
-            einsum_list_list= [[],[],[],[]]
-            einsum_states = {s:[] for s in self.state_objs}
-            c1 = itertools.count(start=0)
+            # Generate Einstein sum string
+            einsum = ESC.apply_operator_matrix(self.state_objs, states)
 
-            # Marking down the state indices
-            for idx, s in enumerate(self.state_objs):
-                for i in range(2):
-                    c = next(c1)
-                    einsum_states[s].append(c)
-                    einsum_list_list[1].append(c)
-                    einsum_list_list[3].append(c)
+            # Apply the Einstein Summation
+            ps = jnp.einsum(einsum, operator, ps, jnp.conj(operator))
 
-
-            # Marking down the first operator indices
-            for i, s in enumerate(states):
-                c = next(c1)
-                einsum_list_list[0].append(c)
-                einsum_list_list[0].append(einsum_states[s][0])
-                einsum_list_list[3][i*len(states)] = c
-
-            # Marking the second operator indices:
-            for i,s in enumerate(states):
-                c = next(c1)
-                einsum_list_list[2].append(c)
-                einsum_list_list[2].append(einsum_states[s][1])
-                einsum_list_list[3][i*len(states)+1] = c
-
-            # Assembling the einstein sum
-            einsum_list= [ "".join([chr(97+i) for i in s]) for s in einsum_list_list]
-            einsum_str = f"{einsum_list[0]},{einsum_list[1]},{einsum_list[2]}->{einsum_list[3]}"
-
-            ps = jnp.einsum(einsum_str, operation.operator, ps, jnp.conj(operation.operator))
-
-            dims = jnp.prod(jnp.array([so.dimensions for so in self.state_objs]))
             if not jnp.any(jnp.abs(ps) > 0):
                 raise ValueError("The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?")
             if operation.renormalize:
                 ps = ps / jnp.linalg.norm(ps)
 
-            ps = ps.transpose(*tp(self.state_objs))
-
+            # Reshape back into 2d Matrix
             dims = jnp.prod(jnp.array([so.dimensions for so in self.state_objs]))
-            self.state = jnp.asarray(ps.reshape((dims, dims)))
+            self.state = ps.reshape((dims, dims))
             C = Config()
             if C.contractions:
                 self.contract()
+
 
 @dataclass(slots=True)
 class CompositeEnvelopeContainer:

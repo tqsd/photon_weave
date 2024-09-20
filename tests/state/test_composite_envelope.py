@@ -819,6 +819,7 @@ class TestKrausApply(unittest.TestCase):
             )
         )
 
+    @pytest.mark.my_marker
     def test_kraus_apply_with_two_product_states(self) -> None:
         env1 = Envelope()
         env2 = Envelope()
