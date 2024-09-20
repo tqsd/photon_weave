@@ -20,7 +20,7 @@ import jax
 from photon_weave._math.ops import kraus_identity_check, apply_kraus, num_quanta_matrix, num_quanta_vector
 from photon_weave.photon_weave import Config
 from photon_weave.constants import C0, gaussian
-from photon_weave.operation.generic_operation import GenericOperation
+from photon_weave.operation import Operation
 from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.state.exceptions import (
     EnvelopeAlreadyMeasuredException,
@@ -241,6 +241,8 @@ class Envelope:
             self.fock.expand()
             self.polarization.expand()
             return
+        if self.composite_envelope is not None:
+            self.composite_envelope.expand(self.fock, self.polarization)
         if self.expansion_level == ExpansionLevel.Vector:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, 1)
@@ -798,7 +800,9 @@ class Envelope:
             tmp_vector = jnp.transpose(tmp_vector, (1,0))
             self.state = tmp_vector.reshape(-1,1)
             self.fock.index, self.polarization.index = self.polarization.index, self.fock.index
+            print(self)
         elif self.expansion_level == ExpansionLevel.Matrix:
+            print("MATRIX")
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, self.dimensions)
             tmp_matrix = self.state.reshape(
@@ -1049,3 +1053,77 @@ class Envelope:
                 self.state = ps.reshape((self.dimensions, self.dimensions))
                 return True
         return False # pragma: no cover
+
+    def apply_operation(self, operation: Operation, *states:Union['Fock', 'Polarization']) -> None:
+        """
+        Applies given operation to the correct state
+
+        Parameters
+        ----------
+        operation: Operation
+            Operation to be applied to the state
+        state: Union[Fock, Polarization]
+            The state to which the operator should be applied to
+        """
+
+        from photon_weave.state.fock import Fock
+        from photon_weave.state.polarization import Polarization
+        from photon_weave.operation.fock_operation import FockOperationType
+        from photon_weave.operation.polarization_operation import PolarizationOperationType
+
+        # Check that correct operation is applied to the correct system
+        if isinstance(operation._operation_type,FockOperationType):
+            if not isinstance(states[0], Fock):
+                raise ValueError("Cannot apply {type(operation._operation_type)} to {type(states[0])}")
+        if isinstance(operation._operation_type,PolarizationOperationType):
+            if not isinstance(states[0], Polarization):
+                raise ValueError("Cannot apply {type(operation._operation_type)} to {type(states[0])}")
+
+        if self.state is None:
+            states[0].apply_operation(operation)
+            return 
+
+        self.reorder(*states)
+
+        if (isinstance(operation._operation_type, FockOperationType) and
+            isinstance(states[0], Fock)):
+            operation.compute_dimensions(states[0]._num_quanta)
+            states[0].resize(operation.dimensions)
+
+        reshape_shape = [-1,-1]
+        reshape_shape[self.fock.index]=self.fock.dimensions
+        reshape_shape[self.polarization.index]=self.polarization.dimensions
+
+        if self.expansion_level == ExpansionLevel.Vector:
+            assert isinstance(self.state, jnp.ndarray)
+            assert self.state.shape == (self.dimensions, 1)
+            reshape_shape.append(1)
+
+            ps = self.state.reshape(reshape_shape)
+
+            # state is reordered, so the state operated on is in the first state
+            ps = jnp.einsum("ij,jkl->ikl", operation.operator, ps)
+            if not jnp.any(jnp.abs(ps) > 0):
+                raise ValueError("The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?")
+            if operation.renormalize:
+                ps = ps / jnp.linalg.norm(ps)
+            self.state = ps.reshape((-1,1))
+            return
+        if self.expansion_level == ExpansionLevel.Matrix:
+            assert isinstance(self.state, jnp.ndarray)
+            assert self.state.shape == (self.dimensions, self.dimensions)
+            ps = self.state.reshape([*reshape_shape, *reshape_shape]).transpose([0,2,1,3])
+
+            ps = jnp.einsum("ij,jklm,nk->inlm", operation.operator, ps, jnp.conj(operation.operator))
+            
+            ps = ps.transpose([0,2,1,3])
+            ps = ps.reshape(self.dimensions, self.dimensions)
+            if not jnp.any(jnp.abs(ps) > 0):
+                raise ValueError("The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?")
+            if operation.renormalize:
+                ps = ps / jnp.linalg.norm(ps)
+            self.state = ps.reshape((self.dimensions, self.dimensions))
+
+            C = Config()
+            if C.contractions:
+                self.contract()

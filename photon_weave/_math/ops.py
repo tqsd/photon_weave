@@ -7,42 +7,62 @@ import jax
 from typing import Union, List
 
 
-@njit('complex128[:,::1](uintc)', cache=True, parallel=True, fastmath=True)
-def annihilation_operator(cutoff: int) -> np.ndarray:
-    return np.diag(np.sqrt(np.arange(1, cutoff, dtype=np.complex128)), 1)
+def annihilation_operator(cutoff: int) -> jnp.ndarray:
+    return jnp.diag(jnp.sqrt(jnp.arange(1, cutoff, dtype=np.complex128)), 1)
 
+def creation_operator(cutoff: int)-> jnp.ndarray:
+    return jnp.conjugate(annihilation_operator(cutoff=cutoff)).T
 
-@njit('complex128[::1,:](uintc)', cache=True, parallel=True, fastmath=True)
-def creation_operator(cutoff: int)-> np.ndarray:
-    return np.conjugate(annihilation_operator(cutoff=cutoff)).T
+def _expm(mat: jnp.ndarray) -> np.ndarray:
+    eigvals, eigvecs = jnp.linalg.eig(mat)
+    return eigvecs @ jnp.diag(jnp.exp(eigvals)) @ jnp.linalg.pinv(eigvecs)
 
-@njit('complex128[:,::1](complex128[:,::1])', cache=True, parallel=True, fastmath=True)
-def _expm(mat: np.ndarray) -> np.ndarray:
-    eigvals, eigvecs = np.linalg.eig(mat)
-    return eigvecs @ np.diag(np.exp(eigvals)) @ np.linalg.pinv(eigvecs)
-
-
-@njit('complex128[:,::1](complex128, uintc)', cache=True, parallel=True, fastmath=True)
-def squeezing_operator(zeta: complex, cutoff: int):
+def squeezing_operator(cutoff: int, zeta:complex) -> jnp.ndarray:
     create = creation_operator(cutoff=cutoff)
     destroy = annihilation_operator(cutoff=cutoff)
     operator = 0.5 * (
-        np.conj(zeta) * (destroy @ destroy) - zeta * (create @ create)
+        jnp.conj(zeta) * (destroy @ destroy) - zeta * (create @ create)
     )
     return _expm(operator)
 
 
-@njit('complex128[:,::1](complex128, uintc)', cache=True, parallel=True, fastmath=True)
-def displacement_operator(alpha: complex, cutoff: int):
+def displacement_operator(cutoff:int, alpha: complex) -> jnp.ndarray:
     create = creation_operator(cutoff=cutoff)
     destroy = annihilation_operator(cutoff=cutoff)
     operator = alpha * create - alpha * destroy
     return _expm(operator)
 
 
-@njit(cache=True, parallel=True, fastmath=True)
-def phase_operator(theta: float, cutoff: int):
-    return np.diag([np.exp(1j * n * theta) for n in range(cutoff)])
+def phase_operator(cutoff:int, theta: float) -> jnp.ndarray:
+    """
+    Returns a phase shift operator, given the dimensions
+
+    .. math::
+      \hat{R}(\theta) = \sum_{n=0}^{\text{cutoff}-1} e^{1 n \theta }|n\rangle \langle n|
+
+    This operator applies a phase shift to each Fock state |n⟩ proportional to the integer n.
+    The phase shift is given by :math:`e^{i n \theta}`, where `theta` is the phase shift parameter.
+    
+
+    Parameters
+    ----------
+    cutoff: int
+        Cutoff dimensions
+    theta: float
+        Phase shift for the operator
+
+    Returns
+    -------
+    jnp.ndarray
+        Constructed opreator
+
+    Notes
+    -----
+    The phase shift operator is unitary and is used to rotate the phase of a quantum state
+    in the Fock basis. The diagonal matrix elements are complex exponentials that apply a
+    phase proportional to the Fock state number.
+    """
+    return jnp.diag([jnp.exp(1j * n * theta) for n in range(cutoff)])
 
 
 # to do: implement beamsplitter here

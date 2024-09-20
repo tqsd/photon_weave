@@ -474,7 +474,6 @@ class TestFockDimensionChange(unittest.TestCase):
             )
         )
 
-    @pytest.mark.my_marker
     def test_resize_in_envelope_vector(self) -> None:
         env = Envelope()
         env.polarization.state = PolarizationLabel.V
@@ -616,7 +615,6 @@ class TestFockDimensionChange(unittest.TestCase):
             )
         )
 
-    @pytest.mark.my_marker
     def test_resize_in_composite_envelope_vector(self) -> None:
         env1 = Envelope()
         env2 = Envelope()
@@ -661,7 +659,6 @@ class TestFockDimensionChange(unittest.TestCase):
             )
         )
 
-    @pytest.mark.my_marker
     def test_resize_in_composite_envelope_matrix(self) -> None:
         env1 = Envelope()
         env2 = Envelope()

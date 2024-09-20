@@ -2,199 +2,110 @@
 Operations on fock spaces
 """
 
+from numba import uintc
 from enum import Enum, auto
-
-import numpy as np
+import jax.numpy as jnp
+from typing import Optional, Any
+from scipy.stats import norm
 
 from photon_weave._math.ops import (
     annihilation_operator,
     creation_operator,
     displacement_operator,
     squeezing_operator,
+    phase_operator
 )
 from photon_weave.extra import interpreter
-
-from .generic_operation import GenericOperation
-
+from photon_weave.state.expansion_levels import ExpansionLevel
 
 class FockOperationType(Enum):
-    # implemented
-    Creation = auto()
-    # implemented
-    Annihilation = auto()
-    # implemented
-    PhaseShift = auto()
-    # implemented
-    Squeeze = auto()
-    # implemented
-    Displace = auto()
-    Identity = auto()
-    Custom = auto()
+    """
+    Fock Operation Types
+    first value in tuple signals that the state
+    should be normalized after operation, second
+    element is a list of required elements
 
+    Notes
+    -----
+    Last element in Tuples is required (to be unique),
+    because if two tuples are the same it is assigned
+    the same pointer and comparisons don't work then
+    """
+    # TESTED
+    Creation = (True, [], ExpansionLevel.Vector, 1)
+    # TESTED
+    Annihilation = (True, [], ExpansionLevel.Vector, 2)
+    PhaseShift = (False, ['phi'], ExpansionLevel.Vector, 3)
+    Squeeze = (True, ['alpha'], ExpansionLevel.Vector, 4)
+    Displace = (False, ['zeta'], ExpansionLevel.Vector, 5)
+    Identity = (False, [], ExpansionLevel.Vector, 6)
+    Custom = (False, [], ExpansionLevel.Vector, 7)
+    Expresion = (False, ["expr"], ExpansionLevel.Vector, 8)
 
-class FockOperation(GenericOperation):
-    def __init__(self, operation: FockOperationType, apply_count: int = 1, **kwargs):
-        self.kwargs = kwargs
-        self.operation = operation
-        self.operator = None
-        self.apply_count = apply_count
-        # For the case of applying the ladder operators to the state directly
-        self.renormalize = None
-        # Ladder operators are not unitary, in our case we normalize after applying
-        match self.operation:
-            case FockOperationType.Creation:
-                self.renormalize = True
-            case FockOperationType.Annihilation:
-                self.renormalize = True
-            case FockOperationType.PhaseShift:
-                if "phi" not in kwargs:
-                    raise KeyError(
-                        "The 'phi' argument is required for Phase Shift operator"
-                    )
-                if "phi" not in kwargs:
-                    raise KeyError(
-                        "The 'phi' argument is required for Phase Shift operator"
-                    )
-            case FockOperationType.Displace:
-                self.renormalize = True
-                if "alpha" not in kwargs:
-                    raise KeyError(
-                        "The 'alpha' argument is required for Displace operator"
-                    )
-                if "alpha" not in kwargs:
-                    raise KeyError(
-                        "The 'alpha' argument is required for Displace operator"
-                    )
-            case FockOperationType.Squeeze:
-                if "zeta" not in kwargs:
-                    raise KeyError(
-                        "The compley 'zeta' argument is required for Squeeze operator"
-                    )
-                if "zeta" not in kwargs:
-                    raise KeyError(
-                        "The compley 'zeta' argument is required for Squeeze operator"
-                    )
+    def __init__(self, renormalize:bool, required_params: list,
+                 required_expansion_level: ExpansionLevel, op_id:int) -> None:
+        self.renormalize = renormalize
+        self.required_params = required_params
+        self.required_expansion_level=required_expansion_level
 
-    def compute_operator(self, dimensions):
+    def compute_operator(self, dimensions:int, **kwargs:Any):
         """
-        Computes the correct operator with the appropariate
-        dimensions.
+        Generates the operator for this opration, given
+        the dimensions
+
+        Parameters
+        ----------
+        dimensions: int
+            The dimensions of the state
+        **kwargs: Any
+            List of key word arguments for specific operator types
         """
-        match self.operation:
+        match self:
             case FockOperationType.Creation:
-                self.operator = self._create(dimensions)
+                return creation_operator(uintc(dimensions))
             case FockOperationType.Annihilation:
-                self.operator = self._destroy(dimensions)
+                return annihilation_operator(uintc(dimensions))
             case FockOperationType.PhaseShift:
-                n = np.arange(dimensions)
-                phases = np.exp(1j * n * self.kwargs["phi"])
-                self.operator = np.diag(phases)
+                return phase_operator(uintc(dimensions), kwargs["phi"])
             case FockOperationType.Displace:
-                alpha = self.kwargs["alpha"]
-                self.operator = displacement_operator(alpha=alpha, cutoff=dimensions)
+                return displacement_operator(uintc(dimensions), kwargs["alpha"])
             case FockOperationType.Squeeze:
-                zeta = self.kwargs["zeta"]
-                self.operator = squeezing_operator(zeta=zeta, cutoff=dimensions)
+                return squeezing_operator(uintc(dimensions), kwargs["zeta"])
             case FockOperationType.Identity:
-                self.operator = np.eye(dimensions)
-            case FockOperationType.Custom:
-                if "expression" in self.kwargs:
-                    self._evaluate_custom_operator(
-                        self.kwargs["expression"], dimensions
-                    )
-        if self.apply_count > 1:
-            self.operator = matrix_power(self.operator, self.apply_count)
+                return jnp.identity(dimensions)
+            case FockOperationType.Expresion:
+                return interpreter(dimensions, kwargs["expr"])
 
-    def _create(self, cutoff: int) -> np.ndarray[np.complex_]:
-        return creation_operator(cutoff=cutoff)
-
-    def _destroy(self, cutoff) -> np.ndarray:
-        """_summary_
-
-        Parameters
-        ----------
-        cutoff : _type_
-            _description_
-
-        Returns
-        -------
-        np.ndarray
-            _description_
-        """
-        return annihilation_operator(cutoff=cutoff)
-
-    def expansion_level_required(self) -> int:
-        r"""
-        Returns the expansion level required
-
-        Returns
-        -------
-        int
-            _description_
-        """
-        match self.operation:
+        
+    def compute_dimensions(self, num_quanta:int) -> int:
+        match self:
             case FockOperationType.Creation:
-                return 0
+                return int(num_quanta + 2)
             case FockOperationType.Annihilation:
-                return 0
+                return num_quanta + 2
             case FockOperationType.PhaseShift:
-                return 1
+                return num_quanta + 1
             case FockOperationType.Displace:
-                return 1
+                a_squared = kwargs["alpha"]**2
+                return jnp.ceil(a_squared + num_quanta + 3 * jnp.sqrt(a_squared + num_quanta))
             case FockOperationType.Squeeze:
-                return 1
-            case _:
-                return 1
+                mean_increase = jnp.sinh(kwargs["zeta"])
+                total_mean_photon_number = num_quanta +  mean_increase
+                std_dev_photon_number = jnp.sqrt(2*mean_increase*(mean_increase+1))
+                n_max = int(jnp.ceil(total_mean_photon_number+3*std_dev_photon_number))
+                cumulative_prob = 0.0
+                threshold = 0.99
+                while cumulative_prob < threshold:
+                    cumulative_prob = norm.cdf(
+                        n_max,
+                        loc=total_mean_photon_number,
+                        scale=std_dev_photon_number
+                    )
+                    n_max += 1
+                return n_max
+            case FockOperationType.Identity:
+                return num_quanta + 1
+            case FockOperationType.Expresion:
+                return num_quanta + 1
 
-    def cutoff_required(self, num_quanta=0) -> int:
-        r"""
-        Returns the expansion level required
 
-        Parameters
-        ----------
-        num_quanta : int, optional
-            _description_, by default 0
-
-        Returns
-        -------
-        int
-            _description_
-        """
-        match self.operation:
-            case FockOperationType.Displace:
-                return int(np.ceil(4 * np.abs(self.kwargs["alpha"]) ** 2))
-                return int(np.ceil(4 * np.abs(self.kwargs["alpha"]) ** 2))
-            case FockOperationType.Squeeze:
-                r = np.abs(self.kwargs["zeta"])
-                return int(2 + 4 * r + 2 * r**4)
-                return int(2 + 4 * r + 2 * r**4)
-            case _:
-                return 0
-
-    def assign_operator(self, expression) -> None:
-        """_summary_
-
-        Parameters
-        ----------
-        expression : _type_
-            _description_
-        """
-        if self.operation is FockOperationType.Custom:
-            self.expression = expression
-
-    def _evaluate_custom_operator(self, expression: str, dimensions: int) -> None:
-        """_summary_
-
-        Parameters
-        ----------
-        expression : _type_
-            _description_
-        dimensions : _type_
-            _description_
-        """
-        context = {
-            "a": self._destroy(dimensions),
-            "a_dag": self._create(dimensions),
-        }
-        context["n"] = np.dot(context["a_dag"], context["a"])
-        self.operator = interpreter(expression, context)

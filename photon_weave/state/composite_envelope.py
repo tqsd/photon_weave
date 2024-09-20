@@ -5,12 +5,14 @@ import jax
 import jax.numpy as jnp
 import uuid
 from typing import Union, List, Optional, Dict, Tuple, TYPE_CHECKING, cast, Callable
-import threading
 from dataclasses import dataclass, field, InitVar
 
 from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.photon_weave import Config
 from photon_weave._math.ops import kraus_identity_check, num_quanta_matrix, num_quanta_vector
+from photon_weave.operation import Operation, PolarizationOperationType, FockOperationType
+#from photon_weave.extra.einsum_constructor import EinsumStringConstructor as ESC
+import photon_weave.extra.einsum_constructor as ESC
 
 # For static type checks
 if TYPE_CHECKING:
@@ -19,6 +21,8 @@ if TYPE_CHECKING:
     from photon_weave.state.polarization import Polarization # pragma: no cover
     from photon_weave.state.base_state import BaseState # pragma: no cover
     from photon_weave.state.custom_state import CustomState # pragma: no cover
+
+
 
 @dataclass(slots=True)
 class ProductState:
@@ -91,17 +95,28 @@ class ProductState:
             self.state = state.reshape(-1,1)
             self.state_objs = list(ordered_states)
         elif self.expansion_level == ExpansionLevel.Matrix:
-            shape = [os.dimensions for os in ordered_states]*2
+            shape = [os.dimensions for os in self.state_objs]*2
             state = self.state.reshape(shape)
-            c1 = itertools.count(start=0)
-            old_order = list(range(len(shape)))
-            order_first = {s:self.state_objs.index(s) for s in ordered_states}
-            order_second= {s:self.state_objs.index(s)+len(self.state_objs) for s in ordered_states}
-            new_order = [order_first[s] for s in ordered_states]
-            new_order.extend([order_second[s] for s in ordered_states])
-            state = jnp.transpose(state, axes=new_order)
+            einsum_list_list = [[],[]]
+            einsum_dict = {s:[] for s in self.state_objs}
+            counter = itertools.count(start=0)
+            for i in range(2):
+                for s in self.state_objs:
+                    c = next(counter)
+                    einsum_list_list[0].append(c)
+                    einsum_dict[s].append(c)
+            for i in range(2):
+                for s in ordered_states:
+                    c = einsum_dict[s][i]
+                    einsum_list_list[1].append(c)
+
+            einsum_list = ["".join([chr(97+s) for s in e]) for e in einsum_list_list]
+            einsum_str = f"{einsum_list[0]}->{einsum_list[1]}"
+
+            state = jnp.einsum(einsum_str, state)
             new_dims = jnp.prod(jnp.array([s.dimensions for s in ordered_states]))
             self.state = state.reshape((new_dims, new_dims))
+            self.state = self.state.copy()
             self.state_objs = list(ordered_states)
 
         self.container.update_all_indices()
@@ -426,7 +441,6 @@ class ProductState:
                 ps = jnp.einsum(einsum_str, op, ps)
             self.state = ps.flatten().reshape(-1,1)
         elif self.expansion_level == ExpansionLevel.Matrix:
-            print("APPLYING KRAUS")
 
             op_shape = [s.dimensions for s in states]*2
 
@@ -466,6 +480,7 @@ class ProductState:
                 einsum_list_list[2].append(einsum_states[s][1])
                 einsum_list_list[3][i*len(states)+1] = c
 
+            ein = ESC.apply_operator_matrix(self.state_objs, states)
             # Assembling the einstein sum
             einsum_list= [ "".join([chr(97+i) for i in s]) for s in einsum_list_list]
             einsum_str = f"{einsum_list[0]},{einsum_list[1]},{einsum_list[2]}->{einsum_list[3]}"
@@ -482,7 +497,6 @@ class ProductState:
             C = Config()
             if C.contractions:
                 self.contract()
-
 
     def trace_out(self, *states: 'BaseState') -> jnp.ndarray:
         """
@@ -529,33 +543,39 @@ class ProductState:
             return traced_out_state
         elif self.expansion_level == ExpansionLevel.Matrix:
             transpose_pattern = lambda x: [item for i in range(len(x)) for item in [i,i+len(x)]]
+            dim = jnp.prod(jnp.array([so.dimensions for so in self.state_objs]))
+            #self.state = self.state.copy()
+            #ps = self.state.reshape([s.dimensions for s in self.state_objs]*2).transpose(
+            #    *transpose_pattern(self.state_objs)
+            #)
+            ps = self.state.reshape([s.dimensions for s in self.state_objs]*2)
 
-            # Reshape the state
-            ps = self.state.reshape([s.dimensions for s in self.state_objs]*2).transpose(
-                *transpose_pattern(self.state_objs)
-            )
 
+            # Generate einsum string
+            einsum = ESC.trace_out(self.state_objs, states)
+            print(einsum)
             # Compute einstein sum string
-            einsum_list_list = [[],[]]
-            c1 = itertools.count(start=0)
-            for so in self.state_objs:
-                if not so in states:
-                    c = next(c1)
-                    einsum_list_list[0].extend([c,c])
-                else:
-                    cl = [next(c1), next(c1)]
-                    einsum_list_list[0].extend(cl)
-                    einsum_list_list[1].extend(cl)
+            #einsum_list_list = [[],[]]
+            #c1 = itertools.count(start=0)
+            #for so in self.state_objs:
+            #    if not so in states:
+            #        c = next(c1)
+            #        einsum_list_list[0].extend([c,c])
+            #    else:
+            #        cl = [next(c1), next(c1)]
+            #        einsum_list_list[0].extend(cl)
+            #        einsum_list_list[1].extend(cl)
 
-            einsum_list = [[chr(97+x) for x in string] for string in einsum_list_list]
-            einsum_str = ["".join(s) for s in einsum_list]
-            einsum = f"{einsum_str[0]}->{einsum_str[1]}"
+            #einsum_list = [[chr(97+x) for x in string] for string in einsum_list_list]
+            #einsum_str = ["".join(s) for s in einsum_list]
+            #einsum = f"{einsum_str[0]}->{einsum_str[1]}"
 
-            new_dims = jnp.prod(jnp.array([s.dimensions for s in states]))
 
             traced_out_state = jnp.einsum(einsum, ps)
-            traced_out_state = traced_out_state.transpose(transpose_pattern(states)).reshape(
-                (new_dims, new_dims))
+            new_dims = jnp.prod(jnp.array([s.dimensions for s in states]))
+            return traced_out_state.reshape((new_dims, new_dims))
+            #traced_out_state = traced_out_state.transpose(transpose_pattern(states)).reshape(
+            #    (new_dims, new_dims))
             return traced_out_state
         else:
             raise ValueError("Something went wrong") #pragma: no cover
@@ -653,8 +673,122 @@ class ProductState:
                 fock.dimensions = new_dimensions
                 ps = ps.transpose(transpose_pattern)
                 dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
-                self.state = ps.reshape((dims, dims))
+                self.state = jnp.array(ps.reshape((dims, dims)))
                 return True
+
+    def apply_operation(self, operation:Operation, *states: 'BaseState') -> None:
+        """
+        Apply operation to the given states in this product state
+
+        Parameters
+        ----------
+        operation: Operation
+            The operation which will be applied
+        *states: BaseState
+            The states in the correct order to which the operation
+            will be applied
+        """
+        from photon_weave.state.fock import Fock
+        from photon_weave.state.polarization import Polarization
+        if isinstance(operation._operation_type,FockOperationType):
+            assert isinstance(states[0], Fock)
+            operation.compute_dimensions(states[0]._num_quanta)
+            states[0].resize(operation.dimensions)
+        
+        shape = [so.dimensions for so in self.state_objs]
+        if self.expansion_level == ExpansionLevel.Vector:
+            assert isinstance(self.state, jnp.ndarray)
+            dims = jnp.prod(jnp.array([so.dimensions for so in self.state_objs]))
+            assert self.state.shape == (dims, 1)
+            shape.append(1)
+            ps = self.state.reshape(shape)
+            # Constructing einsum string
+            einsum_list_list:List[List[int]] = [[],[],[]]
+            c1 = itertools.count(start=0)
+
+            einsum_states = {}
+            for s in self.state_objs:
+                c = next(c1)
+                einsum_states[s] = [c]
+                einsum_list_list[1].append(c)
+            ed = next(c1)
+            einsum_list_list[1].append(ed)
+            for s in states:
+                c = next(c1)
+                einsum_list_list[0].append(c)
+                einsum_states[s].append(c)
+                einsum_list_list[0].append(einsum_states[s][0])
+
+            for s in self.state_objs:
+                if len(einsum_states[s])>1:
+                    einsum_list_list[2].append(einsum_states[s][1])
+                else:
+                    einsum_list_list[2].append(einsum_states[s][0])
+            einsum_list_list[2].append(ed)
+
+            einsum_list_str:List[str] = [ "".join([chr(97+i) for i in s]) for s in einsum_list_list]
+            einsum_str = f"{einsum_list_str[0]},{einsum_list_str[1]}->{einsum_list_str[2]}"
+            ps = jnp.einsum(einsum_str, operation.operator, ps)
+            if not jnp.any(jnp.abs(ps) > 0):
+                raise ValueError("The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?")
+            if operation.renormalize:
+                ps = ps / jnp.linalg.norm(ps)
+            self.state = ps.reshape((-1,1))
+        elif self.expansion_level == ExpansionLevel.Matrix:
+            assert isinstance(self.state, jnp.ndarray)
+            dims = jnp.prod(jnp.array([so.dimensions for so in self.state_objs]))
+            assert self.state.shape == (dims, dims)
+
+            tp:Callable[[Tuple['BaseState',...]], List[int]] = lambda x: [item for i in range(len(x)) for item in [i,i+len(x)]]
+
+            ps = self.state.reshape([*shape, *shape]).transpose(*tp(self.state_objs))
+
+            einsum_list_list= [[],[],[],[]]
+            einsum_states = {s:[] for s in self.state_objs}
+            c1 = itertools.count(start=0)
+
+            # Marking down the state indices
+            for idx, s in enumerate(self.state_objs):
+                for i in range(2):
+                    c = next(c1)
+                    einsum_states[s].append(c)
+                    einsum_list_list[1].append(c)
+                    einsum_list_list[3].append(c)
+
+
+            # Marking down the first operator indices
+            for i, s in enumerate(states):
+                c = next(c1)
+                einsum_list_list[0].append(c)
+                einsum_list_list[0].append(einsum_states[s][0])
+                einsum_list_list[3][i*len(states)] = c
+
+            # Marking the second operator indices:
+            for i,s in enumerate(states):
+                c = next(c1)
+                einsum_list_list[2].append(c)
+                einsum_list_list[2].append(einsum_states[s][1])
+                einsum_list_list[3][i*len(states)+1] = c
+
+            # Assembling the einstein sum
+            einsum_list= [ "".join([chr(97+i) for i in s]) for s in einsum_list_list]
+            einsum_str = f"{einsum_list[0]},{einsum_list[1]},{einsum_list[2]}->{einsum_list[3]}"
+
+            ps = jnp.einsum(einsum_str, operation.operator, ps, jnp.conj(operation.operator))
+
+            dims = jnp.prod(jnp.array([so.dimensions for so in self.state_objs]))
+            if not jnp.any(jnp.abs(ps) > 0):
+                raise ValueError("The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?")
+            if operation.renormalize:
+                ps = ps / jnp.linalg.norm(ps)
+
+            ps = ps.transpose(*tp(self.state_objs))
+
+            dims = jnp.prod(jnp.array([so.dimensions for so in self.state_objs]))
+            self.state = jnp.asarray(ps.reshape((dims, dims)))
+            C = Config()
+            if C.contractions:
+                self.contract()
 
 @dataclass(slots=True)
 class CompositeEnvelopeContainer:
@@ -695,9 +829,6 @@ class CompositeEnvelopeContainer:
                     so.extract((state_index, i))
                     so.composite_envelope = CompositeEnvelope._instances[self.composite_uid][0]
 
-
-
-        
 
 class CompositeEnvelope:
     """
@@ -943,7 +1074,6 @@ class CompositeEnvelope:
         *ordered_states: BaseState
             ordered list of states
         """
-
         # Check if given states are shared in a product space
         states_are_combined = False
         for ps in self.states:
@@ -1013,7 +1143,6 @@ class CompositeEnvelope:
         # If the state resides in the BaseState or Envelope measure there
         for s in state_list:
             if isinstance(s.index, int) and hasattr(s, 'envelope'):
-                print("Should emasure in envelope")
                 assert isinstance(s.envelope, Envelope)
                 if separate_measurement:
                     out = s.envelope.measure(
@@ -1082,7 +1211,6 @@ class CompositeEnvelope:
         int: Outcome result of index
         """
 
-        print("MEASURING POVM")
         # Check if the operator dimensions match
         dim = jnp.prod(jnp.array([s.dimensions for s in states]))
         for op in operators:
@@ -1094,7 +1222,6 @@ class CompositeEnvelope:
         # Get product states
         product_states = [p for p in self.states if any(so in p.state_objs for so in states)]
         ps = None
-        print(len(product_states))
         if len(product_states)>1:
             all_states = [s for s in states]
             for p in product_states:
@@ -1257,4 +1384,36 @@ class CompositeEnvelope:
         ps = ps[0]
         return ps.resize_fock(new_dimensions, fock)
 
+        
+    def apply_operation(self, operator: Operation, *states:['BaseState']) -> None:
+        """
+        Applies the operation to the correct product space. If operator
+        has type CompositeOperator, then the product states are joined if
+        the states are not yet in the same product state
+
+        Parameters
+        ----------
+        operator: Operator
+            Operator which should be appied to the state(s)
+        states: BaseState
+            States onto which the operator should be applied
+        """
+
+        if len(states) == 1:
+            if not isinstance(states[0].index, tuple):
+                states[0].apply_operation(operation)
+                return
+        product_states = [p for p in self.states if any(so in p.state_objs for so in states)]
+        ps = None
+        if len(product_states)>1:
+            all_states = [s for s in states]
+            for p in product_states:
+                all_states.extend([s for s in p.state_objs])
+            self.combine(*all_states)
+            ps = [p for p in self.states if any(so in p.state_objs for so in states)][0]
+        elif len(product_states) == 1:
+            ps = product_states[0]
+
+        ps.apply_operation(operator, *states)
+        
         

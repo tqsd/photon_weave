@@ -3,6 +3,7 @@ import pytest
 import jax.numpy as jnp
 import jax
 from typing import List, Union
+import numpy as np
 
 from photon_weave.photon_weave import Config
 from photon_weave.state.composite_envelope import CompositeEnvelope, CompositeEnvelopeContainer
@@ -1378,6 +1379,7 @@ class TestCompositeMatrixTrace(unittest.TestCase):
         )
 
     def test_trace_matrix(self) -> None:
+        np.set_printoptions(linewidth=300)
         env1 = Envelope()
         env2 = Envelope()
         env3 = Envelope()
@@ -1390,6 +1392,22 @@ class TestCompositeMatrixTrace(unittest.TestCase):
         env1.polarization.expand()
         env1.polarization.expand()
         ce.combine(env1.polarization, env2.polarization, env3.polarization)
+        self.assertTrue(
+            jnp.allclose(
+                ce.product_states[0].state,
+                jnp.array(
+                    [[0,0,0,0,0,0,0,0],
+                     [0,0,0,0,0,0,0,0],
+                     [0,0,0.5,0,0,0,-0.5j,0],
+                     [0,0,0,0,0,0,0,0],
+                     [0,0,0,0,0,0,0,0],
+                     [0,0,0,0,0,0,0,0],
+                     [0,0,0.5j,0,0,0,0.5,0],
+                     [0,0,0,0,0,0,0,0]]
+                )
+            )
+        )
+
 
         to = ce.trace_out(env1.polarization, env2.polarization)
         self.assertTrue(

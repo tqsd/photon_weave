@@ -10,12 +10,11 @@ import uuid
 from typing import TYPE_CHECKING, Optional, Tuple, List, Union, Any, Dict
 
 from photon_weave.photon_weave import Config
-from photon_weave.operation.fock_operation import FockOperation, FockOperationType
+from photon_weave.operation import Operation, FockOperationType
 from photon_weave._math.ops import (
     normalize_matrix, normalize_vector, num_quanta_matrix, num_quanta_vector, apply_kraus, kraus_identity_check
 )
 
-from .envelope import EnvelopeAssignedException
 from .expansion_levels import ExpansionLevel
 from .base_state import BaseState
 from photon_weave.state.composite_envelope import CompositeEnvelope
@@ -194,9 +193,15 @@ class Fock(BaseState):
             return self.state
         elif isinstance(self.state, jnp.ndarray):
             if self.state.shape == (self.dimensions, 1):
-                return num_quanta_vector(self.state)
+                return int(num_quanta_vector(self.state))
             elif self.state.shape == (self.dimensions, self.dimensions):
-                return num_quanta_matrix(self.state)
+                return int(num_quanta_matrix(self.state))
+        elif self.state is None:
+            to = self.trace_out()
+            if to.shape == (self.dimensions, 1):
+                return int(num_quanta_vector(to))
+            elif to.shape == (self.dimensions, self.dimensions):
+                return int(num_quanta_matrix(to))
         return -1
 
     def set_index(self, minor:int, major:int=-1) -> None:
@@ -382,3 +387,61 @@ class Fock(BaseState):
         elif isinstance(self.index, tuple):
             assert isinstance(self.composite_envelope, CompositeEnvelope)
             return self.composite_envelope.resize_fock(new_dimensions, self)
+
+    def apply_operation(self, operation: Operation) -> None:
+        """
+        Applies an operation to the state. If state is in some product
+        state, the operator is correctly routed to the specific
+        state
+
+        Parameters
+        ----------
+        operation: Operation
+            Operation with operation type: FockOperationType
+        """
+        from photon_weave.state.envelope import Envelope
+
+        if isinstance(self.index, int):
+            assert isinstance(self.envelope, Envelope)
+            self.envelope.apply_operation(operation, self)
+            return
+        elif isinstance(self.index, tuple):
+            assert isinstance(self.composite_envelope, CompositeEnvelope)
+            self.composite_envelope.apply_operation(operation, self)
+            return
+
+        while self.expansion_level < operation.required_expansion_level:
+            self.expand()
+
+
+        # Consolidate the dimensions
+        operation.compute_dimensions(self._num_quanta)
+        self.resize(operation.dimensions)
+
+
+        if self.expansion_level == ExpansionLevel.Vector:
+            assert isinstance(self.state, jnp.ndarray)
+            assert self.state.shape == (self.dimensions, 1)
+            self.state = jnp.einsum('ij,jk->ik', operation.operator, self.state)
+            if not jnp.any(jnp.abs(self.state) > 0):
+                raise ValueError("The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?")
+            if operation.renormalize:
+                self.state = self.state / jnp.linalg.norm(self.state)
+        if self.expansion_level == ExpansionLevel.Matrix:
+            assert isinstance(self.state, jnp.ndarray)
+            assert self.state.shape == (self.dimensions, self.dimensions)
+            self.state = jnp.einsum(
+                "ca,ab,db->cd",
+                operation.operator,
+                self.state,
+                jnp.conj(operation.operator)
+            )
+            if not jnp.any(jnp.abs(self.state) > 0):
+                raise ValueError("The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?")
+            if operation.renormalize:
+                self.state = self.state / jnp.linalg.norm(self.state)
+
+        C = Config()
+        if C.contractions:
+            self.contract()
+        
