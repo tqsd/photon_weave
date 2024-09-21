@@ -700,7 +700,6 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         out = ce.measure(env1.fock, env2.fock)
         asserts(out, env1, env2)
 
-    @pytest.mark.my_marker
     def test_measuring_with_custom_state(self) -> None:
         C = Config()
         C.set_seed(2)
@@ -1106,6 +1105,7 @@ class TestPOVMMeasurement(unittest.TestCase):
     Testing POVM Measurement Scenarios
     """
 
+    @pytest.mark.my_marker
     def test_full_POVM_measurement(self) -> None:
         env1 = Envelope()
         env2 = Envelope()

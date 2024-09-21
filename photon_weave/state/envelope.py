@@ -800,9 +800,7 @@ class Envelope:
             tmp_vector = jnp.transpose(tmp_vector, (1,0))
             self.state = tmp_vector.reshape(-1,1)
             self.fock.index, self.polarization.index = self.polarization.index, self.fock.index
-            print(self)
         elif self.expansion_level == ExpansionLevel.Matrix:
-            print("MATRIX")
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, self.dimensions)
             tmp_matrix = self.state.reshape(

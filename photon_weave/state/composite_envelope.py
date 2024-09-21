@@ -314,60 +314,41 @@ class ProductState:
         # Transform the operators to the tensors
         op_shape = [s.dimensions for s in states] * 2
         transpose_pattern = lambda x: [item for i in range(len(x)) for item in [i,i+len(x)]]
-        operators = [op.reshape(op_shape).transpose(*transpose_pattern(states)) for op in operators]
+        #operators = [op.reshape(op_shape).transpose(*transpose_pattern(states)) for op in operators]
 
-        # Reshape the state
-        ps = self.state.reshape([s.dimensions for s in self.state_objs]*2).transpose(
-            *transpose_pattern(self.state_objs)
-        )
+        # Reshape operators
+        operators = [op.reshape(op_shape) for op in operators]
 
-        # Construct Einstein Sum String
-        einsum_list:List[List[int]] = [[],[],[],[]]
-        einsum_states:Dict['BaseState',List[int]] = {s:[] for s in self.state_objs}
-        c1 = itertools.count(start=0)
+        # Get and reshape the state
+        ps = self.state.reshape([s.dimensions for s in self.state_objs]*2)
 
-        # Marking down the state indices
-        for idx, s in enumerate(self.state_objs):
-            for i in range(2):
-                c = next(c1)
-                einsum_states[s].append(c)
-                einsum_list[1].append(c)
-                einsum_list[3].append(c)
-
-        # Marking down the first operator indices
-        for i, s in enumerate(states):
-            c = next(c1)
-            einsum_list[0].append(c)
-            einsum_list[0].append(einsum_states[s][0])
-            einsum_list[3][i*len(states)] = c
-
-        # Marking the second operator indices:
-        for i,s in enumerate(states):
-            c = next(c1)
-            einsum_list[2].append(c)
-            einsum_list[2].append(einsum_states[s][1])
-            einsum_list[3][i*len(states)+1] = c
-
-        # Assembling the einstein sum
-        einsum_tmp= [ "".join([chr(97+i) for i in s]) for s in einsum_list]
-        einsum_str = f"{einsum_tmp[0]},{einsum_tmp[1]},{einsum_tmp[2]}->{einsum_tmp[3]}"
-        print("")
-        print(einsum_str)
-        print(ESC.apply_operator_matrix(self.state_objs, states))
-
+        # Generate the operators for application of operators
+        einsum = ESC.apply_operator_matrix(self.state_objs, states)
         
         dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
+
         # Get the probabilities
         prob_list: List[float] =[]
+
+        # Get the dimensions of the measured states
+        to_dims = jnp.prod(jnp.array([so.dimensions for so in states]))
+
         for op in operators:
-            prob_state = jnp.einsum(einsum_str, op, ps, jnp.conj(op)).transpose(
-                *transpose_pattern(self.state_objs)).reshape((dims, dims))
-            prob_list.append(float(jnp.trace(prob_state)))
+            # Apply each operator
+            prob_state = jnp.einsum(einsum, op, ps, jnp.conj(op))
+
+            # Trace out the state to get the probabilities
+            einsum_to = ESC.trace_out_matrix(self.state_objs, states)
+            prob_state_to = jnp.einsum(einsum_to, prob_state).reshape((to_dims, to_dims))
+
+            # Compute the outcome probability
+            prob_list.append(float(jnp.trace(prob_state_to)))
 
         # Normalize the probabilities
         probabilities = jnp.array(prob_list)
         probabilities /= jnp.sum(probabilities)
 
+        # Decide on the outcome
         C = Config()
         key = C.random_key
         outcome = int(jax.random.choice(
@@ -378,8 +359,8 @@ class ProductState:
 
         # Construct Post Measurement state
         new_dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
-        ps = jnp.einsum(einsum_str, operators[outcome], ps, jnp.conj(operators[outcome])).transpose(
-            *transpose_pattern(self.state_objs)).reshape((new_dims, new_dims))
+        ps = jnp.einsum(einsum, operators[outcome], ps, jnp.conj(operators[outcome])).reshape(
+            (new_dims, new_dims))
         self.state = ps / jnp.trace(ps)
         other_outcomes = {}
         if destructive:
