@@ -154,41 +154,42 @@ class ProductState:
         remove_states = [s for s in states]
 
         if self.expansion_level == ExpansionLevel.Vector:
+            # Get the state and reshape it into tensor
             shape = [so.dimensions for so in self.state_objs]
             shape.append(1)
             ps = self.state.reshape(shape)
             for idx, state in enumerate(states):
+
                 # Constructing the einsum str
-                counter = itertools.count(start=0)
-                einsum_list: List[List[int]] = [[],[]]
-                for so in remaining_states:
-                    c = next(counter)
-                    if so is state:
-                        einsum_list[1].append(c)
-                    einsum_list[0].append(c)
-                c = next(counter)
-                einsum_list[0].append(c)
-                einsum_list[1].append(c)
-                einsum_list_str = [[chr(97+x) for x in ep] for ep in einsum_list]
-                einsum_tmp = ["".join(x) for x in einsum_list_str]
-                einsum = "->".join(einsum_tmp)
-                # Project the state with einsum
+                einsum = ESC.measure_vector(remaining_states, [state])
+
+                # Project the state with einsum string
                 projected_state = jnp.einsum(einsum, ps)
 
                 # Outcome Probabilities
                 probabilities = jnp.abs(projected_state.flatten())**2
                 probabilities /= jnp.sum(probabilities)
 
+                # Decide on output
                 key = C.random_key
                 outcomes[state] = int(jax.random.choice(
                     key,
                     a=jnp.array(list(range(state.dimensions))),
                     p=probabilities
                 ))
+
+                # Construct the post measurement state
+                # Even if the state is measured non_destructively
+                # the state is removed and placed back into original
+                # Base state as a label form
                 indices: List[Union[slice, int]] = [slice(None)]*len(ps.shape)
                 indices[remaining_states.index(state)] = outcomes[state]
                 ps = ps[tuple(indices)]
+
+                # Remove the measured state form the product state
                 remaining_states.remove(state)
+
+                # Handle post measurement processes
                 if destructive:
                     state._set_measured()
                 else:
@@ -203,27 +204,19 @@ class ProductState:
                     state.expansion_level = ExpansionLevel.Label
                 self.state_objs.remove(state)
             if len(self.state_objs) > 0:
+                # Handle reshaping and storing the post measurement product state
                 outcome_dims = sum([obj.dimensions for obj in self.state_objs if obj not in states])
                 self.state = ps.reshape(-1,1)
                 self.state /= jnp.linalg.norm(self.state)
             else:
+                # Product state will be deleted
                 self.state = jnp.array([[1]])
         elif self.expansion_level == ExpansionLevel.Matrix:
             shape = [so.dimensions for so in self.state_objs]*2
             ps = self.state.reshape(shape)
             for idx, state in enumerate(states):
-                # Constructing the einsum str
-                counter = itertools.count(start=0)
-                einsum_list = [[],[]]
-                for _ in range(2):
-                    for so in remaining_states:
-                        c = next(counter)
-                        if so is state:
-                            einsum_list[1].append(c)
-                        einsum_list[0].append(c)
-                einsum_list_str = [[chr(97+x) for x in ep] for ep in einsum_list]
-                einsum_str = ["".join(x) for x in einsum_list_str]
-                einsum = "->".join(einsum_str)
+                # Generate einsum string
+                einsum = ESC.measure_matrix(remaining_states, [state])
 
                 # Project the state with einsum
                 projected_state = jnp.einsum(einsum, ps)
@@ -232,6 +225,7 @@ class ProductState:
                 probabilities = jnp.abs(jnp.diag(projected_state))
                 probabilities /= sum(probabilities)
 
+                # Decide on outcome
                 key = C.random_key
                 outcomes[state] = int(jax.random.choice(
                     key,
@@ -239,6 +233,10 @@ class ProductState:
                     p=probabilities
                 ))
 
+                # Construct post measurement state
+                # Even if state is measured in non_destructive manner
+                # It is removed from the product state and placed back
+                # into the BaseState
                 state_index = remaining_states.index(state)
                 row_idx = state_index
                 col_idx = state_index + len(remaining_states)
@@ -246,6 +244,8 @@ class ProductState:
                 indices[row_idx] = outcomes[state]
                 indices[col_idx] = outcomes[state]
                 ps = ps[tuple(indices)]
+
+                # Remove the mesaured state from the remaining states
                 remaining_states.remove(state)
                 if destructive:
                     state._set_measured()
@@ -259,7 +259,11 @@ class ProductState:
                         state.state = outcomes[state]
                     state.index = None
                     state.expansion_level = ExpansionLevel.Label
+                
+                # Remove the mesaured state from the product state
                 self.state_objs.remove(state)
+
+            # Reconstruct the post measurement product state
             if len(self.state_objs) > 0:
                 outcome_dims = sum([obj.dimensions for obj in self.state_objs if obj not in states])
                 ps = ps.flatten()
@@ -270,7 +274,7 @@ class ProductState:
             else:
                 self.state = jnp.array([[1]])
 
-        # Contract if set so
+        # Attempt to contract to Vector if set so
         if C.contractions:
             self.contract()
         return outcomes
@@ -347,6 +351,10 @@ class ProductState:
         # Assembling the einstein sum
         einsum_tmp= [ "".join([chr(97+i) for i in s]) for s in einsum_list]
         einsum_str = f"{einsum_tmp[0]},{einsum_tmp[1]},{einsum_tmp[2]}->{einsum_tmp[3]}"
+        print("")
+        print(einsum_str)
+        print(ESC.apply_operator_matrix(self.state_objs, states))
+
         
         dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
         # Get the probabilities

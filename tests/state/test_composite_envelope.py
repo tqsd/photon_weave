@@ -700,6 +700,7 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         out = ce.measure(env1.fock, env2.fock)
         asserts(out, env1, env2)
 
+    @pytest.mark.my_marker
     def test_measuring_with_custom_state(self) -> None:
         C = Config()
         C.set_seed(2)
@@ -819,7 +820,6 @@ class TestKrausApply(unittest.TestCase):
             )
         )
 
-    @pytest.mark.my_marker
     def test_kraus_apply_with_two_product_states(self) -> None:
         env1 = Envelope()
         env2 = Envelope()

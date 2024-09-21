@@ -150,7 +150,6 @@ def apply_operator_matrix(state_objs:list, operator_objs:list) -> str:
     einsum_list = ["".join([chr(97+i) for i in s]) for s in einsum_list_list]
     return f"{einsum_list[0]},{einsum_list[1]},{einsum_list[2]}->{einsum_list[3]}"
 
-
 def trace_out_vector(state_objs:list, states:list) -> str:
     """
     Produces an Einstein sum string. It's application traces out
@@ -289,6 +288,72 @@ def reorder_matrix(state_objs:list, states:list) -> str:
         for s in states:
             c = einsum_dict[s][i]
             einsum_list_list[1].append(c)
+
+    einsum_list = ["".join([chr(97+s) for s in e]) for e in einsum_list_list]
+    return f"{einsum_list[0]}->{einsum_list[1]}"
+
+def measure_vector(state_objs:list, states:list) -> str:
+    """
+    Produces an Einstein sum string. It's application exposes
+    the listed states, so they could be measured.
+
+    Parameters
+    ----------
+    state_objs: list
+        List of all State objects which are in the product space
+        The order should reflect the order in the tensoring
+    states: List[BaseState]
+        List of State objects which should be measured
+
+    Notes
+    -----
+    - State should not be transposed, only reshaped
+    """
+    einsum_list_list = [[],[]]
+    einsum_dict = {s:[] for s in state_objs}
+    counter = itertools.count(start=0)
+
+    for so in state_objs:
+        c = next(counter)
+        if so in states:
+            einsum_list_list[1].append(c)
+        einsum_list_list[0].append(c)
+
+    # Accounting for the verical nature of vector
+    c = next(counter)
+    einsum_list_list[0].append(c)
+    einsum_list_list[1].append(c)
+
+    einsum_list = ["".join([chr(97+s) for s in e]) for e in einsum_list_list]
+    return f"{einsum_list[0]}->{einsum_list[1]}"
+
+def measure_matrix(state_objs:list, states:list) -> str:
+    """
+    Produces an Einstein sum string. It's application exposes
+    the listed states, so they could be measured.
+
+    Parameters
+    ----------
+    state_objs: list
+        List of all State objects which are in the product space
+        The order should reflect the order in the tensoring
+    states: List[BaseState]
+        List of State objects which should be measured
+
+    Notes
+    -----
+    - State should not be transposed, only reshaped
+    """
+    einsum_list_list = [[],[]]
+    einsum_dict = {s:[] for s in state_objs}
+    counter = itertools.count(start=0)
+
+    for _ in range(2):
+        for so in state_objs:
+            c = next(counter)
+            if so in states:
+                einsum_list_list[1].append(c)
+            einsum_list_list[0].append(c)
 
     einsum_list = ["".join([chr(97+s) for s in e]) for e in einsum_list_list]
     return f"{einsum_list[0]}->{einsum_list[1]}"
