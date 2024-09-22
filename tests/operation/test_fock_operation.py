@@ -381,9 +381,7 @@ class TestFockOperationDisplace(unittest.TestCase):
 
     @pytest.mark.my_marker
     def test_displace_fock(self) -> None:
-        print()
         f = Fock()
         f.state = 0
         op = Operation(FockOperationType.Displace, alpha=4)
         f.apply_operation(op)
-        print(f)
