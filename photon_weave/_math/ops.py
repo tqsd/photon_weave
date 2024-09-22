@@ -62,7 +62,7 @@ def phase_operator(cutoff:int, theta: float) -> jnp.ndarray:
     in the Fock basis. The diagonal matrix elements are complex exponentials that apply a
     phase proportional to the Fock state number.
     """
-    return jnp.diag([jnp.exp(1j * n * theta) for n in range(cutoff)])
+    return jnp.diag(jnp.array([jnp.exp(1j * n * theta) for n in range(cutoff)]))
 
 
 # to do: implement beamsplitter here

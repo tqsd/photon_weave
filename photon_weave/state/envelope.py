@@ -822,6 +822,7 @@ class Envelope:
         tol: float
             Tolerance when comparing matrices
         """
+        # Will not attempt to contract past vector
         final = ExpansionLevel.Vector
         assert isinstance(self.state, jnp.ndarray)
         assert self.state.shape == (self.dimensions, self.dimensions)

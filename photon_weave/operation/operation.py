@@ -32,8 +32,35 @@ class Operation():
         for param in operation_type.required_params:
             if param not in kwargs:
                 raise KeyError(
-                    f"The '{param}' argument is required for {operaiton_type.name}"
+                    f"The '{param}' argument is required for {operation_type.name}"
                 )
+
+    def __repr__(self) -> str:
+        if self._operator is None:
+            repr_string = f"{self._operation_type.__class__.__name__}.{self._operation_type.name}"
+        else:
+            repr_string = f"{self._operation_type.__class__.__name__}.{self._operation_type.name}\n"
+            formatted_matrix: Union[str, List[str]]
+            formatted_matrix = "\n".join(
+                [
+                    "⎢ " + "   ".join(
+                        [
+                            f"{num.real:+.2f} {'+' if num.imag >= 0 else '-'} {abs(num.imag):.2f}j"
+                            for num in row
+                        ]
+                    ) + " ⎥"
+                    for row in self._operator
+                ]
+            )
+            formatted_matrix = formatted_matrix.split("\n")
+            formatted_matrix[0] = "⎡" + formatted_matrix[0][1:-1] + "⎤"
+            formatted_matrix[-1] = "⎣" + formatted_matrix[-1][1:-1] + "⎦"
+            formatted_matrix = "\n".join(formatted_matrix)
+
+            repr_string = repr_string + formatted_matrix
+            
+        return repr_string
+        
 
     @property
     def dimensions(self) -> int:
@@ -53,7 +80,9 @@ class Operation():
         num_quanta: int
             Current maximum number state amplitude
         """
-        self._dimensions = int(self._operation_type.compute_dimensions(num_quanta))
+        print("COMPUTE DIMENSIONS IN OPERATION")
+        print(self.kwargs)
+        self._dimensions = int(self._operation_type.compute_dimensions(num_quanta, **self.kwargs))
 
     @property
     def required_expansion_level(self) -> ExpansionLevel:
@@ -66,7 +95,7 @@ class Operation():
     @property
     def operator(self) -> jnp.ndarray:
         if self._operation_type != FockOperationType.Custom:
-            self._operator = self._operation_type.compute_operator(self.dimensions)
+            self._operator = self._operation_type.compute_operator(self.dimensions, **self.kwargs)
         assert isinstance(self._operator, jnp.ndarray)
         return self._operator
 

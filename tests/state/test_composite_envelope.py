@@ -1105,7 +1105,6 @@ class TestPOVMMeasurement(unittest.TestCase):
     Testing POVM Measurement Scenarios
     """
 
-    @pytest.mark.my_marker
     def test_full_POVM_measurement(self) -> None:
         env1 = Envelope()
         env2 = Envelope()

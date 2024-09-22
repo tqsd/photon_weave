@@ -290,3 +290,100 @@ class TestFockOperationAnnihilation(unittest.TestCase):
                 with self.assertRaises(ValueError) as context:
                     env.fock.apply_operation(op)
 
+class TestFockOperationPhaseShift(unittest.TestCase):
+
+    def test_phase_shift_in_place(self) -> None:
+        f = Fock()
+        f.state = 3
+        op = Operation(FockOperationType.PhaseShift, phi=jnp.pi/2)
+        f.apply_operation(op)
+        self.assertTrue(
+            jnp.allclose(
+                f.state,
+                jnp.array(
+                    [[0],[0],[0],[-1j]]
+                )
+            )
+        )
+
+    def test_phase_shift_in_envelope_vector(self) -> None:
+        env = Envelope()
+        env.fock.state = 3
+        env.combine()
+        op = Operation(FockOperationType.PhaseShift, phi=jnp.pi/2)
+        env.fock.apply_operation(op)
+        self.assertTrue(
+            jnp.allclose(
+                env.state,
+                jnp.array(
+                    [[0],[0],[0],[0],[0],[0],[-1j],[0]]
+                )
+            )
+        )
+
+    def test_phase_shift_in_envelope_matrix(self) -> None:
+        C = Config()
+        C.set_contraction(False)
+        env = Envelope()
+        env.fock.state = 1
+        env.fock.dimensions = 2
+        env.combine()
+        env.expand()
+        op = Operation(FockOperationType.PhaseShift, phi=jnp.pi/2)
+        env.fock.apply_operation(op)
+        self.assertTrue(
+            jnp.allclose(
+                env.state,
+                jnp.array(
+                    [[0,0,0,0],
+                     [0,0,0,0],
+                     [0,0,1,0],
+                     [0,0,0,0]]
+                )
+            )
+        )
+
+    def test_phase_shift_in_composite_envelope_matrix(self) -> None:
+        C = Config()
+        C.set_contraction(False)
+        env1 = Envelope()
+        env2 = Envelope()
+        env1.fock.state = 2
+        env1.fock.dimensions = 4
+        env2.fock.state = 1
+        env2.fock.dimensions = 2
+
+
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env2.polarization, env1.fock)
+        env1.expand()
+
+        op = Operation(FockOperationType.PhaseShift, phi=jnp.pi/2)
+        #env1.fock.apply_operation(op)
+        ce.apply_operation(op, env1.fock)
+        
+        self.assertTrue(
+            jnp.allclose(
+                ce.product_states[0].state,
+                jnp.array(
+                    [[0,0,0,0,0,0],
+                     [0,0,0,0,0,0],
+                     [0,0,0,0,0,0],
+                     [0,0,0,0,0,0],
+                     [0,0,0,0,1,0],
+                     [0,0,0,0,0,0]]
+                )
+            )
+        )
+
+
+class TestFockOperationDisplace(unittest.TestCase):
+
+    @pytest.mark.my_marker
+    def test_displace_fock(self) -> None:
+        print()
+        f = Fock()
+        f.state = 0
+        op = Operation(FockOperationType.Displace, alpha=4)
+        f.apply_operation(op)
+        print(f)

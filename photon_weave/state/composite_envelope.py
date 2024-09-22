@@ -348,7 +348,7 @@ class ProductState:
         probabilities = jnp.array(prob_list)
         probabilities /= jnp.sum(probabilities)
 
-        # Decide on the outcome
+        # Decide on the outcomes
         C = Config()
         key = C.random_key
         outcome = int(jax.random.choice(

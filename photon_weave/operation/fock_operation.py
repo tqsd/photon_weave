@@ -35,9 +35,11 @@ class FockOperationType(Enum):
     Creation = (True, [], ExpansionLevel.Vector, 1)
     # TESTED
     Annihilation = (True, [], ExpansionLevel.Vector, 2)
+    # TESTED
     PhaseShift = (False, ['phi'], ExpansionLevel.Vector, 3)
-    Squeeze = (True, ['alpha'], ExpansionLevel.Vector, 4)
-    Displace = (False, ['zeta'], ExpansionLevel.Vector, 5)
+
+    Squeeze = (True, ['zeta'], ExpansionLevel.Vector, 4)
+    Displace = (False, ['alpha'], ExpansionLevel.Vector, 5)
     Identity = (False, [], ExpansionLevel.Vector, 6)
     Custom = (False, [], ExpansionLevel.Vector, 7)
     Expresion = (False, ["expr"], ExpansionLevel.Vector, 8)
@@ -62,22 +64,48 @@ class FockOperationType(Enum):
         """
         match self:
             case FockOperationType.Creation:
-                return creation_operator(uintc(dimensions))
+                return creation_operator(dimensions)
             case FockOperationType.Annihilation:
-                return annihilation_operator(uintc(dimensions))
+                return annihilation_operator(dimensions)
             case FockOperationType.PhaseShift:
-                return phase_operator(uintc(dimensions), kwargs["phi"])
+                return phase_operator(dimensions, kwargs["phi"])
             case FockOperationType.Displace:
-                return displacement_operator(uintc(dimensions), kwargs["alpha"])
+                return displacement_operator(dimensions, kwargs["alpha"])
             case FockOperationType.Squeeze:
-                return squeezing_operator(uintc(dimensions), kwargs["zeta"])
+                return squeezing_operator(dimensions, kwargs["zeta"])
             case FockOperationType.Identity:
                 return jnp.identity(dimensions)
             case FockOperationType.Expresion:
                 return interpreter(dimensions, kwargs["expr"])
 
         
-    def compute_dimensions(self, num_quanta:int) -> int:
+    def compute_dimensions(self, num_quanta:int, **kwargs:Any) -> int:
+        """
+        Compute the dimensions for the operator. Application of the
+        operator could change the dimensionality of the space. For
+        example creation operator, would increase the dimensionality
+        of the space, if the prior dimensionality doesn't account
+        for the new particle.
+
+        Parameters
+        ----------
+        num_quanta: int
+            Number of particles in the space currently. In other words
+            highest basis with non_zero probability in the space
+
+        Returns
+        -------
+        int
+           New number of dimensions
+
+        Notes
+        -----
+        This functionality is called before the operator is computed, so that
+        the dimensionality of the space can be changed before the application
+        and the dimensionality of the operator and space match
+        """
+        print("COMPUTE DIMENSIONS IN FOCK OPERATION")
+        print(kwargs)
         match self:
             case FockOperationType.Creation:
                 return int(num_quanta + 2)
@@ -87,7 +115,8 @@ class FockOperationType(Enum):
                 return num_quanta + 1
             case FockOperationType.Displace:
                 a_squared = kwargs["alpha"]**2
-                return jnp.ceil(a_squared + num_quanta + 3 * jnp.sqrt(a_squared + num_quanta))
+                result = jnp.ceil(a_squared + num_quanta + 9 * jnp.sqrt(a_squared + num_quanta))
+                return result
             case FockOperationType.Squeeze:
                 mean_increase = jnp.sinh(kwargs["zeta"])
                 total_mean_photon_number = num_quanta +  mean_increase
@@ -102,6 +131,7 @@ class FockOperationType(Enum):
                         scale=std_dev_photon_number
                     )
                     n_max += 1
+                print(f"DIMENSIONALITY: n_max")
                 return n_max
             case FockOperationType.Identity:
                 return num_quanta + 1
