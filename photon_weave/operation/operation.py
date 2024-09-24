@@ -87,9 +87,7 @@ class Operation:
         num_quanta: int
             Current maximum number state amplitude
         """
-        self._dimensions = int(
-            self._operation_type.compute_dimensions(num_quanta, state, **self.kwargs)
-        )
+        self._dimensions = self._operation_type.compute_dimensions(num_quanta, state, **self.kwargs)
 
     @property
     def required_expansion_level(self) -> ExpansionLevel:

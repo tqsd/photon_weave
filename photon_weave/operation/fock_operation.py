@@ -105,6 +105,13 @@ class FockOperationType(Enum):
         num_quanta: int
             Number of particles in the space currently. In other words
             highest basis with non_zero probability in the space
+        state: jnp.ndarray
+            Traced out state, usede for final dimension estimation
+        threshold: float
+            Minimal amount of state that has to be included in the
+            post operation state
+        **kwargs: Any
+            Additional parameters, used to define the operator
 
         Returns
         -------

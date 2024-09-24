@@ -625,12 +625,21 @@ class ProductState:
         """
         from photon_weave.state.fock import Fock
         from photon_weave.state.polarization import Polarization
+        from photon_weave.operation import CompositeOperationType
 
         if isinstance(operation._operation_type, FockOperationType):
             assert isinstance(states[0], Fock)
             assert len(states) == 1
             operation.compute_dimensions(states[0]._num_quanta, states[0].trace_out())
             states[0].resize(operation.dimensions)
+        elif isinstance(operation._operation_type, CompositeOperationType):
+            assert len(states) == len(operation._operation_type.expected_base_state_types)
+            for i,s in enumerate(states):
+                assert isinstance(s, operation._operation_type.expected_base_state_types[i])
+            operation.compute_dimensions([s._num_quanta for s in states], [s.trace_out() for s in states])
+            for i,s in enumerate(states):
+                s.resize(operation._dimensions[i])
+
 
         shape = [so.dimensions for so in self.state_objs]
         if self.expansion_level == ExpansionLevel.Vector:
@@ -1334,6 +1343,7 @@ class CompositeEnvelope:
             raise ValueError("Something went wrong")  # pragma : no cover
 
         ps = ps[0]
+        self.reorder(fock)
         return ps.resize_fock(new_dimensions, fock)
 
     def apply_operation(self, operator: Operation, *states: ["BaseState"]) -> None:
@@ -1368,3 +1378,6 @@ class CompositeEnvelope:
             ps = product_states[0]
 
         ps.apply_operation(operator, *states)
+
+
+        

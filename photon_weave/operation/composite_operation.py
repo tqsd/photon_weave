@@ -1,132 +1,95 @@
-"""
-Composite Operation:
-operates on multiple spaces
-"""
 
-from enum import Enum, auto
-from typing import Union
-
-import numpy as np
-
-from photon_weave._math.ops import _expm
-from photon_weave.operation.fock_operation import FockOperation, FockOperationType
-from photon_weave.state.composite_envelope import CompositeEnvelope
-from photon_weave.state.envelope import Envelope
+from enum import Enum
+from typing import Any, List
+import jax.numpy as jnp
+from jax.scipy.linalg import expm
 
 
-class WrongNumberOfStatesException(Exception):
-    pass
-
+from photon_weave._math.ops import (
+    creation_operator,
+    annihilation_operator
+)
+from photon_weave.state.expansion_levels import ExpansionLevel
+from photon_weave.state.base_state import BaseState
+from photon_weave.state.fock import Fock
 
 class CompositeOperationType(Enum):
-    NonPolarizingBeamSplit = auto()
-    CNOT = auto()
 
+    NonPolarizingBeamSplitter = (True, ["eta"], [Fock, Fock], ExpansionLevel.Vector, 1)
 
-def ensure_equal_expansion(func):
-    """
-    Ensures that all given states, have the same expansion level
-    """
+    def __init__(self, renormalize: bool, required_params: list,
+                 expected_base_state_types: List[BaseState],
+                 required_expansion_level: ExpansionLevel,
+                 op_id) -> None:
+        
+        self.renormalize = renormalize
+        self.required_params = required_params
+        self.expected_base_state_types = expected_base_state_types
+        self.required_expansion_level = required_expansion_level
 
-    def wrapper(self, *states, **kwargs):
-        expansion_levels = [s.expansion_level for s in states]
-        if max(expansion_levels) == 0:
-            desired_expansion = 1
-        else:
-            desired_expansion = max(expansion_levels)
-        for s in states:
-            while s.expansion_level < desired_expansion:
-                s.expand()
-        return func(self, *states, **kwargs)
+    def compute_operator(self, dimensions:List[int], **kwargs: Any):
+        """
+        Generates the operator for this operation, given
+        the dimensions
 
-    return wrapper
+        Parameters
+        ----------
+        dimensions: List[int]
+            The dimensions of the spaces
+        **kwargs: Any
+            List of key word arguments for specific operator types
+        """
+        match self:
+            case CompositeOperationType.NonPolarizingBeamSplitter:
+                a = creation_operator(dimensions[0])
+                a_dagger = annihilation_operator(dimensions[0])
+                b = creation_operator(dimensions[1])
+                b_dagger = annihilation_operator(dimensions[1])
 
+                operator = (
+                    jnp.kron(a_dagger,b) + jnp.kron(a, b_dagger)
+                    )
+                return expm(1j*kwargs["eta"]*operator)
 
-def ensure_composite(func):
-    def wrapper(self, *states, **kwargs):
-        composite_envelopes = [
-            s.composite_envelope for s in states if s.composite_envelope is not None
-        ]
-        composite_envelopes = list(set(composite_envelopes))
-        if len(composite_envelopes) == 0:
-            new_envelope = CompositeEnvelope(*states)
-        elif len(composite_envelopes) == 1:
-            existing_envelope = composite_envelopes[0]
-            for state in states:
-                existing_envelope.add_envelope(state)
-        else:
-            new_envelope = CompositeEnvelope(*states)  # needs refactoring
-        return func(self, *states, **kwargs)
+    def compute_dimensions(
+            self,
+            num_quanta: List[int],
+            states: jnp.ndarray,
+            threshold: float = 1 - 1e6,
+            **kwargs: Any
+    ) -> List[int]:
+        """
+        Compute the dimensions for the operator. Application of the
+        operator could change the dimensionality of the space. For
+        example creation operator, would increase the dimensionality
+        of the space, if the prior dimensionality doesn't account
+        for the new particle.
 
-    return wrapper
+        Parameters
+        ----------
+        num_quanta: int
+            Number of particles in the space currently. In other words
+            highest basis with non_zero probability in the space
+        state: jnp.ndarray
+            Traced out state, usede for final dimension estimation
+        threshold: float
+            Minimal amount of state that has to be included in the
+            post operation state
+        **kwargs: Any
+            Additional parameters, used to define the operator
 
+        Returns
+        -------
+        int
+           New number of dimensions
 
-class CompositeOperation:
-    def __init__(self, operation: CompositeOperationType, apply_num: int = 1, **kwargs):
-        self.kwargs = kwargs
-        self.operation = operation
-        self.operator = None
-        self.apply_num = apply_num
-        match self.operation:
-            case CompositeOperationType.NonPolarizingBeamSplit:
-                if "theta" not in kwargs:
-                    self.kwargs["theta"] = np.pi / 4
-
-    def operate(self, *args) -> Union[CompositeEnvelope, Envelope]:
-        match self.operation:
-            case CompositeOperationType.NonPolarizingBeamSplit:
-                self._operate_non_polarizing_beam_split(*args)
-            case CompositeOperationType.CNOT:
-                self._operate_cnot(*args)
-
-    @ensure_composite
-    def _operate_cnot(self, *args, **kwargs):
-        ce = args[0].composite_envelope
-        ce.combine(args[0].polarization, args[1].polarization)
-        ce.rearange(args[0].polarization, args[1].polarization)
-        self.compute_operator()
-        ce._apply_operator(self, args[0].polarization, args[1].polarization)
-
-    @ensure_composite
-    def _operate_non_polarizing_beam_split(self, *args, **kwargs):
-        if len(args) != 2:
-            raise WrongNumberOfStatesException(
-                "Beam split can operate only on two states"
-            )
-        ce = args[0].composite_envelope
-        ce.combine(args[0].fock, args[1].fock)
-        ce.rearange(args[0].fock, args[1].fock)
-        dim1 = args[0].fock.dimensions
-        dim2 = args[1].fock.dimensions
-        self.compute_operator(dimensions=(dim1, dim2))
-        ce._apply_operator(self, args[0].fock, args[1].fock)
-
-    def compute_operator(self, *args, **kwargs):
-        match self.operation:
-            case CompositeOperationType.NonPolarizingBeamSplit:
-                eta = self.kwargs.get(
-                    "eta", 1
-                )  # Default to complete overlap if not provided
-
-                fo = FockOperation(operation=FockOperationType.Identity)
-                dim1, dim2 = kwargs["dimensions"]
-                a = fo._create(dim1)
-                a_dagger = fo._destroy(dim1)
-                b = fo._create(dim2)
-                b_dagger = fo._destroy(dim2)
-
-                # Adjusting the operator with the eta parameter
-                self.operator = np.sqrt(eta) * (
-                    np.kron(a_dagger, b) + np.kron(a, b_dagger)
-                )
-                # If necessary, include (1 - eta) terms to model distinguishable paths
-                # This part is highly dependent on the physical interpretation of eta
-                # and the specifics of the HOM effect you wish to model
-
-                theta = self.kwargs.get("theta", 0)  # Default to 0 if not provided
-                self.operator = theta * self.operator
-                self.operator = _expm(1j * self.operator)
-            case CompositeOperationType.CNOT:
-                self.operator = np.array(
-                    [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]]
-                )
+        Notes
+        -----
+        This functionality is called before the operator is computed, so that
+        the dimensionality of the space can be changed before the application
+        and the dimensionality of the operator and space match
+        """
+        match self:
+            case CompositeOperationType.NonPolarizingBeamSplitter:
+                dim = int(jnp.sum(jnp.array(num_quanta))) + 1
+                return [dim,dim]
