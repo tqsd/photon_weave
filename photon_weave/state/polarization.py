@@ -21,6 +21,7 @@ from .base_state import BaseState
 from .expansion_levels import ExpansionLevel
 
 if TYPE_CHECKING:
+    from photon_weave.operation import FockOperationType, Operation
     from photon_weave.operation.polarization_operations import PolarizationOperation
 
     from .composite_envelope import CompositeEnvelope
@@ -329,3 +330,64 @@ class Polarization(BaseState):
         if destructive:
             self._set_measured()
         return results
+    
+    def apply_operation(self, operation: Operation) -> None:
+        """
+        Applies an operation to the state. If state is in some product
+        state, the operator is correctly routed to the specific
+        state
+
+        Parameters
+        ----------
+        operation: Operation
+            Operation with operation type: FockOperationType
+        """
+        from photon_weave.state.envelope import Envelope
+
+        if isinstance(self.index, int):
+            assert isinstance(self.envelope, Envelope)
+            self.envelope.apply_operation(operation, self)
+            return
+        elif isinstance(self.index, tuple):
+            assert isinstance(self.composite_envelope, CompositeEnvelope)
+            self.composite_envelope.apply_operation(operation, self)
+            return
+
+        while self.expansion_level < operation.required_expansion_level:
+            self.expand()
+
+        # Consolidate the dimensions
+#        operation.compute_dimensions(self._num_quanta, self.trace_out())
+ #       self.resize(operation.dimensions)
+
+        if self.expansion_level == ExpansionLevel.Vector:
+            assert isinstance(self.state, jnp.ndarray)
+            assert self.state.shape == (self.dimensions, 1)
+            self.state = jnp.einsum("ij,jk->ik", operation.operator, self.state)
+            if not jnp.any(jnp.abs(self.state) > 0):
+                raise ValueError(
+                    "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
+                )
+
+#            if operation.renormalize:
+ #               self.state = self.state / jnp.linalg.norm(self.state)
+        if self.expansion_level == ExpansionLevel.Matrix:
+            assert isinstance(self.state, jnp.ndarray)
+            assert self.state.shape == (self.dimensions, self.dimensions)
+            self.state = jnp.einsum(
+                "ca,ab,db->cd",
+                operation.operator,
+                self.state,
+                jnp.conj(operation.operator),
+            )
+            if not jnp.any(jnp.abs(self.state) > 0):
+                raise ValueError(
+                    "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
+                )
+            if operation.renormalize:
+                self.state = self.state / jnp.linalg.norm(self.state)
+
+        C = Config()
+        if C.contractions:
+            self.contract()
+
