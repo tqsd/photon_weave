@@ -1,6 +1,10 @@
 import unittest
 import jax.numpy as jnp
 import pytest
+import qutip as qt
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib
 
 from photon_weave.photon_weave import Config
 from photon_weave.state.fock import Fock
@@ -379,9 +383,89 @@ class TestFockOperationPhaseShift(unittest.TestCase):
 
 class TestFockOperationDisplace(unittest.TestCase):
 
-    @pytest.mark.my_marker
-    def test_displace_fock(self) -> None:
+    def test_displace_fock_vector(self) -> None:
         f = Fock()
         f.state = 0
-        op = Operation(FockOperationType.Displace, alpha=4)
+        f.dimensions = 2
+        op = Operation(FockOperationType.Displace, alpha=1)
         f.apply_operation(op)
+        self.assertEqual(f.dimensions, 12)
+
+    def test_displace_fock_matrix(self) -> None:
+        f = Fock()
+        f.state = 0
+        f.dimensions = 2
+        f.expand()
+        f.expand()
+        op = Operation(FockOperationType.Displace, alpha=2)
+        f.apply_operation(op)
+        self.assertEqual(f.dimensions, 20)
+
+    def test_displace_fock_envelope_vector(self) -> None:
+        env = Envelope()
+        env.combine()
+        op = Operation(FockOperationType.Displace, alpha=2)
+        env.apply_operation(op, env.fock)
+        self.assertEqual(env.fock.dimensions, 20)
+        self.assertTrue(
+            env.state.shape == (env.dimensions, 1)
+        )
+
+    @pytest.mark.my_marker
+    def test_displace_fock_envelope_matrix(self) -> None:
+        env = Envelope()
+        env.combine()
+        env.expand()
+        op = Operation(FockOperationType.Displace, alpha=2)
+        env.apply_operation(op, env.fock)
+        self.assertEqual(env.fock.dimensions, 20)
+        self.assertTrue(
+            env.state.shape == (env.dimensions, 1)
+        )
+
+    def test_displace_fock_composite_envelope_vector(self) -> None:
+        env1 = Envelope()
+        env2 = Envelope()
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.fock, env2.fock)
+        op = Operation(FockOperationType.Displace, alpha=2)
+        env1.fock.apply_operation(op)
+        self.assertTrue(
+            ce.product_states[0].state.shape == (env1.fock.dimensions*env2.fock.dimensions,1)
+        )
+        
+    def test_displace_fock_composite_envelope_matrix(self) -> None:
+        env1 = Envelope()
+        env2 = Envelope()
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.fock, env2.fock)
+        ce.expand(env1.fock)
+        op = Operation(FockOperationType.Displace, alpha=2)
+        env1.fock.apply_operation(op)
+        self.assertTrue(
+            ce.product_states[0].state.shape == (env1.fock.dimensions*env2.fock.dimensions,1)
+        )
+
+class TestFockOperationSqueeze(unittest.TestCase):
+
+    
+    def test_squeeze_fock(self) -> None:
+        print("\n")
+        f = Fock()
+        f.state = 1
+        op = Operation(FockOperationType.Squeeze, zeta=0.2)
+        f.apply_operation(op)
+        print(op)
+        print(f)
+        print(f.state.shape)
+        #qobj = qt.Qobj(f.state)
+        #x = np.linspace(-10, 10, 100)
+        #p = np.linspace(-10, 10, 100)
+        #W = qt.wigner(qobj, x, p)
+        #X, P = np.meshgrid(x, p)
+        #plt.contourf(X, P, W, 100, cmap="RdBu")
+        #plt.colorbar()
+        #plt.xlabel("Position x")
+        #plt.ylabel("Momentum p")
+        #plt.title("Wigner Function")
+        #plt.show()

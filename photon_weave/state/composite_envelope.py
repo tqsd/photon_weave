@@ -597,7 +597,8 @@ class ProductState:
         from photon_weave.state.polarization import Polarization
         if isinstance(operation._operation_type,FockOperationType):
             assert isinstance(states[0], Fock)
-            operation.compute_dimensions(states[0]._num_quanta)
+            assert len(states) == 1
+            operation.compute_dimensions(states[0]._num_quanta, states[0].trace_out())
             states[0].resize(operation.dimensions)
         
         shape = [so.dimensions for so in self.state_objs]

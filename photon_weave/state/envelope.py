@@ -1086,7 +1086,7 @@ class Envelope:
 
         if (isinstance(operation._operation_type, FockOperationType) and
             isinstance(states[0], Fock)):
-            operation.compute_dimensions(states[0]._num_quanta)
+            operation.compute_dimensions(states[0]._num_quanta, self.fock.trace_out())
             states[0].resize(operation.dimensions)
 
         reshape_shape = [-1,-1]
