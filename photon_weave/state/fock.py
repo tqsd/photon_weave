@@ -415,7 +415,7 @@ class Fock(BaseState):
 
 
         # Consolidate the dimensions
-        operation.compute_dimensions(self._num_quanta)
+        operation.compute_dimensions(self._num_quanta, self.trace_out())
         self.resize(operation.dimensions)
 
 
@@ -425,6 +425,7 @@ class Fock(BaseState):
             self.state = jnp.einsum('ij,jk->ik', operation.operator, self.state)
             if not jnp.any(jnp.abs(self.state) > 0):
                 raise ValueError("The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?")
+            cummulative = 0
             if operation.renormalize:
                 self.state = self.state / jnp.linalg.norm(self.state)
         if self.expansion_level == ExpansionLevel.Matrix:

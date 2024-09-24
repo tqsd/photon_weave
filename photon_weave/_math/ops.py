@@ -5,7 +5,8 @@ import jax.numpy as jnp
 from jax import jit
 import jax
 from typing import Union, List
-
+from jax.scipy.linalg import expm
+jax.config.update("jax_enable_x64", True)
 
 def annihilation_operator(cutoff: int) -> jnp.ndarray:
     return jnp.diag(jnp.sqrt(jnp.arange(1, cutoff, dtype=np.complex128)), 1)
@@ -23,14 +24,14 @@ def squeezing_operator(cutoff: int, zeta:complex) -> jnp.ndarray:
     operator = 0.5 * (
         jnp.conj(zeta) * (destroy @ destroy) - zeta * (create @ create)
     )
-    return _expm(operator)
+    return expm(operator)
 
 
 def displacement_operator(cutoff:int, alpha: complex) -> jnp.ndarray:
     create = creation_operator(cutoff=cutoff)
     destroy = annihilation_operator(cutoff=cutoff)
-    operator = alpha * create - alpha * destroy
-    return _expm(operator)
+    operator = alpha * create - jnp.conj(alpha) * destroy
+    return expm(operator)
 
 
 def phase_operator(cutoff:int, theta: float) -> jnp.ndarray:

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, Union
 import jax.numpy as jnp
 
 from photon_weave.state.expansion_levels import ExpansionLevel
@@ -70,7 +70,7 @@ class Operation():
     def dimensions(self, dimensions:int) -> None:
         self._dimensions = dimensions
 
-    def compute_dimensions(self, num_quanta:int) -> None:
+    def compute_dimensions(self, num_quanta:int, state:jnp.ndarray) -> None:
         """
         Returns the esitmated required dimensions for the
         application of this operation
@@ -80,9 +80,7 @@ class Operation():
         num_quanta: int
             Current maximum number state amplitude
         """
-        print("COMPUTE DIMENSIONS IN OPERATION")
-        print(self.kwargs)
-        self._dimensions = int(self._operation_type.compute_dimensions(num_quanta, **self.kwargs))
+        self._dimensions = int(self._operation_type.compute_dimensions(num_quanta,state, **self.kwargs))
 
     @property
     def required_expansion_level(self) -> ExpansionLevel:

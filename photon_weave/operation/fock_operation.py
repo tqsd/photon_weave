@@ -7,6 +7,7 @@ from enum import Enum, auto
 import jax.numpy as jnp
 from typing import Optional, Any
 from scipy.stats import norm
+from scipy.special import factorial
 
 from photon_weave._math.ops import (
     annihilation_operator,
@@ -17,6 +18,10 @@ from photon_weave._math.ops import (
 )
 from photon_weave.extra import interpreter
 from photon_weave.state.expansion_levels import ExpansionLevel
+from photon_weave.operation.helpers.fock_dimension_esitmation import FockDimensions
+import jax.numpy as jnp
+from scipy.special import factorial
+
 
 class FockOperationType(Enum):
     """
@@ -37,8 +42,9 @@ class FockOperationType(Enum):
     Annihilation = (True, [], ExpansionLevel.Vector, 2)
     # TESTED
     PhaseShift = (False, ['phi'], ExpansionLevel.Vector, 3)
-
+    # TESTED
     Squeeze = (True, ['zeta'], ExpansionLevel.Vector, 4)
+    # TESTED
     Displace = (False, ['alpha'], ExpansionLevel.Vector, 5)
     Identity = (False, [], ExpansionLevel.Vector, 6)
     Custom = (False, [], ExpansionLevel.Vector, 7)
@@ -79,7 +85,7 @@ class FockOperationType(Enum):
                 return interpreter(dimensions, kwargs["expr"])
 
         
-    def compute_dimensions(self, num_quanta:int, **kwargs:Any) -> int:
+    def compute_dimensions(self, num_quanta:int, state: jnp.ndarray, threshold:float=1-1e-6, **kwargs:Any) -> int:
         """
         Compute the dimensions for the operator. Application of the
         operator could change the dimensionality of the space. For
@@ -104,8 +110,7 @@ class FockOperationType(Enum):
         the dimensionality of the space can be changed before the application
         and the dimensionality of the operator and space match
         """
-        print("COMPUTE DIMENSIONS IN FOCK OPERATION")
-        print(kwargs)
+        from photon_weave.operation.operation import Operation
         match self:
             case FockOperationType.Creation:
                 return int(num_quanta + 2)
@@ -114,25 +119,21 @@ class FockOperationType(Enum):
             case FockOperationType.PhaseShift:
                 return num_quanta + 1
             case FockOperationType.Displace:
-                a_squared = kwargs["alpha"]**2
-                result = jnp.ceil(a_squared + num_quanta + 9 * jnp.sqrt(a_squared + num_quanta))
-                return result
+                fd = FockDimensions(
+                    state,
+                    Operation(FockOperationType.Displace, **kwargs),
+                    num_quanta,
+                    threshold
+                )
+                return fd.compute_dimensions()
             case FockOperationType.Squeeze:
-                mean_increase = jnp.sinh(kwargs["zeta"])
-                total_mean_photon_number = num_quanta +  mean_increase
-                std_dev_photon_number = jnp.sqrt(2*mean_increase*(mean_increase+1))
-                n_max = int(jnp.ceil(total_mean_photon_number+3*std_dev_photon_number))
-                cumulative_prob = 0.0
-                threshold = 0.99
-                while cumulative_prob < threshold:
-                    cumulative_prob = norm.cdf(
-                        n_max,
-                        loc=total_mean_photon_number,
-                        scale=std_dev_photon_number
-                    )
-                    n_max += 1
-                print(f"DIMENSIONALITY: n_max")
-                return n_max
+                fd = FockDimensions(
+                    state,
+                    Operation(FockOperationType.Squeeze, **kwargs),
+                    num_quanta,
+                    threshold
+                )
+                return fd.compute_dimensions()
             case FockOperationType.Identity:
                 return num_quanta + 1
             case FockOperationType.Expresion:
