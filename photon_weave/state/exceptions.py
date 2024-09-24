@@ -1,6 +1,6 @@
-
 class NotExtractedException(Exception):
     pass
+
 
 class EnvelopeAssignedException(Exception):
     pass

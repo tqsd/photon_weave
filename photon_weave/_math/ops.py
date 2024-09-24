@@ -1,40 +1,42 @@
-import numba as nb
-import numpy as np
-from numba import njit
-import jax.numpy as jnp
-from jax import jit
+from typing import List, Union
+
 import jax
-from typing import Union, List
+import jax.numpy as jnp
+import numpy as np
+from jax import jit
 from jax.scipy.linalg import expm
+
 jax.config.update("jax_enable_x64", True)
+
 
 def annihilation_operator(cutoff: int) -> jnp.ndarray:
     return jnp.diag(jnp.sqrt(jnp.arange(1, cutoff, dtype=np.complex128)), 1)
 
-def creation_operator(cutoff: int)-> jnp.ndarray:
+
+def creation_operator(cutoff: int) -> jnp.ndarray:
     return jnp.conjugate(annihilation_operator(cutoff=cutoff)).T
+
 
 def _expm(mat: jnp.ndarray) -> np.ndarray:
     eigvals, eigvecs = jnp.linalg.eig(mat)
     return eigvecs @ jnp.diag(jnp.exp(eigvals)) @ jnp.linalg.pinv(eigvecs)
 
-def squeezing_operator(cutoff: int, zeta:complex) -> jnp.ndarray:
+
+def squeezing_operator(cutoff: int, zeta: complex) -> jnp.ndarray:
     create = creation_operator(cutoff=cutoff)
     destroy = annihilation_operator(cutoff=cutoff)
-    operator = 0.5 * (
-        jnp.conj(zeta) * (destroy @ destroy) - zeta * (create @ create)
-    )
+    operator = 0.5 * (jnp.conj(zeta) * (destroy @ destroy) - zeta * (create @ create))
     return expm(operator)
 
 
-def displacement_operator(cutoff:int, alpha: complex) -> jnp.ndarray:
+def displacement_operator(cutoff: int, alpha: complex) -> jnp.ndarray:
     create = creation_operator(cutoff=cutoff)
     destroy = annihilation_operator(cutoff=cutoff)
     operator = alpha * create - jnp.conj(alpha) * destroy
     return expm(operator)
 
 
-def phase_operator(cutoff:int, theta: float) -> jnp.ndarray:
+def phase_operator(cutoff: int, theta: float) -> jnp.ndarray:
     """
     Returns a phase shift operator, given the dimensions
 
@@ -43,7 +45,7 @@ def phase_operator(cutoff:int, theta: float) -> jnp.ndarray:
 
     This operator applies a phase shift to each Fock state |n⟩ proportional to the integer n.
     The phase shift is given by :math:`e^{i n \theta}`, where `theta` is the phase shift parameter.
-    
+
 
     Parameters
     ----------
@@ -68,8 +70,9 @@ def phase_operator(cutoff:int, theta: float) -> jnp.ndarray:
 
 # to do: implement beamsplitter here
 @jit
-def compute_einsum(einsum_str: str,
-                   *operands: Union[jax.Array, np.ndarray]) -> jax.Array:
+def compute_einsum(
+    einsum_str: str, *operands: Union[jax.Array, np.ndarray]
+) -> jax.Array:
     """
     Computes einsum using the provided einsum_str and matrices
     with the gpu if accessible (jax.numpy).
@@ -86,10 +89,12 @@ def compute_einsum(einsum_str: str,
     """
     return jnp.einsum(einsum_str, *operands)
 
+
 @jit
 def apply_kraus(
-        density_matrix: Union[np.ndarray, jnp.ndarray],
-        kraus_operators: List[Union[np.ndarray, jnp.ndarray]]) -> jnp.ndarray:
+    density_matrix: Union[np.ndarray, jnp.ndarray],
+    kraus_operators: List[Union[np.ndarray, jnp.ndarray]],
+) -> jnp.ndarray:
     """
     Apply Kraus operators to the density matrix.
     Parameters
@@ -108,8 +113,11 @@ def apply_kraus(
 
     return new_density_matrix
 
+
 @jit
-def kraus_identity_check(operators: List[Union[np.ndarray, jnp.ndarray]], tol: float = 1e-6) -> bool:
+def kraus_identity_check(
+    operators: List[Union[np.ndarray, jnp.ndarray]], tol: float = 1e-6
+) -> bool:
     """
     Check if Kraus operators sum to the identity matrix.
 
@@ -127,10 +135,9 @@ def kraus_identity_check(operators: List[Union[np.ndarray, jnp.ndarray]], tol: f
     """
     dim = operators[0].shape[0]
     identity_matrix = jnp.eye(dim)
-    sum_kraus = sum(
-        jnp.matmul(jnp.conjugate(K.T),K) for K in operators
-    )
+    sum_kraus = sum(jnp.matmul(jnp.conjugate(K.T), K) for K in operators)
     return jnp.allclose(sum_kraus, identity_matrix, atol=tol)
+
 
 @jit
 def normalize_vector(vector: Union[jnp.ndarray, np.ndarray]) -> jnp.ndarray:
@@ -142,7 +149,8 @@ def normalize_vector(vector: Union[jnp.ndarray, np.ndarray]) -> jnp.ndarray:
         Vector which should be normalied
     """
     trace = jnp.trace(vector)
-    return vector/trace
+    return vector / trace
+
 
 @jit
 def normalize_matrix(vector: Union[jnp.ndarray, np.ndarray]) -> jnp.ndarray:
@@ -154,7 +162,8 @@ def normalize_matrix(vector: Union[jnp.ndarray, np.ndarray]) -> jnp.ndarray:
         Vector which should be normalied
     """
     norm = jnp.linalg.norm(vector)
-    return vector/norm
+    return vector / norm
+
 
 def num_quanta_vector(vector: Union[jnp.ndarray, np.ndarray]) -> int:
     """
@@ -166,6 +175,7 @@ def num_quanta_vector(vector: Union[jnp.ndarray, np.ndarray]) -> int:
     """
     non_zero_indices = jnp.nonzero(vector)[0]
     return non_zero_indices[-1]
+
 
 def num_quanta_matrix(matrix: Union[jnp.ndarray, np.ndarray]) -> int:
     """

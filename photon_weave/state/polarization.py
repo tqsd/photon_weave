@@ -1,27 +1,31 @@
 """
 Polarization State
 """
+
 from __future__ import annotations
 
-from enum import Enum
-import logging 
-import numpy as np
-import jax.numpy as jnp
-import jax
+import logging
 import uuid
-from typing import Union, List, Tuple, TYPE_CHECKING, Optional, Dict
+from enum import Enum
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
-from .expansion_levels import ExpansionLevel
-from .base_state import BaseState
-from photon_weave._math.ops import compute_einsum, apply_kraus, kraus_identity_check
-from photon_weave.state.exceptions import NotExtractedException
+import jax
+import jax.numpy as jnp
+import numpy as np
+
+from photon_weave._math.ops import apply_kraus, compute_einsum, kraus_identity_check
 from photon_weave.photon_weave import Config
+from photon_weave.state.exceptions import NotExtractedException
+
+from .base_state import BaseState
+from .expansion_levels import ExpansionLevel
 
 if TYPE_CHECKING:
-    from .envelope import Envelope
-    from .composite_envelope import CompositeEnvelope
     from photon_weave.operation.polarization_operations import PolarizationOperation
-    
+
+    from .composite_envelope import CompositeEnvelope
+    from .envelope import Envelope
+
 logger = logging.getLogger()
 
 
@@ -29,6 +33,7 @@ class PolarizationLabel(Enum):
     """
     Labels for the polarization basis states
     """
+
     H = "H"
     V = "V"
     R = "R"
@@ -66,23 +71,25 @@ class Polarization(BaseState):
     measured: bool
         If the state was measured than measured is True
     """
+
     __slots__ = BaseState.__slots__
+
     def __init__(
         self,
         polarization: PolarizationLabel = PolarizationLabel.H,
         envelope: Union["Envelope", None] = None,
     ):
         from photon_weave.state.composite_envelope import CompositeEnvelope
+
         self.uid: uuid.UUID = uuid.uuid4()
         logger.info("Creating polarization with uid %s", self.uid)
-        self.index: Optional[Union[int, Tuple[int,int]]] = None
+        self.index: Optional[Union[int, Tuple[int, int]]] = None
         self.state: Optional[Union[jnp.ndarray, PolarizationLabel]] = polarization
         self._dimensions: int = 2
-        self.envelope :Optional["Envelope"] = envelope
-        self._expansion_level : Optional[ExpansionLevel] = ExpansionLevel.Label
+        self.envelope: Optional["Envelope"] = envelope
+        self._expansion_level: Optional[ExpansionLevel] = ExpansionLevel.Label
         self._measured: bool = False
         self._composite_envelope: Optional[CompositeEnvelope] = None
-
 
     @property
     def measured(self) -> bool:
@@ -97,8 +104,10 @@ class Polarization(BaseState):
         return self._dimensions
 
     @dimensions.setter
-    def dimensions(self, dimensions:int) -> None:
-        raise ValueError("Dimensions can not be set for Polarization type, 2 by default")
+    def dimensions(self, dimensions: int) -> None:
+        raise ValueError(
+            "Dimensions can not be set for Polarization type, 2 by default"
+        )
 
     def expand(self) -> None:
         """
@@ -140,7 +149,9 @@ class Polarization(BaseState):
             self.state = jnp.dot(self.state, jnp.conj(self.state.T))
             self.expansion_level = ExpansionLevel.Matrix
 
-    def contract(self, final:ExpansionLevel = ExpansionLevel.Label, tol:float=1e-6) -> None:
+    def contract(
+        self, final: ExpansionLevel = ExpansionLevel.Label, tol: float = 1e-6
+    ) -> None:
         """
         Attempts to contract the representation to the level defined in `final`argument.
 
@@ -152,6 +163,7 @@ class Polarization(BaseState):
             Tolerance when comparing matrices
         """
         from photon_weave.state.envelope import Envelope
+
         # If state was measured, then do nothing
         if self.measured:
             return
@@ -165,34 +177,46 @@ class Polarization(BaseState):
             assert isinstance(self.envelope, Envelope)
             self.envelope.contract()
             return
-            
-        if self.expansion_level is ExpansionLevel.Matrix and final < ExpansionLevel.Matrix:
+
+        if (
+            self.expansion_level is ExpansionLevel.Matrix
+            and final < ExpansionLevel.Matrix
+        ):
             # Check if the state is pure state
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, self.dimensions)
             state_squared = jnp.matmul(self.state, self.state)
             state_trace = jnp.trace(state_squared)
-            if jnp.abs(state_trace-1) < tol:
+            if jnp.abs(state_trace - 1) < tol:
                 # The state is pure
                 eigenvalues, eigenvectors = jnp.linalg.eigh(self.state)
-                pure_state_index = jnp.argmax(jnp.abs(eigenvalues -1.0) < tol)
-                assert pure_state_index is not None, "pure_state_index should not be None"
-                self.state = eigenvectors[:, pure_state_index].reshape(-1,1)
+                pure_state_index = jnp.argmax(jnp.abs(eigenvalues - 1.0) < tol)
+                assert (
+                    pure_state_index is not None
+                ), "pure_state_index should not be None"
+                self.state = eigenvectors[:, pure_state_index].reshape(-1, 1)
                 # Normalizing the phase
                 assert isinstance(self.state, jnp.ndarray)
                 phase = jnp.exp(-1j * jnp.angle(self.state[0]))
-                self.state = self.state*phase
+                self.state = self.state * phase
                 self.expansion_level = ExpansionLevel.Vector
-        if self.expansion_level is ExpansionLevel.Vector and final < ExpansionLevel.Vector:
+        if (
+            self.expansion_level is ExpansionLevel.Vector
+            and final < ExpansionLevel.Vector
+        ):
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, 1)
-            if jnp.allclose(self.state, jnp.array([[1],[0]])):
+            if jnp.allclose(self.state, jnp.array([[1], [0]])):
                 self.state = PolarizationLabel.H
-            elif jnp.allclose(self.state, jnp.array([[0],[1]])):
+            elif jnp.allclose(self.state, jnp.array([[0], [1]])):
                 self.state = PolarizationLabel.V
-            elif jnp.allclose(self.state, jnp.array([[1/jnp.sqrt(2)],[1j/jnp.sqrt(2)]])):
+            elif jnp.allclose(
+                self.state, jnp.array([[1 / jnp.sqrt(2)], [1j / jnp.sqrt(2)]])
+            ):
                 self.state = PolarizationLabel.R
-            elif jnp.allclose(self.state, jnp.array([[1/jnp.sqrt(2)],[-1j/jnp.sqrt(2)]])):
+            elif jnp.allclose(
+                self.state, jnp.array([[1 / jnp.sqrt(2)], [-1j / jnp.sqrt(2)]])
+            ):
                 self.state = PolarizationLabel.L
             self.expansion_level = ExpansionLevel.Label
 
@@ -209,7 +233,7 @@ class Polarization(BaseState):
         self.index = index
         self.state = None
 
-    def set_index(self, minor:int, major:int=-1) -> None:
+    def set_index(self, minor: int, major: int = -1) -> None:
         """
         Sets the index, when product space is created, or
         manipulated
@@ -228,7 +252,9 @@ class Polarization(BaseState):
             else:
                 self.index = minor
         else:
-            raise NotExtractedException("Polarization state does not seem to be extracted")
+            raise NotExtractedException(
+                "Polarization state does not seem to be extracted"
+            )
 
     def _set_measured(self) -> None:
         """
@@ -240,11 +266,13 @@ class Polarization(BaseState):
         self.index = None
         self.expansion_level = None
 
-    def measure(self, separate_measurement:bool=False, destructive:bool = True) -> Dict[BaseState, int]:
+    def measure(
+        self, separate_measurement: bool = False, destructive: bool = True
+    ) -> Dict[BaseState, int]:
         """
         Measures this state. If the state is not in a product state it will
         produce a measurement, otherwise it will return None.
-        
+
         Parameters
         ----------
         separate_measurement: bool
@@ -255,10 +283,13 @@ class Polarization(BaseState):
             Measurement Outcome
         """
         from photon_weave.state.composite_envelope import CompositeEnvelope
+
         # If the state is in the envelope, measure there
         if isinstance(self.index, int):
             assert isinstance(self.envelope, Envelope)
-            return self.envelope.measure(self, separate_measurement=separate_measurement, destructive=destructive)
+            return self.envelope.measure(
+                self, separate_measurement=separate_measurement, destructive=destructive
+            )
 
         # If the state is in the composite envelope, measure there
         if isinstance(self.index, tuple) or isinstance(self.index, list):
@@ -272,12 +303,12 @@ class Polarization(BaseState):
         if self.expansion_level == ExpansionLevel.Vector:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, 1)
-            prob_0 = jnp.abs(self.state[0])**2
-            prob_1 = jnp.abs(self.state[1])**2
+            prob_0 = jnp.abs(self.state[0]) ** 2
+            prob_1 = jnp.abs(self.state[1]) ** 2
             assert jnp.isclose(prob_0 + prob_1, 1.0)
             probs = jnp.array([prob_0[0], prob_1[0]])
             key = C.random_key
-            outcome = jax.random.choice(key, a=jnp.array([0,1]), p=probs.ravel())
+            outcome = jax.random.choice(key, a=jnp.array([0, 1]), p=probs.ravel())
             results[self] = int(outcome)
         elif self.expansion_level == ExpansionLevel.Matrix:
             assert isinstance(self.state, jnp.ndarray)
@@ -287,9 +318,7 @@ class Polarization(BaseState):
             # Generate a random key
             key = C.random_key
             outcome = jax.random.choice(
-                key,
-                a=jnp.arange(self.state.shape[0]),
-                p=probabilities
+                key, a=jnp.arange(self.state.shape[0]), p=probabilities
             )
             results[self] = int(outcome)
         if results[self] == 0:

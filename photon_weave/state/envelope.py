@@ -6,32 +6,39 @@ Envelope
 
 from __future__ import annotations
 
-from enum import Enum, auto
-from typing import Optional, Union, Tuple, List, TYPE_CHECKING, Callable, Dict, Any
 import itertools
 import logging
 import uuid
+from enum import Enum, auto
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
+import jax
+import jax.numpy as jnp
 import numpy as np
 from scipy.integrate import quad
-import jax.numpy as jnp
-import jax
 
-from photon_weave._math.ops import kraus_identity_check, apply_kraus, num_quanta_matrix, num_quanta_vector
-from photon_weave.photon_weave import Config
+from photon_weave._math.ops import (
+    apply_kraus,
+    kraus_identity_check,
+    num_quanta_matrix,
+    num_quanta_vector,
+)
 from photon_weave.constants import C0, gaussian
 from photon_weave.operation import Operation
-from photon_weave.state.expansion_levels import ExpansionLevel
+from photon_weave.photon_weave import Config
 from photon_weave.state.exceptions import (
     EnvelopeAlreadyMeasuredException,
     EnvelopeAssignedException,
-    MissingTemporalProfileArgumentException
+    MissingTemporalProfileArgumentException,
 )
+from photon_weave.state.expansion_levels import ExpansionLevel
+
 if TYPE_CHECKING:
-    from .base_state import BaseState
+    from photon_weave.state.composite_envelope import CompositeEnvelope
     from photon_weave.state.fock import Fock
     from photon_weave.state.polarization import Polarization, PolarizationLabel
-    from photon_weave.state.composite_envelope import CompositeEnvelope
+
+    from .base_state import BaseState
 
 logger = logging.getLogger()
 
@@ -169,9 +176,9 @@ class Envelope:
         Combines the fock and polarization into one vector or matrix and
         stores it under self.composite_vector or self.composite_matrix appropriately
         """
-        from photon_weave.state.polarization import Polarization
-        from photon_weave.state.fock import Fock
         from photon_weave.state.envelope import Envelope
+        from photon_weave.state.fock import Fock
+        from photon_weave.state.polarization import Polarization
 
 
         for s in [self.fock, self.polarization]:
@@ -525,8 +532,8 @@ class Envelope:
         int
             The index of the measurement corresponding to the outcome
         """
-        from photon_weave.state.polarization import Polarization
         from photon_weave.state.fock import Fock
+        from photon_weave.state.polarization import Polarization
 
         if self.measured:
             raise ValueError("This envelope was already measured")
@@ -673,8 +680,8 @@ class Envelope:
         states:
             List of states in the same order as the tensoring of operators
         """
-        from photon_weave.state.polarization import Polarization
         from photon_weave.state.fock import Fock
+        from photon_weave.state.polarization import Polarization
         if len(states) == 2:
             if ((isinstance(states[0], Fock) and isinstance(states[1], Fock)) or
                 (isinstance(states[0], Polarization) and isinstance(states[1], Polarization))):
@@ -755,8 +762,8 @@ class Envelope:
         *states: BaseState
             new order of states
         """
-        from photon_weave.state.polarization import Polarization
         from photon_weave.state.fock import Fock
+        from photon_weave.state.polarization import Polarization
         states_list = list(states)
         if len(states_list) == 2:
             if ((isinstance(states_list[0], Fock) and isinstance(states_list[1], Fock)) or
@@ -861,8 +868,8 @@ class Envelope:
             The given states will be returned in the given
             order (tensoring order), with the rest traced out
         """
-        from photon_weave.state.polarization import PolarizationLabel, Polarization
         from photon_weave.state.fock import Fock
+        from photon_weave.state.polarization import Polarization, PolarizationLabel
 
 
         if self.composite_envelope is not None:
@@ -1065,10 +1072,12 @@ class Envelope:
             The state to which the operator should be applied to
         """
 
+        from photon_weave.operation.fock_operation import FockOperationType
+        from photon_weave.operation.polarization_operation import (
+            PolarizationOperationType,
+        )
         from photon_weave.state.fock import Fock
         from photon_weave.state.polarization import Polarization
-        from photon_weave.operation.fock_operation import FockOperationType
-        from photon_weave.operation.polarization_operation import PolarizationOperationType
 
         # Check that correct operation is applied to the correct system
         if isinstance(operation._operation_type,FockOperationType):
