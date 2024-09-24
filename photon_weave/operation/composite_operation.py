@@ -14,6 +14,34 @@ from photon_weave.state.base_state import BaseState
 from photon_weave.state.fock import Fock
 
 class CompositeOperationType(Enum):
+    """
+    CompositeOperationType
+
+    Constructs an operator, which acts on multiple spaces
+
+    NonPolarizingBeamSplitter
+    -------------------------
+    Constructs a non-polarizing  beam splitter operator that acts on two Fock spaces.
+    The operator is represented by a unitary transformation that mices the two modes.
+
+    The operator transforms the annihilation and creation operators for two modes
+    \( \hat{a} \) and \( \hat{b} \) as follows:
+
+    \[
+    \hat{a}' = \cos(\theta) \hat{a} + \sin(\theta) \hat{b}
+    \]
+    \[
+    \hat{b}' = \sin(\theta) \hat{a} + \cos(\theta) \hat{b}
+    \]
+
+    For a 50/50 beam splitter , \( \theta = \frac{\pi}{4}\), which leas to equal
+    mixing of the two modes.
+
+    The full unitary \( \hat{U}_{BS} \) corresponding to this transformation is:
+    \[
+    \hat{U}_{BS} = \exp\left( i \eta \left( \hat{a}^\dagger \hat{b} + \hat{a} \hat{b}^\dagger \right) \right)
+    \]
+    """
 
     NonPolarizingBeamSplitter = (True, ["eta"], [Fock, Fock], ExpansionLevel.Vector, 1)
 
