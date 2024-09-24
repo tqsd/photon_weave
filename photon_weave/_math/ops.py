@@ -9,11 +9,225 @@ from jax.scipy.linalg import expm
 jax.config.update("jax_enable_x64", True)
 
 
+def identity_operator() -> jax.Array:
+    """
+    identity_operator _summary_
+
+    :return: _description_
+    :rtype: jax.Array
+    """
+    return jnp.eye(N=2)
+
+
+def hadamard_operator() -> jax.Array:
+    """
+    hadamard_operator _summary_
+
+    :return: _description_
+    :rtype: jax.Array
+    """
+    return jnp.array([[1, 1], [1, -1]]) * (1 / jnp.sqrt(2))
+
+
+def x_operator() -> jax.Array:
+    """
+    x_operator _summary_
+
+    :return: _description_
+    :rtype: jax.Array
+    """
+    return jnp.array([[0, 1], [1, 0]])
+
+
+def y_operator() -> jax.Array:
+    """
+    y_operator _summary_
+
+    :return: _description_
+    :rtype: jax.Array
+    """
+    return jnp.array([[0, -1j], [1j, 0]])
+
+
+def z_operator() -> jax.Array:
+    """
+    z_operator _summary_
+
+    :return: _description_
+    :rtype: jax.Array
+    """
+    return jnp.array([[1, 0], [0, -1]])
+
+
+def s_operator() -> jax.Array:
+    """
+    s_operator _summary_
+
+    :return: _description_
+    :rtype: jax.Array
+    """
+    return jnp.array([[1, 0], [0, 1j]])
+
+
+def t_operator() -> jax.Array:
+    """
+    t_operator _summary_
+
+    :return: _description_
+    :rtype: jax.Array
+    """
+    return jnp.array([[1, 0], [0, jnp.exp(1j * np.pi / 4)]])
+
+
+def controlled_not_operator() -> jax.Array:
+    """
+    controlled_not_operator _summary_
+
+    :return: _description_
+    :rtype: jax.Array
+    """
+    return jnp.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]])
+
+
+def controlled_z_operator() -> jax.Array:
+    """
+    controlled_z_operator _summary_
+
+    :return: _description_
+    :rtype: jax.Array
+    """
+    return jnp.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]])
+
+
+def swap_operator() -> jax.Array:
+    """
+    swap_operator _summary_
+
+    :return: _description_
+    :rtype: jax.Array
+    """
+    return jnp.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+
+
+def sx_operator() -> jax.Array:
+    """
+    sx_operator _summary_
+
+    :return: _description_
+    :rtype: jax.Array
+    """
+    return jnp.array([[1 + 1j, 1 - 1j], [1 - 1j, 1 + 1j]]) / 2
+
+
+def controlled_swap_operator() -> jax.Array:
+    """
+    controlled_swap_operator _summary_
+
+    :return: _description_
+    :rtype: jax.Array
+    """
+    return jnp.array(
+        [
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1],
+        ]
+    )
+
+
+def rx_operator(theta: float) -> jax.Array:
+    """
+    rx_operator _summary_
+
+    :param theta: _description_
+    :type theta: float
+    :return: _description_
+    :rtype: jax.Array
+    """
+    term_1 = jnp.cos(theta / 2)
+    term_2 = 1j * jnp.sin(-theta / 2)
+    return jnp.array([[term_1, term_2], [term_2, term_1]])
+
+
+def ry_operator(theta: float) -> jax.Array:
+    """
+    ry_operator _summary_
+
+    :param theta: _description_
+    :type theta: float
+    :return: _description_
+    :rtype: jax.Array
+    """
+    term_1 = jnp.cos(theta / 2)
+    term_2 = jnp.sin(theta / 2)
+    return jnp.array([[term_1, -term_2], [term_2, term_1]])
+
+
+def rz_operator(theta: float) -> jax.Array:
+    """
+    rz_operator _summary_
+
+    :param theta: _description_
+    :type theta: float
+    :return: _description_
+    :rtype: jax.Array
+    """
+    term = jnp.exp(1j * theta / 2)
+    return jnp.array([[term, 0], [0, term.conjuoperator()]])
+
+
+def u3_operator(phi: float, theta: float, omega: float) -> jax.Array:
+    """
+    u3_operator _summary_
+
+    :param phi: _description_
+    :type phi: float
+    :param theta: _description_
+    :type theta: float
+    :param omega: _description_
+    :type omega: float
+    :return: _description_
+    :rtype: jax.Array
+    """
+    cos_term = jnp.cos(theta / 2)
+    sin_term = jnp.sin(theta / 2)
+    return jnp.array(
+        [
+            [cos_term, -jnp.exp(1j * omega * sin_term)],
+            [
+                jnp.exp(1j * phi) * sin_term,
+                jnp.exp(1j * (phi + omega)) * cos_term,
+            ],
+        ]
+    )
+
+
 def annihilation_operator(cutoff: int) -> jnp.ndarray:
+    """
+    annihilation_operator _summary_
+
+    :param cutoff: _description_
+    :type cutoff: int
+    :return: _description_
+    :rtype: jnp.ndarray
+    """
     return jnp.diag(jnp.sqrt(jnp.arange(1, cutoff, dtype=np.complex128)), 1)
 
 
 def creation_operator(cutoff: int) -> jnp.ndarray:
+    """
+    creation_operator _summary_
+
+    :param cutoff: _description_
+    :type cutoff: int
+    :return: _description_
+    :rtype: jnp.ndarray
+    """
     return jnp.conjugate(annihilation_operator(cutoff=cutoff)).T
 
 
@@ -23,6 +237,16 @@ def _expm(mat: jnp.ndarray) -> np.ndarray:
 
 
 def squeezing_operator(cutoff: int, zeta: complex) -> jnp.ndarray:
+    """
+    squeezing_operator _summary_
+
+    :param cutoff: _description_
+    :type cutoff: int
+    :param zeta: _description_
+    :type zeta: complex
+    :return: _description_
+    :rtype: jnp.ndarray
+    """
     create = creation_operator(cutoff=cutoff)
     destroy = annihilation_operator(cutoff=cutoff)
     operator = 0.5 * (jnp.conj(zeta) * (destroy @ destroy) - zeta * (create @ create))
@@ -30,12 +254,23 @@ def squeezing_operator(cutoff: int, zeta: complex) -> jnp.ndarray:
 
 
 def displacement_operator(cutoff: int, alpha: complex) -> jnp.ndarray:
+    """
+    displacement_operator _summary_
+
+    :param cutoff: _description_
+    :type cutoff: int
+    :param alpha: _description_
+    :type alpha: complex
+    :return: _description_
+    :rtype: jnp.ndarray
+    """
     create = creation_operator(cutoff=cutoff)
     destroy = annihilation_operator(cutoff=cutoff)
     operator = alpha * create - jnp.conj(alpha) * destroy
     return expm(operator)
 
 
+@jit
 def phase_operator(cutoff: int, theta: float) -> jnp.ndarray:
     """
     Returns a phase shift operator, given the dimensions
