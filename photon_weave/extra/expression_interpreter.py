@@ -1,4 +1,5 @@
-import numpy as np
+import jax.numpy as jnp
+from jax.scipy.linalg import expm
 import scipy.linalg as la
 
 def interpreter(expr, context):
@@ -7,7 +8,11 @@ def interpreter(expr, context):
         if op == "add":
             result = interpreter(args[0], context)
             for arg in args[1:]:
-                result = np.add(result, interpreter(arg, context))
+                result = jnp.add(result, interpreter(arg, context))
+            return result
+        if op == "sub":
+            result = interpreter(args[0], context)
+            result = jnp.subtract(result, interpreter(args[1], context))
             return result
         elif op == "s_mult":
             result = interpreter(args[0], context)
@@ -17,10 +22,10 @@ def interpreter(expr, context):
         elif op == "m_mult":
             result = interpreter(args[0], context)
             for arg in args[1:]:
-                result *= interpreter(arg, context)
+                result @= interpreter(arg, context)
             return result
         elif op == "expm":
-            return la.expm(interpreter(args[0], context))
+            return expm(interpreter(args[0], context))
         elif op == "div":
             return interpreter(args[0], context) / interpreter(args[1], context)
     elif isinstance(expr, str):

@@ -33,15 +33,10 @@ class FockOperationType(Enum):
     the same pointer and comparisons don't work then
     """
 
-    # TESTED
     Creation = (True, [], ExpansionLevel.Vector, 1)
-    # TESTED
     Annihilation = (True, [], ExpansionLevel.Vector, 2)
-    # TESTED
     PhaseShift = (False, ["phi"], ExpansionLevel.Vector, 3)
-    # TESTED
     Squeeze = (True, ["zeta"], ExpansionLevel.Vector, 4)
-    # TESTED
     Displace = (False, ["alpha"], ExpansionLevel.Vector, 5)
     Identity = (False, [], ExpansionLevel.Vector, 6)
     Custom = (False, [], ExpansionLevel.Vector, 7)
@@ -84,7 +79,12 @@ class FockOperationType(Enum):
             case FockOperationType.Identity:
                 return jnp.identity(dimensions)
             case FockOperationType.Expresion:
-                return interpreter(dimensions, kwargs["expr"])
+                context = {
+                    "a" : annihilation_operator(dimensions),
+                    "a_dag": creation_operator(dimensions)
+                }
+                context["n"] = jnp.dot(context["a"], context["a_dag"])
+                return interpreter(kwargs["expr"], context)
 
     def compute_dimensions(
         self,
@@ -145,4 +145,10 @@ class FockOperationType(Enum):
             case FockOperationType.Identity:
                 return num_quanta + 1
             case FockOperationType.Expresion:
-                return num_quanta + 1
+                fd = FockDimensions(
+                    state,
+                    Operation(FockOperationType.Expresion, **kwargs),
+                    num_quanta,
+                    threshold
+                )
+                return fd.compute_dimensions()

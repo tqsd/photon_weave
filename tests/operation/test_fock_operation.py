@@ -374,7 +374,6 @@ class TestFockOperationDisplace(unittest.TestCase):
             env.state.shape == (env.dimensions, 1)
         )
 
-    @pytest.mark.my_marker
     def test_displace_fock_envelope_matrix(self) -> None:
         C = Config()
         C.set_contraction(True)
@@ -415,24 +414,175 @@ class TestFockOperationDisplace(unittest.TestCase):
 
 class TestFockOperationSqueeze(unittest.TestCase):
 
-    
-    def test_squeeze_fock(self) -> None:
-        print("\n")
+    def test_squeeze_fock_vector(self) -> None:
+        C = Config()
+        C.set_contraction(True)
         f = Fock()
-        f.state = 1
-        op = Operation(FockOperationType.Squeeze, zeta=0.2)
+        op = Operation(FockOperationType.Squeeze, zeta=0.5)
         f.apply_operation(op)
-        print(op)
+        self.assertTrue(
+            f.state.shape == (f.dimensions, 1)
+        )
+
+    def test_squeeze_fock_vector(self) -> None:
+        C = Config()
+        C.set_contraction(True)
+        f = Fock()
+        f.expand()
+        f.expand()
+        op = Operation(FockOperationType.Squeeze, zeta=0.5)
+        f.apply_operation(op)
+        self.assertTrue(
+            f.state.shape == (f.dimensions, 1)
+        )
+
+    def test_squeeze_envelope_vector(self) -> None:
+        C = Config()
+        C.set_contraction(True)
+        env = Envelope()
+        env.combine()
+        op = Operation(FockOperationType.Squeeze, zeta=0.5j)
+        env.apply_operation(op, env.fock)
+        self.assertTrue(
+            env.state.shape == (env.dimensions, 1)
+        )
+
+    def test_squeeze_envelope_matrix(self) -> None:
+        C = Config()
+        C.set_contraction(True)
+        env = Envelope()
+        env.combine()
+        env.expand()
+        op = Operation(FockOperationType.Squeeze, zeta=0.5j)
+        env.apply_operation(op, env.fock)
+        self.assertTrue(
+            env.state.shape == (env.dimensions, 1)
+        )
+
+    def test_squeeze_composite_envelope_vector(self) -> None:
+        env1 = Envelope()
+        env2 = Envelope()
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.fock, env2.fock)
+        op = Operation(FockOperationType.Squeeze, zeta=-0.5j)
+        env1.fock.apply_operation(op)
+        self.assertTrue(
+            ce.product_states[0].state.shape == (env1.fock.dimensions*env2.fock.dimensions,1)
+        )
+
+    def test_squeeze_composite_envelope_vector(self) -> None:
+        env1 = Envelope()
+        env2 = Envelope()
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.fock, env2.fock)
+        ce.expand(env1.fock)
+        op = Operation(FockOperationType.Squeeze, zeta=-0.5j)
+        env1.fock.apply_operation(op)
+        self.assertTrue(
+            ce.product_states[0].state.shape == (env1.fock.dimensions*env2.fock.dimensions,1)
+        )
+
+class TestCustomOperator(unittest.TestCase):
+
+    def test_expression_operator_fock_vector(self) -> None:
+        f = Fock()
+        op = Operation(FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n")))
+        f.apply_operation(op)
+        self.assertTrue(
+            jnp.allclose(
+                f.state,
+                jnp.array(
+                    [[-1],[0],[0]]
+                )
+            )
+        )
+
+    def test_expression_operator_fock_vector(self) -> None:
+        f = Fock()
+        #DISPLACE
+        op = Operation(
+            FockOperationType.Expresion,
+            expr=("expm",
+                  ("sub",
+                   ("s_mult", 1, "a_dag"),
+                   ("s_mult", 1, "a"))
+                   )
+            )
+        f.apply_operation(op)
+        self.assertTrue(
+            f.state.shape == (12,1)
+        )
+
+    def test_expression_operator_fock_matrix(self) -> None:
+        f = Fock()
+        op = Operation(FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n")))
+        f.expand()
+        f.expand()
+        f.apply_operation(op)
         print(f)
-        print(f.state.shape)
-        #qobj = qt.Qobj(f.state)
-        #x = np.linspace(-10, 10, 100)
-        #p = np.linspace(-10, 10, 100)
-        #W = qt.wigner(qobj, x, p)
-        #X, P = np.meshgrid(x, p)
-        #plt.contourf(X, P, W, 100, cmap="RdBu")
-        #plt.colorbar()
-        #plt.xlabel("Position x")
-        #plt.ylabel("Momentum p")
-        #plt.title("Wigner Function")
-        #plt.show()
+        self.assertEqual(f.state, 0)
+
+    def test_expression_operator_envelope_vector(self) -> None:
+        env = Envelope()
+        op = Operation(FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n")))
+        env.combine()
+        env.fock.apply_operation(op)
+        print(env)
+        self.assertTrue(
+            jnp.allclose(
+                env.state,
+                jnp.array(
+                    [[-1],[0],[0],[0],[0],[0]]
+                )
+            )
+        )
+
+    def test_expression_operator_envelope_matrix(self) -> None:
+        env = Envelope()
+        op = Operation(FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n")))
+        env.combine()
+        env.expand()
+        env.fock.apply_operation(op)
+        print(env)
+        self.assertTrue(
+            jnp.allclose(
+                env.state,
+                jnp.array(
+                    [[1],[0],[0],[0],[0],[0]]
+                )
+            )
+        )
+
+    def test_expression_operator_composite_envelope_vector(self) -> None:
+        env1 = Envelope()
+        env2 = Envelope()
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.fock, env2.fock)
+        op = Operation(FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n")))
+        env1.fock.apply_operation(op)
+        self.assertTrue(
+            jnp.allclose(
+                ce.product_states[0].state,
+                jnp.array(
+                    [[-1],[0],[0],[0],[0],[0],[0],[0],[0]]
+                )
+            )
+        )
+
+    @pytest.mark.my_marker
+    def test_expression_operator_composite_envelope_matrix(self) -> None:
+        env1 = Envelope()
+        env2 = Envelope()
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.fock, env2.fock)
+        env1.fock.expand()
+        op = Operation(FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n")))
+        env1.fock.apply_operation(op)
+        self.assertTrue(
+            jnp.allclose(
+                ce.product_states[0].state,
+                jnp.array(
+                    [[1],[0],[0],[0],[0],[0],[0],[0],[0]]
+                )
+            )
+        )

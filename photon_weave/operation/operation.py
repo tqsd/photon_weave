@@ -27,7 +27,7 @@ class Operation:
         apply_count: int = 1,
         **kwargs: Any,
     ) -> None:
-        if expression is None and operation_type is FockOperationType.Expresion:
+        if kwargs["expr"] is None and operation_type is FockOperationType.Expresion:
             raise ValueError(f"For Expression operation type expression is required")
 
         self._operation_type: Enum = operation_type
