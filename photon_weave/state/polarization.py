@@ -340,7 +340,7 @@ class Polarization(BaseState):
         Parameters
         ----------
         operation: Operation
-            Operation with operation type: FockOperationType
+            Operation with operation type: PolarizationOperationType
         """
         from photon_weave.state.envelope import Envelope
 
