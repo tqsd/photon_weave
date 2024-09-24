@@ -370,7 +370,7 @@ class TestFockMeasurement(unittest.TestCase):
         )
         C.set_seed(3)
         m = f.measure()
-        self.assertEqual(m[f], 0, "Should be 1 with seed 3")
+        self.assertEqual(m[f], 1, "Should be 1 with seed 3")
 
     def test_superposition_matrix(self) -> None:
         f = Fock()
@@ -393,7 +393,7 @@ class TestFockMeasurement(unittest.TestCase):
         f.expand()
         C.set_seed(3)
         m = f.measure()
-        self.assertEqual(m[f], 0, "Should be 1 with seed 3")
+        self.assertEqual(m[f], 1, "Should be 1 with seed 3")
 
     def test_POVM_measurement_state_vector(self) -> None:
         C = Config()

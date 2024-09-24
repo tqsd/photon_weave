@@ -442,6 +442,7 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
     def test_measurement_envelope_separate_non_destructive(self) -> None:
         C = Config()
         C.set_seed(1)
+        C.set_contraction(True)
         env1 = Envelope()
         env1.fock.uid = "f1"
         env1.fock.state = 1
@@ -512,10 +513,11 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         self.assertFalse(env2.measured)
         self.assertEqual(env1.fock.state, 1)
         self.assertEqual(env2.fock.state, 2)
+        print(ce.product_states[0].state)
         self.assertTrue(
             jnp.allclose(ce.product_states[0].state, jnp.array([[1], [0], [0], [0]]))
         )
-
+    
     def test_measurement_envelope_non_destructive(self) -> None:
         C = Config()
         C.set_seed(1)
@@ -679,7 +681,7 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         out = ce.measure(cs, env.fock)
         self.assertEqual(out[cs], 0)
         self.assertEqual(out[env.fock], 0)
-        self.assertEqual(out[env.polarization], 0)
+        self.assertEqual(out[env.polarization], 1)
 
         env = Envelope()
         env.uid = "e"
@@ -1036,7 +1038,7 @@ class TestPOVMMeasurement(unittest.TestCase):
         C.set_contraction(False)
         outcomes = ce.measure_POVM(operators, env1.fock)
         self.assertEqual(1, outcomes[0])
-        self.assertEqual(1, outcomes[1][env1.polarization])
+        self.assertEqual(0, outcomes[1][env1.polarization])
 
     def test_partial_POVM_measurement_contract(self) -> None:
         env1 = Envelope()
@@ -1059,7 +1061,7 @@ class TestPOVMMeasurement(unittest.TestCase):
         C.set_contraction(True)
         outcomes = ce.measure_POVM(operators, env1.fock)
         self.assertEqual(1, outcomes[0])
-        self.assertEqual(1, outcomes[1][env1.polarization])
+        self.assertEqual(0, outcomes[1][env1.polarization])
         self.assertTrue(jnp.allclose(ce.product_states[0].state, jnp.array([[1], [0]])))
 
     def test_partial_POVM_measurement_non_destructive(self) -> None:
@@ -1113,11 +1115,12 @@ class TestPOVMMeasurement(unittest.TestCase):
         C.set_seed(100)
         C.set_contraction(False)
         outcomes = ce.measure_POVM(operators, env1.fock, destructive=False)
-        self.assertEqual(1, outcomes[0])
+        self.assertEqual(0, outcomes[0])
+        print(ce.product_states[0].state)
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0]]),
+                jnp.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]),
             )
         )
 

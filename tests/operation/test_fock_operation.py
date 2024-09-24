@@ -376,6 +376,8 @@ class TestFockOperationDisplace(unittest.TestCase):
 
     @pytest.mark.my_marker
     def test_displace_fock_envelope_matrix(self) -> None:
+        C = Config()
+        C.set_contraction(True)
         env = Envelope()
         env.combine()
         env.expand()
@@ -398,6 +400,8 @@ class TestFockOperationDisplace(unittest.TestCase):
         )
         
     def test_displace_fock_composite_envelope_matrix(self) -> None:
+        C = Config()
+        C.set_contraction(True)
         env1 = Envelope()
         env2 = Envelope()
         ce = CompositeEnvelope(env1, env2)

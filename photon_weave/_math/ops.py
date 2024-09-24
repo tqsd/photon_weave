@@ -270,7 +270,6 @@ def displacement_operator(cutoff: int, alpha: complex) -> jnp.ndarray:
     return expm(operator)
 
 
-@jit
 def phase_operator(cutoff: int, theta: float) -> jnp.ndarray:
     """
     Returns a phase shift operator, given the dimensions
@@ -300,7 +299,10 @@ def phase_operator(cutoff: int, theta: float) -> jnp.ndarray:
     in the Fock basis. The diagonal matrix elements are complex exponentials that apply a
     phase proportional to the Fock state number.
     """
-    return jnp.diag(jnp.array([jnp.exp(1j * n * theta) for n in range(cutoff)]))
+    indices = jnp.arange(cutoff)
+    phases = jnp.exp(1j*indices * theta)
+    return jnp.diag(phases)
+    #return jnp.diag(jnp.array([jnp.exp(1j * n * theta) for n in range(cutoff)]))
 
 
 # to do: implement beamsplitter here
