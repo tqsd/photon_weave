@@ -5,6 +5,7 @@ import numpy as np
 from photon_weave._math.ops import _expm
 from photon_weave.state.expansion_levels import ExpansionLevel
 
+
 class PolarizationOperationType(Enum):
     I = auto()
     X = auto()

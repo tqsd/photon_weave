@@ -2,25 +2,21 @@
 Operations on fock spaces
 """
 
-from numba import uintc
-from enum import Enum, auto
+from enum import Enum
+from typing import Any
+
 import jax.numpy as jnp
-from typing import Optional, Any
-from scipy.stats import norm
-from scipy.special import factorial
 
 from photon_weave._math.ops import (
     annihilation_operator,
     creation_operator,
     displacement_operator,
+    phase_operator,
     squeezing_operator,
-    phase_operator
 )
 from photon_weave.extra import interpreter
-from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.operation.helpers.fock_dimension_esitmation import FockDimensions
-import jax.numpy as jnp
-from scipy.special import factorial
+from photon_weave.state.expansion_levels import ExpansionLevel
 
 
 class FockOperationType(Enum):
@@ -36,27 +32,33 @@ class FockOperationType(Enum):
     because if two tuples are the same it is assigned
     the same pointer and comparisons don't work then
     """
+
     # TESTED
     Creation = (True, [], ExpansionLevel.Vector, 1)
     # TESTED
     Annihilation = (True, [], ExpansionLevel.Vector, 2)
     # TESTED
-    PhaseShift = (False, ['phi'], ExpansionLevel.Vector, 3)
+    PhaseShift = (False, ["phi"], ExpansionLevel.Vector, 3)
     # TESTED
-    Squeeze = (True, ['zeta'], ExpansionLevel.Vector, 4)
+    Squeeze = (True, ["zeta"], ExpansionLevel.Vector, 4)
     # TESTED
-    Displace = (False, ['alpha'], ExpansionLevel.Vector, 5)
+    Displace = (False, ["alpha"], ExpansionLevel.Vector, 5)
     Identity = (False, [], ExpansionLevel.Vector, 6)
     Custom = (False, [], ExpansionLevel.Vector, 7)
     Expresion = (False, ["expr"], ExpansionLevel.Vector, 8)
 
-    def __init__(self, renormalize:bool, required_params: list,
-                 required_expansion_level: ExpansionLevel, op_id:int) -> None:
+    def __init__(
+        self,
+        renormalize: bool,
+        required_params: list,
+        required_expansion_level: ExpansionLevel,
+        op_id: int,
+    ) -> None:
         self.renormalize = renormalize
         self.required_params = required_params
-        self.required_expansion_level=required_expansion_level
+        self.required_expansion_level = required_expansion_level
 
-    def compute_operator(self, dimensions:int, **kwargs:Any):
+    def compute_operator(self, dimensions: int, **kwargs: Any):
         """
         Generates the operator for this opration, given
         the dimensions
@@ -84,8 +86,13 @@ class FockOperationType(Enum):
             case FockOperationType.Expresion:
                 return interpreter(dimensions, kwargs["expr"])
 
-        
-    def compute_dimensions(self, num_quanta:int, state: jnp.ndarray, threshold:float=1-1e-6, **kwargs:Any) -> int:
+    def compute_dimensions(
+        self,
+        num_quanta: int,
+        state: jnp.ndarray,
+        threshold: float = 1 - 1e-6,
+        **kwargs: Any,
+    ) -> int:
         """
         Compute the dimensions for the operator. Application of the
         operator could change the dimensionality of the space. For
@@ -111,6 +118,7 @@ class FockOperationType(Enum):
         and the dimensionality of the operator and space match
         """
         from photon_weave.operation.operation import Operation
+
         match self:
             case FockOperationType.Creation:
                 return int(num_quanta + 2)
@@ -123,7 +131,7 @@ class FockOperationType(Enum):
                     state,
                     Operation(FockOperationType.Displace, **kwargs),
                     num_quanta,
-                    threshold
+                    threshold,
                 )
                 return fd.compute_dimensions()
             case FockOperationType.Squeeze:
@@ -131,12 +139,10 @@ class FockOperationType(Enum):
                     state,
                     Operation(FockOperationType.Squeeze, **kwargs),
                     num_quanta,
-                    threshold
+                    threshold,
                 )
                 return fd.compute_dimensions()
             case FockOperationType.Identity:
                 return num_quanta + 1
             case FockOperationType.Expresion:
                 return num_quanta + 1
-
-

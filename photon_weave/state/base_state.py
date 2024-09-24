@@ -1,19 +1,20 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Union, Tuple, TYPE_CHECKING, Dict, Optional
-import numpy as np
-import jax.numpy as jnp
-import jax
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
-from photon_weave._math.ops import kraus_identity_check, apply_kraus
-from photon_weave.state.expansion_levels import ExpansionLevel
+import jax
+import jax.numpy as jnp
+import numpy as np
+
+from photon_weave._math.ops import apply_kraus, kraus_identity_check
 from photon_weave.photon_weave import Config
+from photon_weave.state.expansion_levels import ExpansionLevel
 
 if TYPE_CHECKING:
-    from photon_weave.state.polarization import Polarization, PolarizationLabel
     from photon_weave.state.composite_envelope import CompositeEnvelope
     from photon_weave.state.envelope import Envelope
+    from photon_weave.state.polarization import Polarization, PolarizationLabel
 
 class BaseState(ABC):
 
@@ -237,8 +238,8 @@ class BaseState(ABC):
             is a dictionary with the other potentional measurement outcomes
         """
         from photon_weave.state.envelope import Envelope
-        from photon_weave.state.polarization import Polarization
         from photon_weave.state.fock import Fock
+        from photon_weave.state.polarization import Polarization
 
         if isinstance(self.index, int):
             assert isinstance(self.envelope, Envelope)
@@ -303,8 +304,8 @@ class BaseState(ABC):
         If the instance is in composite envelope then it traces it
         out from there
         """
-        from photon_weave.state.envelope import Envelope
         from photon_weave.state.composite_envelope import CompositeEnvelope
+        from photon_weave.state.envelope import Envelope
 
         if self.index is None:
             assert self.state is not None

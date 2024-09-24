@@ -1,19 +1,21 @@
 import random
 import sys
-from typing import Optional, Any
-import jax.numpy as jnp
+from typing import Any, Optional
+
 import jax
+import jax.numpy as jnp
+
 
 class Config:
     _instance = None
-    
-    def __new__(cls, *args:Any, **kwargs:Any) -> 'Config':
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> "Config":
         if cls._instance is None:
             cls._instance = super(Config, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
     def __init__(self) -> None:
-        if not hasattr(self, '_initialized'):
+        if not hasattr(self, "_initialized"):
             self._initialized = True  # Prevents reinitialization
             self._random_seed = random.randint(0, sys.maxsize)
             self._key = jax.random.PRNGKey(self._random_seed)
@@ -42,7 +44,7 @@ class Config:
         key, self._key = jax.random.split(self._key)
         return key
 
-    def set_contraction(self, cs:bool) -> None:
+    def set_contraction(self, cs: bool) -> None:
         self._contractions = cs
 
     @property
