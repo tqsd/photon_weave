@@ -27,9 +27,6 @@ class Operation:
         apply_count: int = 1,
         **kwargs: Any,
     ) -> None:
-        if kwargs["expr"] is None and operation_type is FockOperationType.Expresion:
-            raise ValueError(f"For Expression operation type expression is required")
-
         self._operation_type: Enum = operation_type
         self._operator: Optional[jnp.ndarray] = None
         self._apply_count: int = apply_count

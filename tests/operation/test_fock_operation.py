@@ -569,7 +569,6 @@ class TestCustomOperator(unittest.TestCase):
             )
         )
 
-    @pytest.mark.my_marker
     def test_expression_operator_composite_envelope_matrix(self) -> None:
         env1 = Envelope()
         env2 = Envelope()
