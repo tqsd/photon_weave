@@ -315,7 +315,7 @@ def compute_einsum(
     ----------
     einsum_str: str
         Einstein Sum String
-    operatnds: Union[jax.Array, np.ndarray]
+    operands: Union[jax.Array, np.ndarray]
         Operands for the einstein sum
     Returns
     -------
