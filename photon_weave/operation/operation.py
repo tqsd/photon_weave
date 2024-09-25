@@ -34,6 +34,11 @@ class Operation:
 
         self._operation_type.update(**kwargs)
 
+        if operation_type is FockOperationType.Custom:
+            assert isinstance(kwargs["operator"], jnp.ndarray)
+            self._operator = kwargs["operator"]
+            self._dimensions = [self._operator.shape[0]]
+
         for param in operation_type.required_params:
             if param not in kwargs:
                 raise KeyError(
@@ -89,9 +94,10 @@ class Operation:
         num_quanta: int
             Current maximum number state amplitude
         """
-        self._dimensions = self._operation_type.compute_dimensions(
-            num_quanta, state, **self.kwargs
-        )
+        if not self._operation_type is FockOperationType.Custom:
+            self._dimensions = self._operation_type.compute_dimensions(
+                num_quanta, state, **self.kwargs
+            )
 
     @property
     def required_expansion_level(self) -> ExpansionLevel:

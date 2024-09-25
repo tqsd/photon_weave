@@ -564,7 +564,6 @@ class TestExpressionOperator(unittest.TestCase):
             jnp.allclose(env.state, jnp.array([[0],[0],[1], [0], [0], [0], [0], [0]]))
         )
 
-    @pytest.mark.my_marker
     def test_expression_operator_composite_envelope_vector(self) -> None:
         env1 = Envelope()
         env1.fock.state = 1
@@ -582,7 +581,6 @@ class TestExpressionOperator(unittest.TestCase):
             context=context
         )
         env1.fock.apply_operation(op)
-        print(ce.product_states[0].state)
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
@@ -611,5 +609,128 @@ class TestExpressionOperator(unittest.TestCase):
             jnp.allclose(
                 ce.product_states[0].state,
                 jnp.array([[1], [0], [0], [0], [0], [0], [0], [0], [0]]),
+            )
+        )
+
+class TestCustomFockOperation(unittest.TestCase):
+
+    def test_custom_opeator_fock_vector(self) -> None:
+        f = Fock()
+        f.dimensions = 2
+        op = Operation(
+            FockOperationType.Custom,
+            operator = jnp.array(
+                [[0,0],
+                 [1,0]]
+            )
+        )
+        f.apply_operation(op)
+        self.assertEqual(f.state, 1)
+
+    @pytest.mark.my_marker
+    def test_custom_opeator_fock_matrix(self) -> None:
+        f = Fock()
+        f.dimensions = 2
+        f.expand()
+        f.expand()
+        op = Operation(
+            FockOperationType.Custom,
+            operator = jnp.array(
+                [[0,0],
+                 [1,0]]
+            )
+        )
+        f.apply_operation(op)
+        self.assertEqual(f.state, 1)
+
+    def test_custom_operator_envelope_vector(self) -> None:
+        env = Envelope()
+        env.fock.dimensions = 2
+        env.combine()
+        op = Operation(
+            FockOperationType.Custom,
+            operator = jnp.array(
+                [[0,0],
+                 [1,0]]
+            )
+        )
+        env.fock.apply_operation(op)
+        self.assertTrue(
+            jnp.allclose(
+                env.state,
+                jnp.array(
+                    [[0],[0],[1],[0]]
+                )
+            )
+        )
+
+    def test_custom_operator_envelope_matrix(self) -> None:
+        env = Envelope()
+        env.fock.dimensions = 2
+        env.combine()
+        env.expand()
+        op = Operation(
+            FockOperationType.Custom,
+            operator = jnp.array(
+                [[0,0],
+                 [1,0]]
+            )
+        )
+        env.fock.apply_operation(op)
+        self.assertTrue(
+            jnp.allclose(
+                env.state,
+                jnp.array(
+                    [[0],[0],[1],[0]]
+                )
+            )
+        )
+
+    def test_custom_operator_composite_envelope_vector(self) -> None:
+        env1 = Envelope()
+        env1.fock.dimensions = 2
+        env2 = Envelope()
+        env2.fock.dimensions = 2
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.fock, env2.fock)
+        op = Operation(
+            FockOperationType.Custom,
+            operator = jnp.array(
+                [[0,0],
+                 [1,0]]
+            )
+        )
+        env1.fock.apply_operation(op)
+        self.assertTrue(
+            jnp.allclose(
+                ce.product_states[0].state,
+                jnp.array(
+                    [[0],[0],[1],[0]]
+                )
+            )
+        )
+
+    def test_custom_operator_composite_envelope_matrix(self) -> None:
+        env1 = Envelope()
+        env1.fock.dimensions = 2
+        env2 = Envelope()
+        env2.fock.dimensions = 2
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.fock, env2.fock)
+        ce.expand(env1.fock)
+        op = Operation(
+            FockOperationType.Custom,
+            operator = jnp.array(
+                [[0,0],
+                 [1,0]]
+            )
+        )
+        env1.fock.apply_operation(op)
+        self.assertTrue(
+            jnp.allclose(
+                ce.product_states[0].state,
+                jnp.array(
+                    [[0],[0],[1],[0]]
+                )
             )
         )

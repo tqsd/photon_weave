@@ -78,7 +78,11 @@ class FockOperationType(Enum):
     ------
     Constructs a custom operator, which means the operator needs to be manually provided,
     one must pay attention to the fact that operators dimensions need to match
-    the dimensions of the Fock space.
+    the dimensions of the Fock space. If the operator is larger than the underlying
+    fock space, then the dimensions of the respective Fock space will increase to match
+    the provided operator. Otherwise the state will be shrunk. If shrinking is not succesfull
+    then the operation will fail. Shinking is not succesfull if part of the state is removed
+    by the process of shrinking.
 
     Expresion
     ---------
