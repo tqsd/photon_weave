@@ -628,7 +628,7 @@ class ProductState:
             assert isinstance(states[0], Fock)
             assert len(states) == 1
             operation.compute_dimensions(states[0]._num_quanta, states[0].trace_out())
-            states[0].resize(operation.dimensions)
+            states[0].resize(operation.dimensions[0])
         elif isinstance(operation._operation_type, CompositeOperationType):
             assert len(states) == len(
                 operation._operation_type.expected_base_state_types
@@ -641,7 +641,8 @@ class ProductState:
                 [s._num_quanta for s in states], [s.trace_out() for s in states]
             )
             for i, s in enumerate(states):
-                s.resize(operation._dimensions[i])
+                if isinstance(s, Fock):
+                    s.resize(operation._dimensions[i])
 
         shape = [so.dimensions for so in self.state_objs]
         if self.expansion_level == ExpansionLevel.Vector:

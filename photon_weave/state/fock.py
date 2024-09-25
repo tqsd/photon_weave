@@ -432,7 +432,7 @@ class Fock(BaseState):
 
         # Consolidate the dimensions
         operation.compute_dimensions(self._num_quanta, self.trace_out())
-        self.resize(operation.dimensions)
+        self.resize(operation.dimensions[0])
 
         if self.expansion_level == ExpansionLevel.Vector:
             assert isinstance(self.state, jnp.ndarray)

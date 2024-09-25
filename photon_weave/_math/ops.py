@@ -230,6 +230,16 @@ def creation_operator(cutoff: int) -> jnp.ndarray:
     """
     return jnp.conjugate(annihilation_operator(cutoff=cutoff)).T
 
+def number_operator(cutoff: int) -> jnp.ndarray:
+    """
+    number_operator _summary_
+
+    :param cutoff: _description_
+    :type cutoff: int
+    :return: _description_
+    :rtype: jnp.ndarray
+    """
+    return jnp.matmul(creation_operator(cutoff), annihilation_operator(cutoff))
 
 def _expm(mat: jnp.ndarray) -> np.ndarray:
     eigvals, eigvecs = jnp.linalg.eig(mat)

@@ -12,6 +12,11 @@ from photon_weave.photon_weave import Config
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.envelope import Envelope
 from photon_weave.state.fock import Fock
+from photon_weave._math.ops import (
+    creation_operator,
+    annihilation_operator,
+    number_operator
+)
 
 
 class TestFockOperationIdentity(unittest.TestCase):
@@ -470,11 +475,18 @@ class TestFockOperationSqueeze(unittest.TestCase):
         )
 
 
-class TestCustomOperator(unittest.TestCase):
+class TestExpressionOperator(unittest.TestCase):
     def test_expression_operator_fock_vector(self) -> None:
         f = Fock()
+        context = {
+            "a":     lambda dims: annihilation_operator(dims[0]),
+            "a_dag": lambda dims: creation_operator(dims[0]),
+            "n":     lambda dims: number_operator(dims[0])
+        }
         op = Operation(
-            FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n"))
+            FockOperationType.Expresion,
+            expr=("expm", ("s_mult", -1j, jnp.pi, "n")),
+            context=context
         )
         f.apply_operation(op)
         self.assertTrue(jnp.allclose(f.state, jnp.array([[-1], [0], [0]])))
@@ -482,62 +494,99 @@ class TestCustomOperator(unittest.TestCase):
     def test_expression_operator_fock_vector(self) -> None:
         f = Fock()
         # DISPLACE
+        context = {
+            "a":     lambda dims: annihilation_operator(dims[0]),
+            "a_dag": lambda dims: creation_operator(dims[0]),
+            "n":     lambda dims: number_operator(dims[0])
+        }
         op = Operation(
             FockOperationType.Expresion,
             expr=("expm", ("sub", ("s_mult", 1, "a_dag"), ("s_mult", 1, "a"))),
+            context=context
         )
         f.apply_operation(op)
         self.assertTrue(f.state.shape == (12, 1))
 
     def test_expression_operator_fock_matrix(self) -> None:
         f = Fock()
+        context = {
+            "a":     lambda dims: annihilation_operator(dims[0]),
+            "a_dag": lambda dims: creation_operator(dims[0]),
+            "n":     lambda dims: number_operator(dims[0])
+        }
         op = Operation(
-            FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n"))
+            FockOperationType.Expresion,
+            expr=("expm", ("s_mult", -1j, jnp.pi, "n")),
+            context=context
         )
         f.expand()
         f.expand()
         f.apply_operation(op)
-        print(f)
         self.assertEqual(f.state, 0)
 
     def test_expression_operator_envelope_vector(self) -> None:
         env = Envelope()
+        env.fock.state = 1
+        context = {
+            "a":     lambda dims: annihilation_operator(dims[0]),
+            "a_dag": lambda dims: creation_operator(dims[0]),
+            "n":     lambda dims: number_operator(dims[0])
+        }
         op = Operation(
-            FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n"))
+            FockOperationType.Expresion,
+            expr=("expm", ("s_mult", -1j, jnp.pi, "n")),
+            context=context
         )
         env.combine()
         env.fock.apply_operation(op)
-        print(env)
         self.assertTrue(
-            jnp.allclose(env.state, jnp.array([[-1], [0], [0], [0], [0], [0]]))
+            jnp.allclose(env.state, jnp.array([[0],[0],[-1], [0], [0], [0], [0], [0]]))
         )
 
     def test_expression_operator_envelope_matrix(self) -> None:
         env = Envelope()
+        env.fock.state = 1
+        context = {
+            "a":     lambda dims: annihilation_operator(dims[0]),
+            "a_dag": lambda dims: creation_operator(dims[0]),
+            "n":     lambda dims: number_operator(dims[0])
+        }
         op = Operation(
-            FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n"))
+            FockOperationType.Expresion,
+            expr=("expm", ("s_mult", -1j, jnp.pi, "n")),
+            context=context
         )
         env.combine()
         env.expand()
         env.fock.apply_operation(op)
-        print(env)
+        # Global phase is lost in a density matrix
         self.assertTrue(
-            jnp.allclose(env.state, jnp.array([[1], [0], [0], [0], [0], [0]]))
+            jnp.allclose(env.state, jnp.array([[0],[0],[1], [0], [0], [0], [0], [0]]))
         )
 
+    @pytest.mark.my_marker
     def test_expression_operator_composite_envelope_vector(self) -> None:
         env1 = Envelope()
+        env1.fock.state = 1
         env2 = Envelope()
         ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.fock, env2.fock)
+        context = {
+            "a":     lambda dims: annihilation_operator(dims[0]),
+            "a_dag": lambda dims: creation_operator(dims[0]),
+            "n":     lambda dims: number_operator(dims[0])
+        }
         op = Operation(
-            FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n"))
+            FockOperationType.Expresion,
+            expr=("expm", ("s_mult", -1j, jnp.pi, "n")),
+            context=context
         )
         env1.fock.apply_operation(op)
+        print(ce.product_states[0].state)
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array([[-1], [0], [0], [0], [0], [0], [0], [0], [0]]),
+                jnp.array([[0],[0],[0],[-1], [0], [0], [0], [0], [0], [0], [0], [0]]),
             )
         )
 
@@ -547,8 +596,15 @@ class TestCustomOperator(unittest.TestCase):
         ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.fock, env2.fock)
         env1.fock.expand()
+        context = {
+            "a":     lambda dims: annihilation_operator(dims[0]),
+            "a_dag": lambda dims: creation_operator(dims[0]),
+            "n":     lambda dims: number_operator(dims[0])
+        }
         op = Operation(
-            FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n"))
+            FockOperationType.Expresion,
+            expr=("expm", ("s_mult", -1j, jnp.pi, "n")),
+            context=context
         )
         env1.fock.apply_operation(op)
         self.assertTrue(

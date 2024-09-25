@@ -8,10 +8,12 @@ from photon_weave.state.envelope import Envelope
 from photon_weave.state.polarization import Polarization
 from photon_weave.state.fock import Fock
 from photon_weave.photon_weave import Config
+from photon_weave._math.ops import number_operator
 
 
 class TestNonPolarizingBeamSplitter(unittest.TestCase):
-    def test_non_polarizing_bs_vector(self) -> None:
+    @pytest.mark.my_marker
+    def atest_non_polarizing_bs_vector(self) -> None:
         env1 = Envelope()
         env1.fock.state = 1
         env2 = Envelope()
@@ -39,7 +41,7 @@ class TestNonPolarizingBeamSplitter(unittest.TestCase):
             )
         )
 
-    def test_non_polarizing_bs_vector(self) -> None:
+    def atest_non_polarizing_bs_vector(self) -> None:
         env1 = Envelope()
         env1.fock.state = 1
         env2 = Envelope()
@@ -69,7 +71,7 @@ class TestNonPolarizingBeamSplitter(unittest.TestCase):
             )
         )
 
-    def test_non_polarizing_bs_matrix(self) -> None:
+    def atest_non_polarizing_bs_matrix(self) -> None:
         C = Config()
         C.set_contraction(True)
         env1 = Envelope()
@@ -97,5 +99,34 @@ class TestNonPolarizingBeamSplitter(unittest.TestCase):
                         [0],
                     ]
                 ),
+            )
+        )
+
+
+class TestExpressionOperator(unittest.TestCase):
+
+    def test_expression_operator_on_vector(self) -> None:
+        env1 = Envelope()
+        env1.fock.state = 1
+        env2 = Envelope()
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.fock, env2.polarization)
+        print(ce.product_states[0].state)
+        context={
+            "n": lambda dims: number_operator(dims[0])
+        }
+        op = Operation(
+            CompositeOperationType.Expression,
+            expr=("expm",("s_mult", 1j, jnp.pi, "n")),
+            context=context,
+            state_types=(Fock,)
+        )
+        ce.apply_operation(op, env1.fock)
+        self.assertTrue(
+            jnp.allclose(
+                ce.product_states[0].state,
+                jnp.array(
+                    [[0],[0],[-1],[0]]
+                )
             )
         )

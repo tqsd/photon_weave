@@ -3,7 +3,7 @@ Operations on fock spaces
 """
 
 from enum import Enum
-from typing import Any
+from typing import Any, List
 
 import jax.numpy as jnp
 
@@ -13,6 +13,7 @@ from photon_weave._math.ops import (
     displacement_operator,
     phase_operator,
     squeezing_operator,
+    number_operator
 )
 from photon_weave.extra import interpreter
 from photon_weave.operation.helpers.fock_dimension_esitmation import FockDimensions
@@ -40,7 +41,7 @@ class FockOperationType(Enum):
     Displace = (False, ["alpha"], ExpansionLevel.Vector, 5)
     Identity = (False, [], ExpansionLevel.Vector, 6)
     Custom = (False, [], ExpansionLevel.Vector, 7)
-    Expresion = (False, ["expr"], ExpansionLevel.Vector, 8)
+    Expresion = (False, ["expr", "context"], ExpansionLevel.Vector, 8)
 
     def __init__(
         self,
@@ -53,38 +54,42 @@ class FockOperationType(Enum):
         self.required_params = required_params
         self.required_expansion_level = required_expansion_level
 
-    def compute_operator(self, dimensions: int, **kwargs: Any):
+    def update(self, **kwargs:Any) -> None:
+        """
+        Empty method, doesnt do anything in FockOperationType
+        """
+        return
+
+    def compute_operator(self, dimensions: List[int], **kwargs: Any):
         """
         Generates the operator for this opration, given
         the dimensions
 
         Parameters
         ----------
-        dimensions: int
-            The dimensions of the state
+        dimensions: List[int]
+            The dimensions of the state given in list, for
+            this class only one element should be given in list.
+            The reason for the list is so that the signature is
+            same as in CompositeOperationType
         **kwargs: Any
             List of key word arguments for specific operator types
         """
         match self:
             case FockOperationType.Creation:
-                return creation_operator(dimensions)
+                return creation_operator(dimensions[0])
             case FockOperationType.Annihilation:
-                return annihilation_operator(dimensions)
+                return annihilation_operator(dimensions[0])
             case FockOperationType.PhaseShift:
-                return phase_operator(dimensions, kwargs["phi"])
+                return phase_operator(dimensions[0], kwargs["phi"])
             case FockOperationType.Displace:
-                return displacement_operator(dimensions, kwargs["alpha"])
+                return displacement_operator(dimensions[0], kwargs["alpha"])
             case FockOperationType.Squeeze:
-                return squeezing_operator(dimensions, kwargs["zeta"])
+                return squeezing_operator(dimensions[0], kwargs["zeta"])
             case FockOperationType.Identity:
-                return jnp.identity(dimensions)
+                return jnp.identity(dimensions[0])
             case FockOperationType.Expresion:
-                context = {
-                    "a": annihilation_operator(dimensions),
-                    "a_dag": creation_operator(dimensions),
-                }
-                context["n"] = jnp.dot(context["a"], context["a_dag"])
-                return interpreter(kwargs["expr"], context)
+                return interpreter(kwargs["expr"], kwargs["context"], dimensions)
 
     def compute_dimensions(
         self,
@@ -92,7 +97,7 @@ class FockOperationType(Enum):
         state: jnp.ndarray,
         threshold: float = 1 - 1e-6,
         **kwargs: Any,
-    ) -> int:
+    ) -> List[int]:
         """
         Compute the dimensions for the operator. Application of the
         operator could change the dimensionality of the space. For
@@ -115,8 +120,8 @@ class FockOperationType(Enum):
 
         Returns
         -------
-        int
-           New number of dimensions
+        List[int]
+           New number of dimensions in a list for compatibility
 
         Notes
         -----
@@ -128,11 +133,11 @@ class FockOperationType(Enum):
 
         match self:
             case FockOperationType.Creation:
-                return int(num_quanta + 2)
+                return [int(num_quanta + 2)]
             case FockOperationType.Annihilation:
-                return num_quanta + 2
+                return [num_quanta + 2]
             case FockOperationType.PhaseShift:
-                return num_quanta + 1
+                return [num_quanta + 1]
             case FockOperationType.Displace:
                 fd = FockDimensions(
                     state,
@@ -140,7 +145,7 @@ class FockOperationType(Enum):
                     num_quanta,
                     threshold,
                 )
-                return fd.compute_dimensions()
+                return [fd.compute_dimensions()]
             case FockOperationType.Squeeze:
                 fd = FockDimensions(
                     state,
@@ -148,9 +153,9 @@ class FockOperationType(Enum):
                     num_quanta,
                     threshold,
                 )
-                return fd.compute_dimensions()
+                return [fd.compute_dimensions()]
             case FockOperationType.Identity:
-                return num_quanta + 1
+                return [num_quanta + 1]
             case FockOperationType.Expresion:
                 fd = FockDimensions(
                     state,
@@ -158,4 +163,4 @@ class FockOperationType(Enum):
                     num_quanta,
                     threshold,
                 )
-                return fd.compute_dimensions()
+                return [fd.compute_dimensions()]

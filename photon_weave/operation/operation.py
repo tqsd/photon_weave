@@ -33,11 +33,14 @@ class Operation:
         self._renormalize: bool
         self.kwargs = kwargs
 
+        self._operation_type.update(**kwargs)
+
         for param in operation_type.required_params:
             if param not in kwargs:
                 raise KeyError(
                     f"The '{param}' argument is required for {operation_type.name}"
                 )
+
 
     def __repr__(self) -> str:
         if self._operator is None:
@@ -70,11 +73,11 @@ class Operation:
         return repr_string
 
     @property
-    def dimensions(self) -> int:
+    def dimensions(self) -> List[int]:
         return self._dimensions
 
     @dimensions.setter
-    def dimensions(self, dimensions: int) -> None:
+    def dimensions(self, dimensions: List[int]) -> None:
         self._dimensions = dimensions
 
     def compute_dimensions(self, num_quanta: int, state: jnp.ndarray) -> None:

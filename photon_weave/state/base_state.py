@@ -121,9 +121,7 @@ class BaseState(ABC):
             formatted_vector: Union[str, List[str]]
             formatted_vector = "\n".join(
                 [
-                    f"⎢ {''.join([f'{num.real:.2f} {"
-                    + " if num.imag >= 0 else "
-                    - "} {abs(num.imag):.2f}j' for num in row])} ⎥"
+                    f"⎢ {''.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
                     for row in self.state
                 ]
             )
@@ -138,9 +136,7 @@ class BaseState(ABC):
             formatted_matrix: Union[str, List[str]]
             formatted_matrix = "\n".join(
                 [
-                    f"⎢ {'   '.join([f'{num.real:.2f} {"
-                    + " if num.imag >= 0 else "
-                    - "} {abs(num.imag):.2f}j' for num in row])} ⎥"
+                    f"⎢ {'   '.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
                     for row in self.state
                 ]
             )

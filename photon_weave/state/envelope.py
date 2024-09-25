@@ -24,7 +24,6 @@ from photon_weave._math.ops import (
     num_quanta_vector,
 )
 from photon_weave.constants import C0, gaussian
-from photon_weave.operation import Operation
 from photon_weave.photon_weave import Config
 from photon_weave.state.exceptions import (
     EnvelopeAlreadyMeasuredException,
@@ -34,6 +33,7 @@ from photon_weave.state.exceptions import (
 from photon_weave.state.expansion_levels import ExpansionLevel
 
 if TYPE_CHECKING:
+    from photon_weave.operation import Operation
     from photon_weave.state.composite_envelope import CompositeEnvelope
     from photon_weave.state.fock import Fock
     from photon_weave.state.polarization import Polarization, PolarizationLabel
@@ -1060,7 +1060,7 @@ class Envelope:
                 return True
         return False # pragma: no cover
 
-    def apply_operation(self, operation: Operation, *states:Union['Fock', 'Polarization']) -> None:
+    def apply_operation(self, operation: "Operation", *states:Union['Fock', 'Polarization']) -> None:
         """
         Applies given operation to the correct state
 
@@ -1096,7 +1096,7 @@ class Envelope:
         if (isinstance(operation._operation_type, FockOperationType) and
             isinstance(states[0], Fock)):
             operation.compute_dimensions(states[0]._num_quanta, self.fock.trace_out())
-            states[0].resize(operation.dimensions)
+            states[0].resize(operation.dimensions[0])
 
         reshape_shape = [-1,-1]
         reshape_shape[self.fock.index]=self.fock.dimensions
@@ -1108,6 +1108,8 @@ class Envelope:
             reshape_shape.append(1)
 
             ps = self.state.reshape(reshape_shape)
+
+            print(operation.operator)
 
             # state is reordered, so the state operated on is in the first state
             ps = jnp.einsum("ij,jkl->ikl", operation.operator, ps)

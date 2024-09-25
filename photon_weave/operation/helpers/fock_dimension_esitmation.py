@@ -3,6 +3,18 @@ import time
 
 
 class FockDimensions:
+    """
+    An estimator for fock dimensions, used when Displace, Squeeze or Expression
+
+    It works in the following way:
+    1.) It gets some initial esimtation, based on num_quanta and operation type
+    2.) Computes the expected amplitudes
+    3.) Applies an operator and checks the amplitudes
+    4.) If more than threshold percentage of state is contained in the
+        resulting state then that dimensions are returned
+    5.) If not, dimensions are increased and process runs again until
+        Enough state is contained in the post operation state
+    """
 
     def __init__(self, state:jnp.ndarray, operation: "Operation", num_quanta:int, threshold:float) -> None:
         self.state = state
@@ -12,6 +24,15 @@ class FockDimensions:
         self.num_quanta = num_quanta
 
     def compute_dimensions(self) -> int:
+        """
+        Computes the dimensions needed for the current state.
+        After the dimensions were determined they are returned.
+
+        Returns
+        -------
+        int
+            Always returns a positive integer, denoting number of dimensions needed
+        """
         self._initial_estimate()
         while True:
             n = self._compute_dimensions()
@@ -19,7 +40,12 @@ class FockDimensions:
                 return n
             self._increase_dimensions(5)
 
-    def _initial_estimate(self):
+    def _initial_estimate(self) -> None:
+        """
+        Initial estimate for the dimensions, implemented for Displace and Squeeze.
+        If other type is tried, then current state dimensionality is used for the
+        initial guess.
+        """
         from photon_weave.operation.fock_operation import FockOperationType
         if self.operation._operation_type is FockOperationType.Displace:
             cutoff = self.num_quanta + 3 * jnp.abs(self.operation.kwargs["alpha"])**2
@@ -34,9 +60,22 @@ class FockDimensions:
                 self._increase_dimensions(amount = cutoff - self.dimensions)
 
     def _compute_dimensions(self) -> int:
+        """
+        Computes the dimensions needed with current dimension guess
+
+        Returns
+        -------
+        int
+            Number of dimensions required, if -1 then not enough dimensions
+            were guessed. Dimensions should be increased then and this
+            method needs to be tried again
+        """
         if self.state.shape == (self.dimensions, 1):
             self.operation._dimensions = self.dimensions
-            operator = self.operation._operation_type.compute_operator(self.dimensions, **self.operation.kwargs)
+            operator = self.operation._operation_type.compute_operator(
+                [self.dimensions],
+                **self.operation.kwargs
+            )
             resulting_state = jnp.dot(operator, self.state)
             cdf = 0
             if resulting_state[-1,0] > (1-self.threshold)*1e-3:
@@ -49,7 +88,10 @@ class FockDimensions:
             return -1
         if self.state.shape == (self.dimensions, self.dimensions):
             self.operation._dimensions = self.dimensions
-            operator = self.operation._operation_type.compute_operator(self.dimensions, **self.operation.kwargs)
+            operator = self.operation._operation_type.compute_operator(
+                [self.dimensions],
+                **self.operation.kwargs
+            )
             resulting_state = operator @ self.state @ operator.T.conj()
             cdf = 0
             if jnp.abs(resulting_state[-1, -1]) > (1 - self.threshold) * 1e-3:
@@ -65,6 +107,12 @@ class FockDimensions:
 
 
     def _increase_dimensions(self, amount:int=1) -> None:
+        """
+        Increases the dimensions of the state for the requested amount
+
+        amount: int
+            Amount of increase of the dimensions
+        """
         if self.state.shape == (self.dimensions, 1):
             pad = jnp.zeros((amount, 1), dtype=self.state.dtype)
             # Vertically stack the padding with the current state
