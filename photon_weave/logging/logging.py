@@ -8,6 +8,7 @@ import pathlib
 import datetime as dt
 from typing import override, Any
 
+
 def setup_logging() -> None:
     """
     Configures logging
@@ -42,10 +43,11 @@ class PhotonWeaveJSONFormatter(logging.Formatter):
         format: Formats the records into a dict
         _prepare_log_dict: Prepares the actual log dict
     """
+
     def __init__(
-            self,
-            *,
-            fmt_keys: dict[str,str] | None = None,
+        self,
+        *,
+        fmt_keys: dict[str, str] | None = None,
     ) -> None:
         super().__init__()
         self.fmt_keys = fmt_keys if fmt_keys is not None else {}
@@ -72,7 +74,7 @@ class PhotonWeaveJSONFormatter(logging.Formatter):
         message = {
             key: msg_val
             if (msg_val := always_fields.pop(val, None)) is not None
-            else getattr(record,val)
+            else getattr(record, val)
             for key, val in self.fmt_keys.items()
         }
         message.update(always_fields)
@@ -81,18 +83,20 @@ class PhotonWeaveJSONFormatter(logging.Formatter):
                 message[key] = value
         return message
 
+
 class RotatingFileHandlerWithDir(RotatingFileHandler):
     """
     Custom implementation of RotatingFileHandler, which
     creates log directory and file if it does not exist
     already
     """
-    def __init__(self, *args:Any, **kwargs:Any) -> None:
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         # Ensure the directory exists
-        log_file_path = kwargs.get('filename')
+        log_file_path = kwargs.get("filename")
         if log_file_path:
             log_dir = os.path.dirname(log_file_path)
             if log_dir and not os.path.exists(log_dir):
                 os.makedirs(log_dir)
-        
+
         super().__init__(*args, **kwargs)

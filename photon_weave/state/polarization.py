@@ -106,9 +106,7 @@ class Polarization(BaseState):
 
     @dimensions.setter
     def dimensions(self, dimensions: int) -> None:
-        raise ValueError(
-            "Dimensions can not be set for Polarization type, 2 by default"
-        )
+        raise ValueError("Dimensions can not be set for Polarization type, 2 by default")
 
     def expand(self) -> None:
         """
@@ -330,7 +328,7 @@ class Polarization(BaseState):
         if destructive:
             self._set_measured()
         return results
-    
+
     def apply_operation(self, operation: Operation) -> None:
         """
         Applies an operation to the state. If state is in some product
@@ -357,8 +355,8 @@ class Polarization(BaseState):
             self.expand()
 
         # Consolidate the dimensions
-#        operation.compute_dimensions(self._num_quanta, self.trace_out())
- #       self.resize(operation.dimensions)
+        #        operation.compute_dimensions(self._num_quanta, self.trace_out())
+        #       self.resize(operation.dimensions)
 
         if self.expansion_level == ExpansionLevel.Vector:
             assert isinstance(self.state, jnp.ndarray)
@@ -369,8 +367,8 @@ class Polarization(BaseState):
                     "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
                 )
 
-#            if operation.renormalize:
- #               self.state = self.state / jnp.linalg.norm(self.state)
+        #            if operation.renormalize:
+        #               self.state = self.state / jnp.linalg.norm(self.state)
         if self.expansion_level == ExpansionLevel.Matrix:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, self.dimensions)
@@ -390,4 +388,3 @@ class Polarization(BaseState):
         C = Config()
         if C.contractions:
             self.contract()
-

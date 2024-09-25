@@ -174,7 +174,6 @@ class ProductState:
             shape.append(1)
             ps = self.state.reshape(shape)
             for idx, state in enumerate(states):
-
                 # Constructing the einsum str
                 einsum = ESC.measure_vector(remaining_states, [state])
 
@@ -362,9 +361,7 @@ class ProductState:
 
             # Trace out the state to get the probabilities
             einsum_to = ESC.trace_out_matrix(self.state_objs, states)
-            prob_state_to = jnp.einsum(einsum_to, prob_state).reshape(
-                (to_dims, to_dims)
-            )
+            prob_state_to = jnp.einsum(einsum_to, prob_state).reshape((to_dims, to_dims))
 
             # Compute the outcome probability
             prob_list.append(float(jnp.trace(prob_state_to)))
@@ -633,13 +630,18 @@ class ProductState:
             operation.compute_dimensions(states[0]._num_quanta, states[0].trace_out())
             states[0].resize(operation.dimensions)
         elif isinstance(operation._operation_type, CompositeOperationType):
-            assert len(states) == len(operation._operation_type.expected_base_state_types)
-            for i,s in enumerate(states):
-                assert isinstance(s, operation._operation_type.expected_base_state_types[i])
-            operation.compute_dimensions([s._num_quanta for s in states], [s.trace_out() for s in states])
-            for i,s in enumerate(states):
+            assert len(states) == len(
+                operation._operation_type.expected_base_state_types
+            )
+            for i, s in enumerate(states):
+                assert isinstance(
+                    s, operation._operation_type.expected_base_state_types[i]
+                )
+            operation.compute_dimensions(
+                [s._num_quanta for s in states], [s.trace_out() for s in states]
+            )
+            for i, s in enumerate(states):
                 s.resize(operation._dimensions[i])
-
 
         shape = [so.dimensions for so in self.state_objs]
         if self.expansion_level == ExpansionLevel.Vector:
@@ -1378,6 +1380,3 @@ class CompositeEnvelope:
             ps = product_states[0]
 
         ps.apply_operation(operator, *states)
-
-
-        

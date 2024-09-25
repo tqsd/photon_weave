@@ -15,7 +15,6 @@ from photon_weave.state.fock import Fock
 
 
 class TestFockOperationIdentity(unittest.TestCase):
-
     def test_identity_operation_vector(self) -> None:
         fo = Fock()
         fo.state = 2
@@ -26,7 +25,6 @@ class TestFockOperationIdentity(unittest.TestCase):
 
 
 class TestFockOperationCreation(unittest.TestCase):
-
     def test_creation_operation_label(self) -> None:
         C = Config()
         C.set_contraction(True)
@@ -123,7 +121,6 @@ class TestFockOperationCreation(unittest.TestCase):
 
 
 class TestFockOperationAnnihilation(unittest.TestCase):
-
     def test_destruction_operation_label(self) -> None:
         C = Config()
         C.set_contraction(True)
@@ -272,7 +269,6 @@ class TestFockOperationAnnihilation(unittest.TestCase):
 
 
 class TestFockOperationPhaseShift(unittest.TestCase):
-
     def test_phase_shift_in_place(self) -> None:
         f = Fock()
         f.state = 3
@@ -345,7 +341,6 @@ class TestFockOperationPhaseShift(unittest.TestCase):
 
 
 class TestFockOperationDisplace(unittest.TestCase):
-
     def test_displace_fock_vector(self) -> None:
         f = Fock()
         f.state = 0
@@ -370,9 +365,7 @@ class TestFockOperationDisplace(unittest.TestCase):
         op = Operation(FockOperationType.Displace, alpha=2)
         env.apply_operation(op, env.fock)
         self.assertEqual(env.fock.dimensions, 20)
-        self.assertTrue(
-            env.state.shape == (env.dimensions, 1)
-        )
+        self.assertTrue(env.state.shape == (env.dimensions, 1))
 
     def test_displace_fock_envelope_matrix(self) -> None:
         C = Config()
@@ -383,9 +376,7 @@ class TestFockOperationDisplace(unittest.TestCase):
         op = Operation(FockOperationType.Displace, alpha=2)
         env.apply_operation(op, env.fock)
         self.assertEqual(env.fock.dimensions, 20)
-        self.assertTrue(
-            env.state.shape == (env.dimensions, 1)
-        )
+        self.assertTrue(env.state.shape == (env.dimensions, 1))
 
     def test_displace_fock_composite_envelope_vector(self) -> None:
         env1 = Envelope()
@@ -395,9 +386,10 @@ class TestFockOperationDisplace(unittest.TestCase):
         op = Operation(FockOperationType.Displace, alpha=2)
         env1.fock.apply_operation(op)
         self.assertTrue(
-            ce.product_states[0].state.shape == (env1.fock.dimensions*env2.fock.dimensions,1)
+            ce.product_states[0].state.shape
+            == (env1.fock.dimensions * env2.fock.dimensions, 1)
         )
-        
+
     def test_displace_fock_composite_envelope_matrix(self) -> None:
         C = Config()
         C.set_contraction(True)
@@ -409,20 +401,19 @@ class TestFockOperationDisplace(unittest.TestCase):
         op = Operation(FockOperationType.Displace, alpha=2)
         env1.fock.apply_operation(op)
         self.assertTrue(
-            ce.product_states[0].state.shape == (env1.fock.dimensions*env2.fock.dimensions,1)
+            ce.product_states[0].state.shape
+            == (env1.fock.dimensions * env2.fock.dimensions, 1)
         )
+
 
 class TestFockOperationSqueeze(unittest.TestCase):
-
     def test_squeeze_fock_vector(self) -> None:
         C = Config()
         C.set_contraction(True)
         f = Fock()
         op = Operation(FockOperationType.Squeeze, zeta=0.5)
         f.apply_operation(op)
-        self.assertTrue(
-            f.state.shape == (f.dimensions, 1)
-        )
+        self.assertTrue(f.state.shape == (f.dimensions, 1))
 
     def test_squeeze_fock_vector(self) -> None:
         C = Config()
@@ -432,9 +423,7 @@ class TestFockOperationSqueeze(unittest.TestCase):
         f.expand()
         op = Operation(FockOperationType.Squeeze, zeta=0.5)
         f.apply_operation(op)
-        self.assertTrue(
-            f.state.shape == (f.dimensions, 1)
-        )
+        self.assertTrue(f.state.shape == (f.dimensions, 1))
 
     def test_squeeze_envelope_vector(self) -> None:
         C = Config()
@@ -443,9 +432,7 @@ class TestFockOperationSqueeze(unittest.TestCase):
         env.combine()
         op = Operation(FockOperationType.Squeeze, zeta=0.5j)
         env.apply_operation(op, env.fock)
-        self.assertTrue(
-            env.state.shape == (env.dimensions, 1)
-        )
+        self.assertTrue(env.state.shape == (env.dimensions, 1))
 
     def test_squeeze_envelope_matrix(self) -> None:
         C = Config()
@@ -455,9 +442,7 @@ class TestFockOperationSqueeze(unittest.TestCase):
         env.expand()
         op = Operation(FockOperationType.Squeeze, zeta=0.5j)
         env.apply_operation(op, env.fock)
-        self.assertTrue(
-            env.state.shape == (env.dimensions, 1)
-        )
+        self.assertTrue(env.state.shape == (env.dimensions, 1))
 
     def test_squeeze_composite_envelope_vector(self) -> None:
         env1 = Envelope()
@@ -467,7 +452,8 @@ class TestFockOperationSqueeze(unittest.TestCase):
         op = Operation(FockOperationType.Squeeze, zeta=-0.5j)
         env1.fock.apply_operation(op)
         self.assertTrue(
-            ce.product_states[0].state.shape == (env1.fock.dimensions*env2.fock.dimensions,1)
+            ce.product_states[0].state.shape
+            == (env1.fock.dimensions * env2.fock.dimensions, 1)
         )
 
     def test_squeeze_composite_envelope_vector(self) -> None:
@@ -479,43 +465,35 @@ class TestFockOperationSqueeze(unittest.TestCase):
         op = Operation(FockOperationType.Squeeze, zeta=-0.5j)
         env1.fock.apply_operation(op)
         self.assertTrue(
-            ce.product_states[0].state.shape == (env1.fock.dimensions*env2.fock.dimensions,1)
+            ce.product_states[0].state.shape
+            == (env1.fock.dimensions * env2.fock.dimensions, 1)
         )
+
 
 class TestCustomOperator(unittest.TestCase):
-
     def test_expression_operator_fock_vector(self) -> None:
         f = Fock()
-        op = Operation(FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n")))
-        f.apply_operation(op)
-        self.assertTrue(
-            jnp.allclose(
-                f.state,
-                jnp.array(
-                    [[-1],[0],[0]]
-                )
-            )
+        op = Operation(
+            FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n"))
         )
+        f.apply_operation(op)
+        self.assertTrue(jnp.allclose(f.state, jnp.array([[-1], [0], [0]])))
 
     def test_expression_operator_fock_vector(self) -> None:
         f = Fock()
-        #DISPLACE
+        # DISPLACE
         op = Operation(
             FockOperationType.Expresion,
-            expr=("expm",
-                  ("sub",
-                   ("s_mult", 1, "a_dag"),
-                   ("s_mult", 1, "a"))
-                   )
-            )
-        f.apply_operation(op)
-        self.assertTrue(
-            f.state.shape == (12,1)
+            expr=("expm", ("sub", ("s_mult", 1, "a_dag"), ("s_mult", 1, "a"))),
         )
+        f.apply_operation(op)
+        self.assertTrue(f.state.shape == (12, 1))
 
     def test_expression_operator_fock_matrix(self) -> None:
         f = Fock()
-        op = Operation(FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n")))
+        op = Operation(
+            FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n"))
+        )
         f.expand()
         f.expand()
         f.apply_operation(op)
@@ -524,33 +502,27 @@ class TestCustomOperator(unittest.TestCase):
 
     def test_expression_operator_envelope_vector(self) -> None:
         env = Envelope()
-        op = Operation(FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n")))
+        op = Operation(
+            FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n"))
+        )
         env.combine()
         env.fock.apply_operation(op)
         print(env)
         self.assertTrue(
-            jnp.allclose(
-                env.state,
-                jnp.array(
-                    [[-1],[0],[0],[0],[0],[0]]
-                )
-            )
+            jnp.allclose(env.state, jnp.array([[-1], [0], [0], [0], [0], [0]]))
         )
 
     def test_expression_operator_envelope_matrix(self) -> None:
         env = Envelope()
-        op = Operation(FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n")))
+        op = Operation(
+            FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n"))
+        )
         env.combine()
         env.expand()
         env.fock.apply_operation(op)
         print(env)
         self.assertTrue(
-            jnp.allclose(
-                env.state,
-                jnp.array(
-                    [[1],[0],[0],[0],[0],[0]]
-                )
-            )
+            jnp.allclose(env.state, jnp.array([[1], [0], [0], [0], [0], [0]]))
         )
 
     def test_expression_operator_composite_envelope_vector(self) -> None:
@@ -558,14 +530,14 @@ class TestCustomOperator(unittest.TestCase):
         env2 = Envelope()
         ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.fock, env2.fock)
-        op = Operation(FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n")))
+        op = Operation(
+            FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n"))
+        )
         env1.fock.apply_operation(op)
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array(
-                    [[-1],[0],[0],[0],[0],[0],[0],[0],[0]]
-                )
+                jnp.array([[-1], [0], [0], [0], [0], [0], [0], [0], [0]]),
             )
         )
 
@@ -575,13 +547,13 @@ class TestCustomOperator(unittest.TestCase):
         ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.fock, env2.fock)
         env1.fock.expand()
-        op = Operation(FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n")))
+        op = Operation(
+            FockOperationType.Expresion, expr=("expm", ("s_mult", -1j, jnp.pi, "n"))
+        )
         env1.fock.apply_operation(op)
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array(
-                    [[1],[0],[0],[0],[0],[0],[0],[0],[0]]
-                )
+                jnp.array([[1], [0], [0], [0], [0], [0], [0], [0], [0]]),
             )
         )

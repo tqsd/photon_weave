@@ -300,9 +300,9 @@ def phase_operator(cutoff: int, theta: float) -> jnp.ndarray:
     phase proportional to the Fock state number.
     """
     indices = jnp.arange(cutoff)
-    phases = jnp.exp(1j*indices * theta)
+    phases = jnp.exp(1j * indices * theta)
     return jnp.diag(phases)
-    #return jnp.diag(jnp.array([jnp.exp(1j * n * theta) for n in range(cutoff)]))
+    # return jnp.diag(jnp.array([jnp.exp(1j * n * theta) for n in range(cutoff)]))
 
 
 # to do: implement beamsplitter here
