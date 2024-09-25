@@ -22,16 +22,82 @@ from photon_weave.state.expansion_levels import ExpansionLevel
 
 class FockOperationType(Enum):
     """
-    Fock Operation Types
-    first value in tuple signals that the state
-    should be normalized after operation, second
-    element is a list of required elements
+    FockOperationType
 
-    Notes
-    -----
-    Last element in Tuples is required (to be unique),
-    because if two tuples are the same it is assigned
-    the same pointer and comparisons don't work then
+    Constructs an operator, which acts on a single Fock space.
+
+    Creation
+    --------
+    Constructs a creation operator :math:`\hat a^\dagger`
+    Application to a fock state results in
+    :math:`\hat a^\dagger |n\rangle = \sqrt{n+1}|n+1\rangle`
+    The operator however normalizes the state afterwards, to when using
+    Creation operator the resulting state is:
+    :math:`\hat a^\dagger |n\rangle = |n+1\rangle`
+    The dimensions of the Fock space is changed to the highest number state
+    with non zero amplitude plus two.
+
+    Annihilation
+    ------------
+    Constructs an annihlation operator :math:`\hat a`
+    Application to a fock state results in
+    :math:`\hat a|n\rangle = \sqrt{n}|n-1\rangle`
+    The operator however normalizes the state afterwards, to when using
+    Creation operator the resulting state is:
+    :math:`\hat a|n\rangle = |n-1\rangle`
+    The dimensions of the Fock space is changed to the highest number
+    state with non zero amplitude plust two.
+
+    PhaseShift
+    ----------
+    Constructs a phase shift operator :math:`\hat U(\phi)=e^{-i\phi\hat n}`
+    The operation of this operator on a matrix state acts as a identity,
+    since global shift is not representable in the density matrix.
+    The dimension of the Fock space remains unchanged.
+
+    Squeeze
+    -------
+    Constructs a Squeezing operator :math:`\hat S(\zeta)=e^{\frac{1}{2}(z^*\hat a^2 - z \hat a^\dagger^2)}`
+    The dimensions of the Fock space required to accurately represent the application
+    of this operator is iteratively determined, resulting in appropriate dimension.
+
+    Displace
+    --------
+    Constructs a Squeezing operator :math:`\hat D(\alpha)=e^{\alpha \hat a^\dagger - \alpha^* \hat a}`
+    The dimensions of the Fock space required to accurately represent the application
+    of this operator is iteratively determined, resulting in appropriate dimension.
+    The dimensions of the Fock space required to accurately represent the application
+    of this operator is iteratively determined, resulting in appropriate dimension.
+
+    Identity
+    --------
+    Constructs a Squeezing operator :math:`\hat I`
+    This operator has no effect on the quantum state. The dimensions remain unchanged.
+
+    Custom
+    ------
+    Constructs a custom operator, which means the operator needs to be manually provided,
+    one must pay attention to the fact that operators dimensions need to match
+    the dimensions of the Fock space.
+
+    Expresion
+    ---------
+    Constucts an operator based on the expression provided. Alongside expression
+    also list of state types needs to be provided together with the context.
+    Context needs to be a dictionary of operators, where the keys are strings used in
+    the expression and values are lambda functions, expecting one argument: dimensions.
+
+    An example of context and operator usage
+    >>> context = {
+    >>>    "a_dag": lambda dims: creation_operator(dims[0])
+    >>>    "a":     lambda dims: annihilation_operator(dims[0])
+    >>>    "n":     lambda dims: number_operator(dims[0])
+    >>> }
+    >>> op = Operation(FockOperationType.Expression,
+    >>>                expr=("expm"("s_mult", 1j,jnp.pi, "a"))),
+    >>>                state_types=(Fock,), # Is applied to only one fock space
+    >>>                context=context)
+    >>> fock.apply_operation(op)
     """
 
     Creation = (True, [], ExpansionLevel.Vector, 1)
@@ -40,7 +106,7 @@ class FockOperationType(Enum):
     Squeeze = (True, ["zeta"], ExpansionLevel.Vector, 4)
     Displace = (False, ["alpha"], ExpansionLevel.Vector, 5)
     Identity = (False, [], ExpansionLevel.Vector, 6)
-    Custom = (False, [], ExpansionLevel.Vector, 7)
+    Custom = (False, ["operator"], ExpansionLevel.Vector, 7)
     Expresion = (False, ["expr", "context"], ExpansionLevel.Vector, 8)
 
     def __init__(

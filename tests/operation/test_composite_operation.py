@@ -12,8 +12,7 @@ from photon_weave._math.ops import number_operator
 
 
 class TestNonPolarizingBeamSplitter(unittest.TestCase):
-    @pytest.mark.my_marker
-    def atest_non_polarizing_bs_vector(self) -> None:
+    def test_non_polarizing_bs_vector(self) -> None:
         env1 = Envelope()
         env1.fock.state = 1
         env2 = Envelope()
@@ -41,7 +40,7 @@ class TestNonPolarizingBeamSplitter(unittest.TestCase):
             )
         )
 
-    def atest_non_polarizing_bs_vector(self) -> None:
+    def test_non_polarizing_bs_vector(self) -> None:
         env1 = Envelope()
         env1.fock.state = 1
         env2 = Envelope()
@@ -71,7 +70,7 @@ class TestNonPolarizingBeamSplitter(unittest.TestCase):
             )
         )
 
-    def atest_non_polarizing_bs_matrix(self) -> None:
+    def test_non_polarizing_bs_matrix(self) -> None:
         C = Config()
         C.set_contraction(True)
         env1 = Envelope()
@@ -111,7 +110,6 @@ class TestExpressionOperator(unittest.TestCase):
         env2 = Envelope()
         ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.fock, env2.polarization)
-        print(ce.product_states[0].state)
         context={
             "n": lambda dims: number_operator(dims[0])
         }
