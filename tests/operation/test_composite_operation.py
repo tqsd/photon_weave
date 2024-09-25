@@ -12,7 +12,6 @@ from photon_weave.photon_weave import Config
 
 class TestNonPolarizingBeamSplitter(unittest.TestCase):
 
-    @pytest.mark.my_marker
     def test_non_polarizing_bs_vector(self) -> None:
         env1 = Envelope()
         env1.fock.state = 1
@@ -67,9 +66,6 @@ class TestNonPolarizingBeamSplitter(unittest.TestCase):
             )
         )
 
-        
-
-    @pytest.mark.my_marker
     def test_non_polarizing_bs_matrix(self) -> None:
         C = Config()
         C.set_contraction(True)
