@@ -16,32 +16,39 @@ if TYPE_CHECKING:
     from photon_weave.state.envelope import Envelope
     from photon_weave.state.polarization import Polarization, PolarizationLabel
 
-class BaseState(ABC):
 
+class BaseState(ABC):
     __slots__ = (
-        "label", "_uid", 
-        "_expansion_level", "_index", "_dimensions",
-        "_measured", "_composite_envelope", "state", "_envelope"
+        "label",
+        "_uid",
+        "_expansion_level",
+        "_index",
+        "_dimensions",
+        "_measured",
+        "_composite_envelope",
+        "state",
+        "_envelope",
     )
 
     @abstractmethod
     def __init__(self) -> None:
         from photon_weave.state.composite_envelope import CompositeEnvelope
         from photon_weave.state.envelope import Envelope
+
         self._uid: Union[str, UUID] = uuid4()
         self._expansion_level: Optional[ExpansionLevel] = None
-        self._index: Optional[Union[int, Tuple[int,int]]] = None
+        self._index: Optional[Union[int, Tuple[int, int]]] = None
         self._dimensions: int = -1
         self._composite_envelope: Optional[CompositeEnvelope] = None
         self._envelope: Optional[Envelope] = None
         self.state: Optional[Union[int, PolarizationLabel, jnp.ndarray]] = None
 
     @property
-    def envelope(self) -> Union[None, 'Envelope']:
+    def envelope(self) -> Union[None, "Envelope"]:
         return self._envelope
 
     @envelope.setter
-    def envelope(self, envelope:Union[None, 'Envelope']) -> None:
+    def envelope(self, envelope: Union[None, "Envelope"]) -> None:
         self._envelope = envelope
 
     @property
@@ -53,11 +60,13 @@ class BaseState(ABC):
         self._measured = measured
 
     @property
-    def composite_envelope(self) -> Union[None, 'CompositeEnvelope']:
+    def composite_envelope(self) -> Union[None, "CompositeEnvelope"]:
         return self._composite_envelope
 
     @composite_envelope.setter
-    def composite_envelope(self, composite_envelope:Union[None, 'CompositeEnvelope']) -> None:
+    def composite_envelope(
+        self, composite_envelope: Union[None, "CompositeEnvelope"]
+    ) -> None:
         self._composite_envelope = composite_envelope
 
     @property
@@ -66,7 +75,7 @@ class BaseState(ABC):
 
     @uid.setter
     def uid(self, uid: Union[UUID, str]) -> None:
-        self._uid= uid
+        self._uid = uid
 
     @property
     def dimensions(self) -> int:
@@ -74,14 +83,14 @@ class BaseState(ABC):
 
     @dimensions.setter
     def dimensions(self, dimensions: int) -> None:
-        self._dimensions = dimensions 
+        self._dimensions = dimensions
 
     @property
     def expansion_level(self) -> Optional[Union[int, ExpansionLevel]]:
         return self._expansion_level
 
     @expansion_level.setter
-    def expansion_level(self, expansion_level: 'ExpansionLevel') -> None:
+    def expansion_level(self, expansion_level: "ExpansionLevel") -> None:
         self._expansion_level = expansion_level
 
     @property
@@ -89,7 +98,7 @@ class BaseState(ABC):
         return self._index
 
     @index.setter
-    def index(self, index : Union[None, int, Tuple[int, int]]) -> None:
+    def index(self, index: Union[None, int, Tuple[int, int]]) -> None:
         self._index = index
 
     # Dunder methods
@@ -107,12 +116,14 @@ class BaseState(ABC):
             return str(self.uid)
 
         elif self.expansion_level == ExpansionLevel.Vector:
-        # Handle cases where the vector has only one element
+            # Handle cases where the vector has only one element
             assert isinstance(self.state, jnp.ndarray)
             formatted_vector: Union[str, List[str]]
             formatted_vector = "\n".join(
                 [
-                    f"⎢ {''.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
+                    f"⎢ {''.join([f'{num.real:.2f} {"
+                    + " if num.imag >= 0 else "
+                    - "} {abs(num.imag):.2f}j' for num in row])} ⎥"
                     for row in self.state
                 ]
             )
@@ -124,10 +135,12 @@ class BaseState(ABC):
         elif self.expansion_level == ExpansionLevel.Matrix:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, self.dimensions)
-            formatted_matrix: Union[str,List[str]]
+            formatted_matrix: Union[str, List[str]]
             formatted_matrix = "\n".join(
                 [
-                    f"⎢ {'   '.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
+                    f"⎢ {'   '.join([f'{num.real:.2f} {"
+                    + " if num.imag >= 0 else "
+                    - "} {abs(num.imag):.2f}j' for num in row])} ⎥"
                     for row in self.state
                 ]
             )
@@ -141,7 +154,11 @@ class BaseState(ABC):
             return f"{formatted_matrix}"
         return f"{self.uid}"
 
-    def apply_kraus(self, operators: List[Union[np.ndarray, jnp.ndarray]], identity_check:bool=True) -> None:
+    def apply_kraus(
+        self,
+        operators: List[Union[np.ndarray, jnp.ndarray]],
+        identity_check: bool = True,
+    ) -> None:
         """
         Apply Kraus operators to the state.
         State is automatically expanded to the density matrix representation
@@ -163,7 +180,7 @@ class BaseState(ABC):
 
         if not kraus_identity_check(operators):
             raise ValueError("Kraus operators do not sum to the identity")
-            
+
         self.state = apply_kraus(self.state, operators)
         C = Config()
         if C.contractions:
@@ -173,16 +190,17 @@ class BaseState(ABC):
     def expand(self) -> None:
         pass
 
-
     @abstractmethod
     def _set_measured(self) -> None:
         pass
 
     @abstractmethod
-    def extract(self, index:Union[int, Tuple[int, int]]) -> None:
+    def extract(self, index: Union[int, Tuple[int, int]]) -> None:
         pass
 
-    def contract(self, final: ExpansionLevel = ExpansionLevel.Label, tol:float=1e-6) -> None:
+    def contract(
+        self, final: ExpansionLevel = ExpansionLevel.Label, tol: float = 1e-6
+    ) -> None:
         """
         Attempts to contract the representation to the level defined in `final`argument.
 
@@ -193,23 +211,31 @@ class BaseState(ABC):
         tol: float
             Tolerance when comparing matrices
         """
-        if self.expansion_level is ExpansionLevel.Matrix and final < ExpansionLevel.Matrix:
+        if (
+            self.expansion_level is ExpansionLevel.Matrix
+            and final < ExpansionLevel.Matrix
+        ):
             # Check if the state is pure state
             assert isinstance(self.state, jnp.ndarray)
             state_squared = jnp.matmul(self.state, self.state)
             state_trace = jnp.trace(state_squared)
-            if jnp.abs(state_trace-1) < tol:
+            if jnp.abs(state_trace - 1) < tol:
                 # The state is pure
                 eigenvalues, eigenvectors = jnp.linalg.eigh(self.state)
-                pure_state_index = jnp.argmax(jnp.abs(eigenvalues -1.0) < tol)
-                assert pure_state_index is not None, "pure_state_index should not be None"
-                self.state = eigenvectors[:, pure_state_index].reshape(-1,1)
+                pure_state_index = jnp.argmax(jnp.abs(eigenvalues - 1.0) < tol)
+                assert (
+                    pure_state_index is not None
+                ), "pure_state_index should not be None"
+                self.state = eigenvectors[:, pure_state_index].reshape(-1, 1)
                 # Normalizing the phase
                 assert isinstance(self.state, jnp.ndarray)
                 phase = jnp.exp(-1j * jnp.angle(self.state[0]))
-                self.state= self.state*phase
+                self.state = self.state * phase
                 self.expansion_level = ExpansionLevel.Vector
-        if self.expansion_level is ExpansionLevel.Vector and final < ExpansionLevel.Vector:
+        if (
+            self.expansion_level is ExpansionLevel.Vector
+            and final < ExpansionLevel.Vector
+        ):
             assert self.state is not None, "self.state should not be None"
             assert isinstance(self.state, jnp.ndarray)
             ones = jnp.where(self.state == 1)[0]
@@ -217,7 +243,12 @@ class BaseState(ABC):
                 self.state = int(ones[0])
                 self.expansion_level = ExpansionLevel.Label
 
-    def measure_POVM(self, operators:List[Union[np.ndarray, jnp.ndarray]], destructive:bool=True, partial:bool=False) -> Tuple[int,Dict['BaseState', int]]:
+    def measure_POVM(
+        self,
+        operators: List[Union[np.ndarray, jnp.ndarray]],
+        destructive: bool = True,
+        partial: bool = False,
+    ) -> Tuple[int, Dict["BaseState", int]]:
         """
         Positive Operation-Valued Measurement
 
@@ -256,9 +287,9 @@ class BaseState(ABC):
         assert self.state.shape == (self.dimensions, self.dimensions)
 
         # Compute probabilities p(i) = Tr(E_i * rho) for each POVM operator E_i
-        probabilities = jnp.array([
-            jnp.trace(jnp.matmul(op, self.state)).real for op in operators
-        ])
+        probabilities = jnp.array(
+            [jnp.trace(jnp.matmul(op, self.state)).real for op in operators]
+        )
 
         # Normalize probabilities (handle numerical issues)
         probabilities = probabilities / jnp.sum(probabilities)
@@ -268,26 +299,29 @@ class BaseState(ABC):
         key = C.random_key
 
         # Sample the measurement outcome
-        outcome = int(jax.random.choice(
-            key,
-            a=jnp.arange(len(operators)),
-            p=probabilities
-        ))
+        outcome = int(
+            jax.random.choice(key, a=jnp.arange(len(operators)), p=probabilities)
+        )
 
-        result:Tuple[int, Dict['BaseState', int]] = (outcome, {})
+        result: Tuple[int, Dict["BaseState", int]] = (outcome, {})
         if destructive:
             self._set_measured()
         else:
             self.state = jnp.matmul(
-                operators[outcome], jnp.matmul(
-                    self.state,jnp.conj(operators[outcome].T)))
+                operators[outcome],
+                jnp.matmul(self.state, jnp.conj(operators[outcome].T)),
+            )
 
             self.state = self.state / jnp.trace(self.state)
             self.expansion_level = ExpansionLevel.Matrix
 
         if not partial:
             if isinstance(self.envelope, Envelope):
-                state = self.envelope.fock if isinstance(self, Polarization) else self.envelope.polarization
+                state = (
+                    self.envelope.fock
+                    if isinstance(self, Polarization)
+                    else self.envelope.polarization
+                )
                 out = state.measure()
                 for k, v in out.items():
                     result[1][k] = v
@@ -297,7 +331,7 @@ class BaseState(ABC):
 
         return result
 
-    def trace_out(self) -> Union[int,'PolarizationLabel',jnp.ndarray]:
+    def trace_out(self) -> Union[int, "PolarizationLabel", jnp.ndarray]:
         """
         Returns the traced out state of this base state instance.
         If the instance is in envelope it traces out from there.
@@ -321,7 +355,8 @@ class BaseState(ABC):
             assert isinstance(ce, CompositeEnvelope)
             return ce.trace_out(self)
 
-
     @abstractmethod
-    def measure(self, separate_measurement:bool=False, destructive:bool=True) -> Dict['BaseState', int]:
+    def measure(
+        self, separate_measurement: bool = False, destructive: bool = True
+    ) -> Dict["BaseState", int]:
         pass

@@ -153,9 +153,7 @@ class CustomState(BaseState):
         elif major >= 0 and minor >= 0:
             self.index = (major, minor)
         else:
-            raise ValueError(
-                "Either set both parameters (minor, major) or none of them"
-            )
+            raise ValueError("Either set both parameters (minor, major) or none of them")
 
     def measure(
         self, separate_measurement: bool = False, destructive: bool = True

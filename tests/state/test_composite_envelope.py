@@ -438,7 +438,6 @@ class TestProductStateReordering(unittest.TestCase):
 
 
 class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
-
     def test_measurement_envelope_separate_non_destructive(self) -> None:
         C = Config()
         C.set_seed(1)
@@ -517,7 +516,7 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(ce.product_states[0].state, jnp.array([[1], [0], [0], [0]]))
         )
-    
+
     def test_measurement_envelope_non_destructive(self) -> None:
         C = Config()
         C.set_seed(1)

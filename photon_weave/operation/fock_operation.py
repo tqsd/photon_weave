@@ -80,8 +80,8 @@ class FockOperationType(Enum):
                 return jnp.identity(dimensions)
             case FockOperationType.Expresion:
                 context = {
-                    "a" : annihilation_operator(dimensions),
-                    "a_dag": creation_operator(dimensions)
+                    "a": annihilation_operator(dimensions),
+                    "a_dag": creation_operator(dimensions),
                 }
                 context["n"] = jnp.dot(context["a"], context["a_dag"])
                 return interpreter(kwargs["expr"], context)
@@ -156,6 +156,6 @@ class FockOperationType(Enum):
                     state,
                     Operation(FockOperationType.Expresion, **kwargs),
                     num_quanta,
-                    threshold
+                    threshold,
                 )
                 return fd.compute_dimensions()

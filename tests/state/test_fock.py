@@ -12,20 +12,22 @@ from photon_weave.state.envelope import Envelope
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.expansion_levels import ExpansionLevel
 
+
 class TestFockSmallFunctions(unittest.TestCase):
     """
     Test small methods withing the Fock class
     """
+
     def test_repr(self) -> None:
         fock = Fock()
         # Test the Label representation
         for i in range(100):
-           fock.state = i 
-           self.assertEqual(fock.__repr__(), f"|{i}⟩")
+            fock.state = i
+            self.assertEqual(fock.__repr__(), f"|{i}⟩")
 
         # Test the state vector representation
         fock.dimensions = 5
-        label = random.randint(0,4)
+        label = random.randint(0, 4)
         fock.state = label
         fock.expand()
         representation = fock.__repr__().split("\n")
@@ -35,7 +37,7 @@ class TestFockSmallFunctions(unittest.TestCase):
                     self.assertEqual("⎡ 1.00 + 0.00j ⎤", line)
                 else:
                     self.assertEqual("⎡ 0.00 + 0.00j ⎤", line)
-            elif ln == len(representation) -1:
+            elif ln == len(representation) - 1:
                 if label == ln:
                     self.assertEqual("⎣ 1.00 + 0.00j ⎦", line)
                 else:
@@ -49,18 +51,16 @@ class TestFockSmallFunctions(unittest.TestCase):
         representation = fock.__repr__().split("\n")
         v = lambda x: f" {x}.00 + 0.00j "
         for ln, line in enumerate(representation):
-            constructed_line_1 = " ".join([
-                v(1) if ln == i else v(0) for i in range(fock.dimensions)
-            ])
-            constructed_line_0 = " ".join([
-                v(0) for i in range(fock.dimensions)
-            ])
+            constructed_line_1 = " ".join(
+                [v(1) if ln == i else v(0) for i in range(fock.dimensions)]
+            )
+            constructed_line_0 = " ".join([v(0) for i in range(fock.dimensions)])
             if ln == 0:
                 if label == ln:
                     self.assertEqual(f"⎡{constructed_line_1}⎤", line)
                 else:
                     self.assertEqual(f"⎡{constructed_line_0}⎤", line)
-            elif ln == len(representation) -1:
+            elif ln == len(representation) - 1:
                 if label == ln:
                     self.assertEqual(f"⎣{constructed_line_1}⎦", line)
                 else:
@@ -97,51 +97,51 @@ class TestFockSmallFunctions(unittest.TestCase):
         self.assertTrue(f1 != f2)
 
     def test_extract(self) -> None:
-        fock= Fock()
+        fock = Fock()
         fock.extract(1)
         for item in [fock.state]:
             self.assertIsNone(item)
         self.assertEqual(fock.index, 1)
-        fock= Fock()
-        fock.extract((1,1))
+        fock = Fock()
+        fock.extract((1, 1))
         for item in [fock.state]:
             self.assertIsNone(item)
-        self.assertEqual(fock.index, (1,1))
+        self.assertEqual(fock.index, (1, 1))
 
-        fock= Fock()
+        fock = Fock()
         fock.expand()
         fock.extract(1)
         for item in [fock.state]:
             self.assertIsNone(item)
         self.assertEqual(fock.index, 1)
-        fock= Fock()
+        fock = Fock()
         fock.expand()
-        fock.extract((1,1))
+        fock.extract((1, 1))
         for item in [fock.state]:
             self.assertIsNone(item)
-        self.assertEqual(fock.index, (1,1))
+        self.assertEqual(fock.index, (1, 1))
 
-        fock= Fock()
+        fock = Fock()
         fock.expand()
         fock.expand()
         fock.extract(1)
         for item in [fock.state]:
             self.assertIsNone(item)
         self.assertEqual(fock.index, 1)
-        fock= Fock()
+        fock = Fock()
         fock.expand()
         fock.expand()
-        fock.extract((1,1))
+        fock.extract((1, 1))
         for item in [fock.state]:
             self.assertIsNone(item)
-        self.assertEqual(fock.index, (1,1))
+        self.assertEqual(fock.index, (1, 1))
 
     def test_set_index(self) -> None:
         fock = Fock()
         fock.set_index(1)
         self.assertEqual(fock.index, 1)
-        fock.set_index(1,1)
-        self.assertEqual(fock.index, (1,1))
+        fock.set_index(1, 1)
+        self.assertEqual(fock.index, (1, 1))
 
     def test_set_measured(self) -> None:
         fock = Fock()
@@ -156,7 +156,7 @@ class TestFockSmallFunctions(unittest.TestCase):
         self.assertTrue(fock.measured)
         for item in [fock.index, fock.state]:
             self.assertIsNone(item)
-            
+
         fock = Fock()
         fock.expand()
         fock.expand()
@@ -181,54 +181,75 @@ class TestFockExpansionAndContraction(unittest.TestCase):
         """
         test_cases = []
         test_cases.append(
-            (Fock(), 0, [[1],[0],[0],[0],[0]],
-             [
-                 [1,0,0,0,0],
-                 [0,0,0,0,0],
-                 [0,0,0,0,0],
-                 [0,0,0,0,0],
-                 [0,0,0,0,0]
-             ]))
+            (
+                Fock(),
+                0,
+                [[1], [0], [0], [0], [0]],
+                [
+                    [1, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                ],
+            )
+        )
 
         test_cases.append(
-            (Fock(), 1, [[0],[1],[0],[0],[0]],
-             [
-                 [0,0,0,0,0],
-                 [0,1,0,0,0],
-                 [0,0,0,0,0],
-                 [0,0,0,0,0],
-                 [0,0,0,0,0]
-             ])
+            (
+                Fock(),
+                1,
+                [[0], [1], [0], [0], [0]],
+                [
+                    [0, 0, 0, 0, 0],
+                    [0, 1, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                ],
+            )
         )
         test_cases.append(
-            (Fock(), 2, [[0],[0],[1],[0],[0]],
-             [
-                 [0,0,0,0,0],
-                 [0,0,0,0,0],
-                 [0,0,1,0,0],
-                 [0,0,0,0,0],
-                 [0,0,0,0,0]
-             ])
+            (
+                Fock(),
+                2,
+                [[0], [0], [1], [0], [0]],
+                [
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                ],
+            )
         )
         test_cases.append(
-            (Fock(), 3, [[0],[0],[0],[1],[0]],
-             [
-                 [0,0,0,0,0],
-                 [0,0,0,0,0],
-                 [0,0,0,0,0],
-                 [0,0,0,1,0],
-                 [0,0,0,0,0]
-             ])
+            (
+                Fock(),
+                3,
+                [[0], [0], [0], [1], [0]],
+                [
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 1, 0],
+                    [0, 0, 0, 0, 0],
+                ],
+            )
         )
         test_cases.append(
-            (Fock(), 4, [[0],[0],[0],[0],[1]],
-             [
-                 [0,0,0,0,0],
-                 [0,0,0,0,0],
-                 [0,0,0,0,0],
-                 [0,0,0,0,0],
-                 [0,0,0,0,1]
-             ])
+            (
+                Fock(),
+                4,
+                [[0], [0], [0], [0], [1]],
+                [
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 1],
+                ],
+            )
         )
         for tc in test_cases:
             tc[0].dimensions = 5
@@ -252,7 +273,7 @@ class TestFockExpansionAndContraction(unittest.TestCase):
         self.third_contract_test(fock, label)
 
     def initialization_test(self, fock: Fock, label: int) -> None:
-        for i,item in enumerate([fock.envelope, fock.composite_envelope, fock.index]):
+        for i, item in enumerate([fock.envelope, fock.composite_envelope, fock.index]):
             self.assertIsNone(item, f"{i}-{item}")
         self.assertEqual(fock.state, label)
 
@@ -260,73 +281,44 @@ class TestFockExpansionAndContraction(unittest.TestCase):
         fock.expand()
         for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
-        self.assertTrue(
-            jnp.allclose(
-                state_vector,
-                fock.state
-            )
-        )
+        self.assertTrue(jnp.allclose(state_vector, fock.state))
 
     def second_expansion_test(self, fock: Fock, density_matrix: jnp.ndarray) -> None:
         fock.expand()
         for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
-        self.assertTrue(
-            jnp.allclose(
-                density_matrix,
-                fock.state
-            )
-        )
+        self.assertTrue(jnp.allclose(density_matrix, fock.state))
 
     def third_expansion_test(self, fock: Fock, density_matrix: jnp.ndarray) -> None:
         fock.expand()
         for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
-        self.assertTrue(
-            jnp.allclose(
-                density_matrix,
-                fock.state
-            )
-        )
+        self.assertTrue(jnp.allclose(density_matrix, fock.state))
 
-    def first_contract_test(self, fock:Fock, state_vector: jnp.ndarray) -> None:
+    def first_contract_test(self, fock: Fock, state_vector: jnp.ndarray) -> None:
         fock.contract(final=ExpansionLevel.Vector)
         for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
-        self.assertTrue(
-            jnp.allclose(
-                state_vector,
-                fock.state
-            )
-        )
+        self.assertTrue(jnp.allclose(state_vector, fock.state))
 
-    def second_contract_test(self, fock:Fock, label: int) -> None:
+    def second_contract_test(self, fock: Fock, label: int) -> None:
         fock.contract(final=ExpansionLevel.Label)
         for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
-        self.assertTrue(
-            jnp.allclose(
-                label,
-                fock.state
-            )
-        )
+        self.assertTrue(jnp.allclose(label, fock.state))
 
-    def third_contract_test(self, fock:Fock, label: int) -> None:
+    def third_contract_test(self, fock: Fock, label: int) -> None:
         fock.contract(final=ExpansionLevel.Label)
         for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
-        self.assertTrue(
-            jnp.allclose(
-                label,
-                fock.state
-            )
-        )
+        self.assertTrue(jnp.allclose(label, fock.state))
 
 
 class TestFockMeasurement(unittest.TestCase):
     """
     Test Various Measurements
     """
+
     def test_general_measurement_label(self) -> None:
         for i in range(10):
             f = Fock()
@@ -355,9 +347,7 @@ class TestFockMeasurement(unittest.TestCase):
         f = Fock()
         f.dimensions = 2
         f.expand()
-        f.state = jnp.array(
-            [[1/jnp.sqrt(2)],[1/jnp.sqrt(2)]]
-        )
+        f.state = jnp.array([[1 / jnp.sqrt(2)], [1 / jnp.sqrt(2)]])
         C = Config()
         C.set_seed(1)
         m = f.measure()
@@ -365,9 +355,7 @@ class TestFockMeasurement(unittest.TestCase):
         f = Fock()
         f.dimensions = 2
         f.expand()
-        f.state = jnp.array(
-            [[1/jnp.sqrt(2)],[1/jnp.sqrt(2)]]
-        )
+        f.state = jnp.array([[1 / jnp.sqrt(2)], [1 / jnp.sqrt(2)]])
         C.set_seed(3)
         m = f.measure()
         self.assertEqual(m[f], 1, "Should be 1 with seed 3")
@@ -376,9 +364,7 @@ class TestFockMeasurement(unittest.TestCase):
         f = Fock()
         f.dimensions = 2
         f.expand()
-        f.state= jnp.array(
-            [[1/jnp.sqrt(2)],[1/jnp.sqrt(2)]]
-        )
+        f.state = jnp.array([[1 / jnp.sqrt(2)], [1 / jnp.sqrt(2)]])
         f.expand()
         C = Config()
         C.set_seed(1)
@@ -387,9 +373,7 @@ class TestFockMeasurement(unittest.TestCase):
         f = Fock()
         f.dimensions = 2
         f.expand()
-        f.state= jnp.array(
-            [[1/jnp.sqrt(2)],[1/jnp.sqrt(2)]]
-        )
+        f.state = jnp.array([[1 / jnp.sqrt(2)], [1 / jnp.sqrt(2)]])
         f.expand()
         C.set_seed(3)
         m = f.measure()
@@ -402,10 +386,10 @@ class TestFockMeasurement(unittest.TestCase):
         f.dimensions = 2
         f.expand()
         povm_operators = []
-        povm_operators.append(jnp.array([[1,0],[0,0]]))
-        povm_operators.append(jnp.array([[0,0],[0,1]]))
+        povm_operators.append(jnp.array([[1, 0], [0, 0]]))
+        povm_operators.append(jnp.array([[0, 0], [0, 1]]))
         m = f.measure_POVM(povm_operators)
-        self.assertEqual(m,0, "Measurement outcome when measuring H must always be 0")
+        self.assertEqual(m, 0, "Measurement outcome when measuring H must always be 0")
         self.assertTrue(f.measured)
         for item in [f.label, f.expansion_level, f.state_vector, f.density_matrix]:
             self.assertIsNone(item)
@@ -416,10 +400,12 @@ class TestFockMeasurement(unittest.TestCase):
         f = Fock()
         f.dimensions = 2
         povm_operators = []
-        povm_operators.append(jnp.array([[1,0],[0,0]]))
-        povm_operators.append(jnp.array([[0,0],[0,1]]))
+        povm_operators.append(jnp.array([[1, 0], [0, 0]]))
+        povm_operators.append(jnp.array([[0, 0], [0, 1]]))
         m = f.measure_POVM(povm_operators)
-        self.assertEqual(m[0],0, "Measurement outcome when measuring H must always be 0")
+        self.assertEqual(
+            m[0], 0, "Measurement outcome when measuring H must always be 0"
+        )
         self.assertTrue(f.measured)
         for item in [f.index, f.state]:
             self.assertIsNone(item)
@@ -435,21 +421,11 @@ class TestFockDimensionChange(unittest.TestCase):
         f.expand()
         f.resize(5)
         self.assertEqual(f.dimensions, 5)
-        self.assertTrue(
-            jnp.allclose(
-                f.state,
-                jnp.array([[1],[0],[0],[0],[0]])
-            )
-        )
+        self.assertTrue(jnp.allclose(f.state, jnp.array([[1], [0], [0], [0], [0]])))
 
         f.resize(2)
         self.assertEqual(f.dimensions, 2)
-        self.assertTrue(
-            jnp.allclose(
-                f.state,
-                jnp.array([[1],[0]])
-            )
-        )
+        self.assertTrue(jnp.allclose(f.state, jnp.array([[1], [0]])))
 
         f.expand()
         f.resize(4)
@@ -457,22 +433,13 @@ class TestFockDimensionChange(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 f.state,
-                jnp.array([[1,0,0,0],
-                           [0,0,0,0],
-                           [0,0,0,0],
-                           [0,0,0,0]])
+                jnp.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]),
             )
         )
 
         f.resize(2)
         self.assertEqual(f.dimensions, 2)
-        self.assertTrue(
-            jnp.allclose(
-                f.state,
-                jnp.array([[1,0],
-                           [0,0]])
-            )
-        )
+        self.assertTrue(jnp.allclose(f.state, jnp.array([[1, 0], [0, 0]])))
 
     def test_resize_in_envelope_vector(self) -> None:
         env = Envelope()
@@ -481,33 +448,13 @@ class TestFockDimensionChange(unittest.TestCase):
         env.combine()
         env.resize_fock(3)
         self.assertTrue(
-            jnp.allclose(
-                env.state,
-                jnp.array(
-                    [[0],
-                     [1],
-                     [0],
-                     [0],
-                     [0],
-                     [0]]
-                )
-            )
+            jnp.allclose(env.state, jnp.array([[0], [1], [0], [0], [0], [0]]))
         )
         self.assertEqual(env.fock.dimensions, 3)
 
         s = env.resize_fock(2)
         self.assertTrue(s)
-        self.assertTrue(
-            jnp.allclose(
-                env.state,
-                jnp.array(
-                    [[0],
-                     [1],
-                     [0],
-                     [0]]
-                )
-            )
-        )
+        self.assertTrue(jnp.allclose(env.state, jnp.array([[0], [1], [0], [0]])))
         self.assertEqual(env.fock.dimensions, 2)
 
         # Trying the same with the reversed order
@@ -528,18 +475,19 @@ class TestFockDimensionChange(unittest.TestCase):
             jnp.allclose(
                 env.state,
                 jnp.array(
-                    [[0],
-                     [0],
-                     [0],
-                     [0],
-                     [1/jnp.sqrt(2)],
-                     [1j/jnp.sqrt(2)],
-                     [0],
-                     [0]]
-                )
+                    [
+                        [0],
+                        [0],
+                        [0],
+                        [0],
+                        [1 / jnp.sqrt(2)],
+                        [1j / jnp.sqrt(2)],
+                        [0],
+                        [0],
+                    ]
+                ),
             )
         )
-
 
         s = env.resize_fock(2)
         self.assertFalse(s)
@@ -547,15 +495,17 @@ class TestFockDimensionChange(unittest.TestCase):
             jnp.allclose(
                 env.state,
                 jnp.array(
-                    [[0],
-                     [0],
-                     [0],
-                     [0],
-                     [1/jnp.sqrt(2)],
-                     [1j/jnp.sqrt(2)],
-                     [0],
-                     [0]]
-                )
+                    [
+                        [0],
+                        [0],
+                        [0],
+                        [0],
+                        [1 / jnp.sqrt(2)],
+                        [1j / jnp.sqrt(2)],
+                        [0],
+                        [0],
+                    ]
+                ),
             )
         )
 
@@ -563,14 +513,7 @@ class TestFockDimensionChange(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 env.state,
-                jnp.array(
-                    [[0],
-                     [0],
-                     [0],
-                     [0],
-                     [1/jnp.sqrt(2)],
-                     [1j/jnp.sqrt(2)]]
-                )
+                jnp.array([[0], [0], [0], [0], [1 / jnp.sqrt(2)], [1j / jnp.sqrt(2)]]),
             )
         )
 
@@ -588,13 +531,15 @@ class TestFockDimensionChange(unittest.TestCase):
             jnp.allclose(
                 env.state,
                 jnp.array(
-                    [[0,0,0,0,0,0],
-                     [0,0,0,0,0,0],
-                     [0,0,0.5,-0.5j,0,0],
-                     [0,0,0.5j,0.5,0,0],
-                     [0,0,0,0,0,0],
-                     [0,0,0,0,0,0]]
-                )
+                    [
+                        [0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0],
+                        [0, 0, 0.5, -0.5j, 0, 0],
+                        [0, 0, 0.5j, 0.5, 0, 0],
+                        [0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0],
+                    ]
+                ),
             )
         )
         s = env.resize_fock(1)
@@ -607,11 +552,8 @@ class TestFockDimensionChange(unittest.TestCase):
             jnp.allclose(
                 env.state,
                 jnp.array(
-                    [[0,0,0,0],
-                     [0,0,0,0],
-                     [0,0,0.5,-0.5j],
-                     [0,0,0.5j,0.5]]
-                )
+                    [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0.5, -0.5j], [0, 0, 0.5j, 0.5]]
+                ),
             )
         )
 
@@ -622,7 +564,7 @@ class TestFockDimensionChange(unittest.TestCase):
         env1.fock.state = 1
         env2.polarization.state = PolarizationLabel.R
 
-        ce = CompositeEnvelope(env1,env2)
+        ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.fock, env2.polarization)
         s = env1.fock.resize(3)
         self.assertTrue(s)
@@ -630,14 +572,7 @@ class TestFockDimensionChange(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array(
-                    [[0],
-                     [0],
-                     [1/jnp.sqrt(2)],
-                     [1j/jnp.sqrt(2)],
-                     [0],
-                     [0]]
-                )
+                jnp.array([[0], [0], [1 / jnp.sqrt(2)], [1j / jnp.sqrt(2)], [0], [0]]),
             )
         )
 
@@ -650,12 +585,7 @@ class TestFockDimensionChange(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array(
-                    [[0],
-                     [0],
-                     [1/jnp.sqrt(2)],
-                     [1j/jnp.sqrt(2)]]
-                )
+                jnp.array([[0], [0], [1 / jnp.sqrt(2)], [1j / jnp.sqrt(2)]]),
             )
         )
 
@@ -666,25 +596,27 @@ class TestFockDimensionChange(unittest.TestCase):
         env1.fock.state = 1
         env2.polarization.state = PolarizationLabel.R
 
-        ce = CompositeEnvelope(env1,env2)
+        ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.fock, env2.polarization)
         ce.expand(env1.fock)
-        s = ce.resize_fock(3,env1.fock)
+        s = ce.resize_fock(3, env1.fock)
         self.assertTrue(s)
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
                 jnp.array(
-                    [[0,0,0,0,0,0],
-                     [0,0,0,0,0,0],
-                     [0,0,0.5,-0.5j,0,0],
-                     [0,0,0.5j,0.5,0,0],
-                     [0,0,0,0,0,0],
-                     [0,0,0,0,0,0]]
-                )
+                    [
+                        [0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0],
+                        [0, 0, 0.5, -0.5j, 0, 0],
+                        [0, 0, 0.5j, 0.5, 0, 0],
+                        [0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0],
+                    ]
+                ),
             )
         )
-        self.assertEqual(env1.fock.dimensions,3)
+        self.assertEqual(env1.fock.dimensions, 3)
 
         s = env1.fock.resize(1)
         self.assertFalse(s)
@@ -695,11 +627,8 @@ class TestFockDimensionChange(unittest.TestCase):
             jnp.allclose(
                 ce.product_states[0].state,
                 jnp.array(
-                    [[0,0,0,0],
-                     [0,0,0,0],
-                     [0,0,0.5,-0.5j],
-                     [0,0,0.5j,0.5]]
-                )
+                    [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0.5, -0.5j], [0, 0, 0.5j, 0.5]]
+                ),
             )
         )
-        self.assertEqual(env1.fock.dimensions,2)
+        self.assertEqual(env1.fock.dimensions, 2)

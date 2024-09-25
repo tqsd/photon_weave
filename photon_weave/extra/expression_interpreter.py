@@ -2,6 +2,7 @@ import jax.numpy as jnp
 from jax.scipy.linalg import expm
 import scipy.linalg as la
 
+
 def interpreter(expr, context):
     if isinstance(expr, tuple):
         op, *args = expr
