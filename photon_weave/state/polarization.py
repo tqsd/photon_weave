@@ -16,6 +16,7 @@ import numpy as np
 from photon_weave._math.ops import apply_kraus, compute_einsum, kraus_identity_check
 from photon_weave.photon_weave import Config
 from photon_weave.state.exceptions import NotExtractedException
+from photon_weave.operation import PolarizationOperationType
 
 from .base_state import BaseState
 from .expansion_levels import ExpansionLevel
@@ -81,6 +82,7 @@ class Polarization(BaseState):
         envelope: Union["Envelope", None] = None,
     ):
         from photon_weave.state.composite_envelope import CompositeEnvelope
+        from photon_weave.state.envelope import Envelope
 
         self.uid: uuid.UUID = uuid.uuid4()
         logger.info("Creating polarization with uid %s", self.uid)
@@ -115,15 +117,16 @@ class Polarization(BaseState):
         expanded to state_vector and if it is state_vector
         then it gets expanded to density matrix
         """
+        from photon_weave.state.composite_envelope import CompositeEnvelope
         # If the state is in composite envelope expand the product space there
         if isinstance(self.index, tuple) or isinstance(self.index, list):
             assert isinstance(self.composite_envelope, CompositeEnvelope)
-            self.composite_envelope.contract(self)
+            self.composite_envelope.expand(self)
             return
         # If the state is in envelope expand the product space there
         elif isinstance(self.index, int):
             assert isinstance(self.envelope, Envelope)
-            self.envelope.contract()
+            self.envelope.expand()
             return
 
         if self.expansion_level == ExpansionLevel.Label:
@@ -341,6 +344,8 @@ class Polarization(BaseState):
             Operation with operation type: PolarizationOperationType
         """
         from photon_weave.state.envelope import Envelope
+        from photon_weave.state.composite_envelope import CompositeEnvelope
+        assert isinstance(operation._operation_type, PolarizationOperationType)
 
         if isinstance(self.index, int):
             assert isinstance(self.envelope, Envelope)

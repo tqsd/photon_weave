@@ -27,7 +27,7 @@ class CompositeOperationType(Enum):
     Constructs a non-polarizing  beam splitter operator that acts on two Fock spaces.
     The operator is represented by a unitary transformation that mices the two modes.
     The constructed operator is of the form:
-    .. math::
+    ..math::
         \hat U_{BS} = e^{i\theta(\hat a^\dagger \hat b + \hat a \hat b^\dagger)}
 
     For a 50/50 beam splitter, :math:`\theta = \frac{\pi}{4}\`, which leas to equal

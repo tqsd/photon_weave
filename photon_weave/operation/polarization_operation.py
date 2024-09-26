@@ -4,6 +4,7 @@ import jax.numpy as jnp
 
 from photon_weave._math.ops import (
     identity_operator,
+    hadamard_operator,
     x_operator,
     y_operator,
     z_operator,
@@ -23,6 +24,103 @@ class PolarizationOperationType(Enum):
     PolarizationOperationType
 
     Constructs an operator, which acts on a single Polarization Space
+
+    Identity (I)
+    ------------
+    Constructs Identity (:math:`\hat I`) operator
+    ..math::
+        \hat I = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}
+
+    Pauli X (X)
+    -----------
+    Constructs Pauli X  (:math:`\hat \sigma_X`) operator
+    ..math::
+        \hat \sigma_X = \begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix}
+
+    Pauli Y (Y)
+    -----------
+    Constructs Pauli Y  (:math:`\hat \sigma_Y`) operator
+    ..math::
+        \hat \sigma_X = \begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix}
+
+    Pauli Z (Z)
+    -----------
+    Constructs Pauli Z  (:math:`\hat \sigma_Z`) operator
+    ..math::
+        \hat \sigma_X = \begin{bmatrix} 1 & 0 \\ 0 & -1 \end{bmatrix}
+
+    Hadamard (H)
+    ------------
+    Constructs Hadamard (:math:`\hat H`) operator
+    ..math::
+        \hat H = \frac{1}{\sqrt{2}} \begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}
+
+    Phase Opeator (S)
+    -----------------
+    Constructs Phase (:math:`\hat S`) operator
+    ..math::
+        \hat H = \begin{bmatrix} 1 & 0 \\ 0 & i \end{bmatrix}
+
+    T Opeator (T)
+    -----------------
+    Constructs T (:math:`\hat T`) operator
+    ..math::
+        \hat H = \begin{bmatrix} 1 & 0 \\ 0 & e^{i \pi/4} \end{bmatrix}
+
+    Sqrt(X) Operator (SX)
+    -----------------
+    Constructs SX (:math:`\hat{SX}`) operator
+    ..math::
+        \hat H = \frac{1}{2} \begin{bmatrix} 1+i & 1-i \\ 1-i & 1+i \end{bmatrix}
+
+    RX Operator (RX)
+    ----------------
+    Constructs RX (:math:`\hat{RX}(\theta)`) operator
+    It rotates around X axis for given :math:`\theta` angle
+    Requires an argument "theta" (:math:`\theta`)
+    ..math::
+        \hat H = \begin{bmatrix}  \cos(\frac{\theta}{2}) & -i\sin(\frac{\theta}{2} \\  -i\sin(\frac{\theta}{2} & \cos(\frac{\theta}{2}) \end{bmatrix}
+
+    Usage Example
+    >>> op = Operation(PolarizationOperationType.RX, theta=jnp.pi)
+
+    RY Operator (RY)
+    ----------------
+    Constructs RY (:math:`\hat{RY}(\theta)`) operator
+    It rotates around Y axis for given :math:`\theta` angle
+    Requires an argument "theta" (:math:`\theta`)
+    ..math::
+        \hat H = \begin{bmatrix}  \cos(\frac{\theta}{2}) & -\sin(\frac{\theta}{2} \\  \sin(\frac{\theta}{2} & \cos(\frac{\theta}{2}) \end{bmatrix}
+
+    Usage Example
+    >>> op = Operation(PolarizationOperationType.RY, theta=jnp.pi)
+
+    RZ Operator (RZ)
+    ----------------
+    Constructs RZ (:math:`\hat{RZ}(\theta)`) operator
+    It rotates around Z axis for given :math:`\theta` angle
+    Requires an argument "theta" (:math:`\theta`)
+    ..math::
+        \hat H = \begin{bmatrix}  e^{-i\frac{\theta}{2}} & 0 \\ 0 & e^{i\frac{\theta}{2}}\end{bmatrix}
+
+    Usage Example
+    >>> op = Operation(PolarizationOperationType.RZ, theta=jnp.pi)
+    
+    U3 operator
+    -----------
+    Rotation with 3 Euler angles (:math:`\hat{U3}(\phi,\theta,\omega))`)
+    Requires three arguments "phi", "theta", "omega"
+
+    Usage Example
+    >>> op = Operation(PolarizationOperationType.RZ, theta=jnp.pi)
+
+    Custom
+    ------
+    Constructs a custom operator, the operator needs to be given manually
+
+    Usage Example
+    >>> operator = jnp.array([[1,0],[0,1]])
+    >>> op = Operation(PolarizationOperationType.Custom, operator=operator)
     """
     I  = (True, [], ExpansionLevel.Vector, 1) 
     X  = (True, [], ExpansionLevel.Vector, 2) 
@@ -95,6 +193,10 @@ class PolarizationOperationType(Enum):
                 return rz_operator(kwargs["theta"])
             case PolarizationOperationType.U3:
                 return u3_operator(kwargs["phi"], kwargs["theta"], kwargs["omega"])
+            case PolarizationOperationType.Custom:
+                print("CUSTOM")
+                print(kwargs["operator"])
+                return kwargs["operator"]
 
     def compute_dimensions(self, num_quanta: int, state:jnp.ndarray, threshold:float = 1, **kwargs:Any) -> int:
         """

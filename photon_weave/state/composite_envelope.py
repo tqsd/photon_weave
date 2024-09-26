@@ -629,6 +629,11 @@ class ProductState:
             assert len(states) == 1
             operation.compute_dimensions(states[0]._num_quanta, states[0].trace_out())
             states[0].resize(operation.dimensions[0])
+        elif isinstance(operation._operation_type, PolarizationOperationType):
+            assert isinstance(states[0], Polarization)
+            assert len(states) == 1
+            # Parameters doesn't have any effect
+            operation.compute_dimensions(0,0)
         elif isinstance(operation._operation_type, CompositeOperationType):
             assert len(states) == len(
                 operation._operation_type.expected_base_state_types

@@ -417,6 +417,7 @@ class Fock(BaseState):
             Operation with operation type: FockOperationType
         """
         from photon_weave.state.envelope import Envelope
+        assert isinstance(operation._operation_type, FockOperationType)
 
         if isinstance(self.index, int):
             assert isinstance(self.envelope, Envelope)

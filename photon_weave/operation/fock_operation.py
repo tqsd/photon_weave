@@ -84,6 +84,13 @@ class FockOperationType(Enum):
     then the operation will fail. Shinking is not succesfull if part of the state is removed
     by the process of shrinking.
 
+    Usage Example:
+    >>> operator = jnp.ndarray(
+    >>>    [[0,0],
+    >>>     [0,1]]
+    >>> )
+    >>> op = Operation(FockOperationType.Custom, operator=operator)
+
     Expresion
     ---------
     Constucts an operator based on the expression provided. Alongside expression
@@ -160,6 +167,8 @@ class FockOperationType(Enum):
                 return jnp.identity(dimensions[0])
             case FockOperationType.Expresion:
                 return interpreter(kwargs["expr"], kwargs["context"], dimensions)
+            case FockOperationType.Custom:
+                return kwargs["operator"]
 
     def compute_dimensions(
         self,

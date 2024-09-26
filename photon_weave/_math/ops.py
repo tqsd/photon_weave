@@ -177,8 +177,9 @@ def rz_operator(theta: float) -> jax.Array:
     :return: _description_
     :rtype: jax.Array
     """
-    term = jnp.exp(1j * theta / 2)
-    return jnp.array([[term, 0], [0, term.conjuoperator()]])
+    term1 = jnp.exp(-1j * theta / 2)
+    term2 = jnp.exp(1j * theta / 2)
+    return jnp.array([[term1, 0], [0, term2]])
 
 
 def u3_operator(phi: float, theta: float, omega: float) -> jax.Array:
@@ -198,7 +199,10 @@ def u3_operator(phi: float, theta: float, omega: float) -> jax.Array:
     sin_term = jnp.sin(theta / 2)
     return jnp.array(
         [
-            [cos_term, -jnp.exp(1j * omega * sin_term)],
+            [
+                cos_term,
+                -jnp.exp(1j * omega) * sin_term
+            ],
             [
                 jnp.exp(1j * phi) * sin_term,
                 jnp.exp(1j * (phi + omega)) * cos_term,

@@ -4,6 +4,7 @@ from typing import Any, List, Optional, Union
 import jax.numpy as jnp
 
 from photon_weave.operation.fock_operation import FockOperationType
+from photon_weave.operation.polarization_operation import PolarizationOperationType
 from photon_weave.state.expansion_levels import ExpansionLevel
 
 
@@ -109,10 +110,9 @@ class Operation:
 
     @property
     def operator(self) -> jnp.ndarray:
-        if self._operation_type != FockOperationType.Custom:
-            self._operator = self._operation_type.compute_operator(
-                self.dimensions, **self.kwargs
-            )
+        self._operator = self._operation_type.compute_operator(
+            self.dimensions, **self.kwargs
+        )
         assert isinstance(self._operator, jnp.ndarray)
         return self._operator
 

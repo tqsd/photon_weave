@@ -255,6 +255,7 @@ class Envelope:
         If state is in the Fock and Polarization instances
         it expands those
         """
+        from photon_weave.state.composite_envelope import CompositeEnvelope
         if self.state is None:
             self.fock.expand()
             self.polarization.expand()
