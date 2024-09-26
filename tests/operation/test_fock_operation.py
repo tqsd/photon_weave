@@ -627,7 +627,6 @@ class TestCustomFockOperation(unittest.TestCase):
         f.apply_operation(op)
         self.assertEqual(f.state, 1)
 
-    @pytest.mark.my_marker
     def test_custom_opeator_fock_matrix(self) -> None:
         f = Fock()
         f.dimensions = 2

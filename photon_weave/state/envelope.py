@@ -1160,7 +1160,7 @@ class Envelope:
 
         from photon_weave.operation.fock_operation import FockOperationType
         from photon_weave.operation.polarization_operation import (
-            PolarizationOperationType,
+            PolarizationOperationType
         )
         from photon_weave.state.fock import Fock
         from photon_weave.state.polarization import Polarization
@@ -1188,6 +1188,11 @@ class Envelope:
         ):
             operation.compute_dimensions(states[0]._num_quanta, self.fock.trace_out())
             states[0].resize(operation.dimensions[0])
+        elif isinstance(operation._operation_type, PolarizationOperationType) and isinstance(
+                states[0], Polarization
+        ):
+            # Given arguments 0,0 don't have an effect
+            operation.compute_dimensions(0,0)
 
         reshape_shape = [-1, -1]
         reshape_shape[self.fock.index] = self.fock.dimensions
@@ -1200,7 +1205,6 @@ class Envelope:
 
             ps = self.state.reshape(reshape_shape)
 
-            print(operation.operator)
 
             # state is reordered, so the state operated on is in the first state
             ps = jnp.einsum("ij,jkl->ikl", operation.operator, ps)

@@ -130,7 +130,7 @@ class FockOperationType(Enum):
         """
         return
 
-    def compute_operator(self, dimensions: List[int], **kwargs: Any):
+    def compute_operator(self, dimensions: List[int], **kwargs: Any) -> jnp.ndarray:
         """
         Generates the operator for this opration, given
         the dimensions

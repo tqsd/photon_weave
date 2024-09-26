@@ -354,9 +354,7 @@ class Polarization(BaseState):
         while self.expansion_level < operation.required_expansion_level:
             self.expand()
 
-        # Consolidate the dimensions
-        #        operation.compute_dimensions(self._num_quanta, self.trace_out())
-        #       self.resize(operation.dimensions)
+        operation.compute_dimensions(0, 0)
 
         if self.expansion_level == ExpansionLevel.Vector:
             assert isinstance(self.state, jnp.ndarray)
