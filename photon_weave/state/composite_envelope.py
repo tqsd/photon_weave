@@ -19,6 +19,7 @@ from photon_weave.operation import (
     FockOperationType,
     Operation,
     PolarizationOperationType,
+    CustomStateOperationType
 )
 from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
@@ -622,6 +623,7 @@ class ProductState:
         """
         from photon_weave.state.fock import Fock
         from photon_weave.state.polarization import Polarization
+        from photon_weave.state.custom_state import CustomState
         from photon_weave.operation import CompositeOperationType
 
         if isinstance(operation._operation_type, FockOperationType):
@@ -634,6 +636,10 @@ class ProductState:
             assert len(states) == 1
             # Parameters doesn't have any effect
             operation.compute_dimensions(0,0)
+        elif isinstance(operation._operation_type, CustomStateOperationType):
+            assert isinstance(states[0], CustomState)
+            assert len(states) == 1
+            operation.compute_dimensions(0, states[0].trace_out())
         elif isinstance(operation._operation_type, CompositeOperationType):
             assert len(states) == len(
                 operation._operation_type.expected_base_state_types
@@ -643,7 +649,8 @@ class ProductState:
                     s, operation._operation_type.expected_base_state_types[i]
                 )
             operation.compute_dimensions(
-                [s._num_quanta for s in states], [s.trace_out() for s in states]
+                [s._num_quanta if isinstance(s, Fock) else 0 for s in states],
+                [s.trace_out() for s in states]
             )
             for i, s in enumerate(states):
                 if isinstance(s, Fock):

@@ -9,7 +9,11 @@ import importlib
 from photon_weave.extra import interpreter
 from photon_weave._math.ops import (
     creation_operator,
-    annihilation_operator
+    annihilation_operator,
+    controlled_not_operator,
+    swap_operator,
+    controlled_swap_operator,
+    controlled_z_operator
 )
 from photon_weave.extra import interpreter
 from photon_weave.state.expansion_levels import ExpansionLevel
@@ -32,6 +36,64 @@ class CompositeOperationType(Enum):
 
     For a 50/50 beam splitter, :math:`\theta = \frac{\pi}{4}\`, which leas to equal
     mixing of the two modes.
+
+    CNOT (CXPolarization)
+    -----------------------
+    Constructs a CNOT operator operating on two polarization states. First state
+    provided is control and the second is target
+
+    ..math::
+        \hat{CX} = \begin{bmatrix}1&0&0&0\\0&0&0&1\\0&0&1&0\\0&1&0&0\end{bmatrix}
+
+    >>> op = Operation(CompositeOperationType.CXPolarization)
+    >>> ce.apply_operation(op, control_pol, target_pol)
+
+    CZ (CZPolarization)
+    -----------------------
+    Constructs a controlled-Z opreator operating on two polarization states.
+    First state provided is control and the second is target.
+
+    ..math::
+        \hat{CX} = \begin{bmatrix}1&0&0&0\\0&1&0&0\\0&0&1&0\\0&0&0&-1\end{bmatrix}
+
+    >>> op = Operation(CompositeOperationType.CZPolarization)
+    >>> ce.apply_operation(op, control_pol, target_pol)
+
+    SWAP (SwapPolarization)
+    -----------------------
+    Constructs a SWAP operation, swaping the states of two provided polarization
+    states.
+
+    ..math::
+        \hat{CX} = \begin{bmatrix}1&0&0&0\\0&0&1&0\\0&1&0&0\\0&0&0&1\end{bmatrix}
+
+    Example Usage:
+    >>> op = Operation(CompositeOperationType.SwapPolarization)
+    >>> ce.apply_operation(op, env1.polarization, env2.polarization)
+
+    Controlled-SWAP (CSwapPolarization)
+    -----------------------------------
+    
+    Constructs a Controlled-SWAP operation, conditionally swapping the states of
+    two provided polarization states. First state is the control state and the
+    next two states are target states.
+.. math::
+
+    \hat{CSWAP} = 
+    \begin{bmatrix}
+    1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+    0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
+    0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
+    0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 \\
+    0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\
+    0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 \\
+    0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\
+    0 & 0 & 0 & 0 & 0 & 0 & 0 & 1
+    \end{bmatrix}
+
+    Example Usage:
+    >>> op = Operation(CompositeOperationType.SwapPolarization)
+    >>> ce.apply_operation(op, env1.polarization, env2.polarization)
 
     Expression
     ----------
@@ -90,7 +152,11 @@ class CompositeOperationType(Enum):
     """
 
     NonPolarizingBeamSplitter = (True, ["eta"], ["Fock", "Fock"], ExpansionLevel.Vector, 1)
-    Expression = (True, ["expr","state_types", "context"], [], ExpansionLevel.Vector, 2)
+    CXPolarization = (True, [], ["Polarization", "Polarization"], ExpansionLevel.Vector, 2)
+    SwapPolarization = (True, [], ["Polarization", "Polarization"], ExpansionLevel.Vector, 3)
+    CSwapPolarization = (True, [], ["Polarization" for _ in range(3)], ExpansionLevel.Vector, 4)
+    CZPolarization = (True, [], ["Polarization" for _ in range(2)], ExpansionLevel.Vector, 5)
+    Expression = (True, ["expr","state_types", "context"], [], ExpansionLevel.Vector, 6)
 
     def __init__(self, renormalize: bool, required_params: list,
                  expected_base_state_types: List[BaseState],
@@ -147,6 +213,14 @@ class CompositeOperationType(Enum):
                     jnp.kron(a_dagger,b) + jnp.kron(a, b_dagger)
                     )
                 return expm(1j*kwargs["eta"]*operator)
+            case CompositeOperationType.CXPolarization:
+                return controlled_not_operator()
+            case CompositeOperationType.SwapPolarization:
+                return swap_operator()
+            case CompositeOperationType.CSwapPolarization:
+                return controlled_swap_operator()
+            case CompositeOperationType.CZPolarization:
+                return controlled_z_operator()
             case CompositeOperationType.Expression:
                 return interpreter(kwargs["expr"], kwargs["context"], dimensions)
         
@@ -192,5 +266,13 @@ class CompositeOperationType(Enum):
             case CompositeOperationType.NonPolarizingBeamSplitter:
                 dim = int(jnp.sum(jnp.array(num_quanta))) + 1
                 return [dim,dim]
+            case CompositeOperationType.CXPolarization:
+                return [2,2]
+            case CompositeOperationType.SwapPolarization:
+                return [2,2]
+            case CompositeOperationType.CSwapPolarization:
+                return [2,2,2,2]
+            case CompositeOperationType.CZPolarization:
+                return [2,2]
             case CompositeOperationType.Expression:
                 return [d+1 for d in num_quanta]

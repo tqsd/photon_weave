@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from photon_weave.operation import Operation, CompositeOperationType
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.envelope import Envelope
-from photon_weave.state.polarization import Polarization
+from photon_weave.state.polarization import Polarization, PolarizationLabel
 from photon_weave.state.fock import Fock
 from photon_weave.photon_weave import Config
 from photon_weave._math.ops import number_operator
@@ -125,6 +125,211 @@ class TestExpressionOperator(unittest.TestCase):
                 ce.product_states[0].state,
                 jnp.array(
                     [[0],[0],[-1],[0]]
+                )
+            )
+        )
+
+
+class TestCNOTOperator(unittest.TestCase):
+    def test_cnot_vector(self) -> None:
+        env1 = Envelope()
+        env1.polarization.state = PolarizationLabel.V
+        env2 = Envelope()
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.polarization, env2.polarization)
+        op = Operation(CompositeOperationType.CXPolarization)
+        ce.apply_operation(op, env1.polarization, env2.polarization)
+        self.assertTrue(
+            jnp.allclose(
+                jnp.array([[0],[0],[0],[1]]),
+                ce.product_states[0].state
+            )
+        )
+
+    def test_cnot_matirx(self) -> None:
+        env1 = Envelope()
+        env1.polarization.state = PolarizationLabel.V
+        env2 = Envelope()
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.polarization, env2.polarization)
+        env1.polarization.expand()
+        op = Operation(CompositeOperationType.CXPolarization)
+        ce.apply_operation(op, env1.polarization, env2.polarization)
+        self.assertTrue(
+            jnp.allclose(
+                jnp.array([[0],[0],[0],[1]]),
+                ce.product_states[0].state
+            )
+        )
+
+
+class TestCZOperator(unittest.TestCase):
+    def test_cz_operator_vector(self) -> None:
+        env1 = Envelope()
+        env1.polarization.state = PolarizationLabel.V
+        env2 = Envelope()
+        env2.polarization.state = PolarizationLabel.V
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.polarization, env2.polarization)
+        op = Operation(CompositeOperationType.CZPolarization)
+        ce.apply_operation(op, env1.polarization, env2.polarization)
+        self.assertTrue(
+            jnp.allclose(
+                jnp.array([[0],[0],[0],[-1]]),
+                ce.product_states[0].state
+            )
+        )
+
+    def test_cz_operator_matrix(self) -> None:
+        env1 = Envelope()
+        env1.polarization.state = PolarizationLabel.V
+        env2 = Envelope()
+        env2.polarization.state = PolarizationLabel.V
+        ce = CompositeEnvelope(env1, env2)
+        env1.polarization.expand()
+        ce.combine(env1.polarization, env2.polarization)
+        op = Operation(CompositeOperationType.CZPolarization)
+        ce.apply_operation(op, env1.polarization, env2.polarization)
+        self.assertTrue(
+            jnp.allclose(
+                jnp.array([[0],[0],[0],[-1]]),
+                ce.product_states[0].state
+            )
+        )
+
+class TestSWAPOperator(unittest.TestCase):
+    def test_swap_operator_vector(self) -> None:
+        env1 = Envelope()
+        env1.polarization.state = PolarizationLabel.V
+        env2 = Envelope()
+
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.polarization, env2.polarization)
+
+        op = Operation(CompositeOperationType.SwapPolarization)
+        ce.apply_operation(op, env1.polarization, env2.polarization)
+        self.assertTrue(
+            jnp.allclose(
+                env1.polarization.trace_out(),
+                jnp.array(
+                    [[1],[0]]
+                )
+            )
+        )
+
+        self.assertTrue(
+            jnp.allclose(
+                env2.polarization.trace_out(),
+                jnp.array(
+                    [[0],[1]]
+                )
+            )
+        )
+
+    def test_swap_operator_matrix(self) -> None:
+        env1 = Envelope()
+        env1.polarization.state = PolarizationLabel.V
+        env2 = Envelope()
+
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.polarization, env2.polarization)
+        ce.expand(env1.polarization)
+
+        op = Operation(CompositeOperationType.SwapPolarization)
+        ce.apply_operation(op, env1.polarization, env2.polarization)
+        self.assertTrue(
+            jnp.allclose(
+                env1.polarization.trace_out(),
+                jnp.array(
+                    [[1],[0]]
+                )
+            )
+        )
+
+        self.assertTrue(
+            jnp.allclose(
+                env2.polarization.trace_out(),
+                jnp.array(
+                    [[0],[1]]
+                )
+            )
+        )
+
+class TestCSWAPOperator(unittest.TestCase):
+    def test_CSWAP_vector(self) -> None:
+        env1 = Envelope()
+        env1.polarization.state = PolarizationLabel.V
+        env2 = Envelope()
+        env2.polarization.state = PolarizationLabel.V
+        env3 = Envelope()
+
+        ce = CompositeEnvelope(env1, env2, env3)
+        ce.combine(env1.polarization, env2.polarization, env3.polarization)
+
+        op = Operation(CompositeOperationType.CSwapPolarization)
+        ce.apply_operation(op, env1.polarization, env2.polarization, env3.polarization)
+
+        self.assertTrue(
+            jnp.allclose(
+                env1.polarization.trace_out(),
+                jnp.array(
+                    [[0],[1]]
+                )
+            )
+        )
+        self.assertTrue(
+            jnp.allclose(
+                env2.polarization.trace_out(),
+                jnp.array(
+                    [[1],[0]]
+                )
+            )
+        )
+        self.assertTrue(
+            jnp.allclose(
+                env1.polarization.trace_out(),
+                jnp.array(
+                    [[0],[1]]
+                )
+            )
+        )
+
+    @pytest.mark.my_marker
+    def test_CSWAP_vector(self) -> None:
+        env1 = Envelope()
+        env1.polarization.state = PolarizationLabel.V
+        env2 = Envelope()
+        env2.polarization.state = PolarizationLabel.V
+        env3 = Envelope()
+
+        ce = CompositeEnvelope(env1, env2, env3)
+        ce.combine(env1.polarization, env2.polarization, env3.polarization)
+        ce.expand(env1.polarization)
+
+        op = Operation(CompositeOperationType.CSwapPolarization)
+        ce.apply_operation(op, env1.polarization, env2.polarization, env3.polarization)
+
+        self.assertTrue(
+            jnp.allclose(
+                env1.polarization.trace_out(),
+                jnp.array(
+                    [[0],[1]]
+                )
+            )
+        )
+        self.assertTrue(
+            jnp.allclose(
+                env2.polarization.trace_out(),
+                jnp.array(
+                    [[1],[0]]
+                )
+            )
+        )
+        self.assertTrue(
+            jnp.allclose(
+                env1.polarization.trace_out(),
+                jnp.array(
+                    [[0],[1]]
                 )
             )
         )

@@ -17,6 +17,7 @@ from photon_weave.photon_weave import Config
 from photon_weave.state.base_state import BaseState
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.expansion_levels import ExpansionLevel
+from photon_weave.operation import CustomStateOperationType, Operation
 
 
 class CustomState(BaseState):
@@ -64,6 +65,8 @@ class CustomState(BaseState):
         """
         Expands the state from label to vector and from vector to matrix
         """
+        if isinstance(self.index, tuple):
+            self.composite_envelope.expand(self)
         if self.expansion_level == ExpansionLevel.Label:
             assert isinstance(self.state, int)
             assert self.state >= 0 and self.state < self.dimensions
@@ -307,6 +310,63 @@ class CustomState(BaseState):
             raise ValueError("Kraus operators do not sum to the identity")
 
         self.state = apply_kraus(self.state, operators)
+        C = Config()
+        if C.contractions:
+            self.contract()
+
+    def apply_operation(self, operation: Operation) -> None:
+        """
+        Applies an operation to the state. If state is in some product
+        state, the operator is correctly routed to the specific
+        state
+
+        Parameters
+        ----------
+        operation: Operation
+            Operation with operation type: FockOperationType
+        """
+        assert isinstance(operation._operation_type, CustomStateOperationType)
+
+        if isinstance(self.index, tuple):
+            assert isinstance(self.composite_envelope, CompositeEnvelope)
+            self.composite_envelope.apply_operation(operation, self)
+            return
+
+        while self.expansion_level < operation.required_expansion_level:
+            self.expand()
+
+        # Consolidate the dimensions
+        operation.compute_dimensions(0, self.trace_out())
+
+        assert operation.operator.shape == (self.dimensions, self.dimensions)
+
+        if self.expansion_level == ExpansionLevel.Vector:
+            assert isinstance(self.state, jnp.ndarray)
+            assert self.state.shape == (self.dimensions, 1)
+            self.state = jnp.einsum("ij,jk->ik", operation.operator, self.state)
+            if not jnp.any(jnp.abs(self.state) > 0):
+                raise ValueError(
+                    "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
+                )
+            cummulative = 0
+            if operation.renormalize:
+                self.state = self.state / jnp.linalg.norm(self.state)
+        if self.expansion_level == ExpansionLevel.Matrix:
+            assert isinstance(self.state, jnp.ndarray)
+            assert self.state.shape == (self.dimensions, self.dimensions)
+            self.state = jnp.einsum(
+                "ca,ab,db->cd",
+                operation.operator,
+                self.state,
+                jnp.conj(operation.operator),
+            )
+            if not jnp.any(jnp.abs(self.state) > 0):
+                raise ValueError(
+                    "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
+                )
+            if operation.renormalize:
+                self.state = self.state / jnp.linalg.norm(self.state)
+
         C = Config()
         if C.contractions:
             self.contract()
