@@ -200,7 +200,7 @@ class PolarizationOperationType(Enum):
     def compute_dimensions(
             self,
             num_quanta: Union[int, List[int]],
-            state:Union[jnp.ndarray, List[jnp.jnp.ndarrayy]],
+            state:Union[jnp.ndarray, List[jnp.ndarray]],
             threshold:float = 1, **kwargs:Any) -> List[int]:
         """
         Computes operation

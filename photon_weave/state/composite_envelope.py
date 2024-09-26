@@ -1403,6 +1403,10 @@ class CompositeEnvelope:
             ps = [p for p in self.states if any(so in p.state_objs for so in states)][0]
         elif len(product_states) == 1:
             ps = product_states[0]
+        if len(product_states) == 0:
+            all_states = [s for s in states]
+            self.combine(*all_states)
+            ps = [p for p in self.states if any(so in p.state_objs for so in states)][0]
 
         assert isinstance(ps, ProductState)
         ps.apply_operation(operator, *states)

@@ -9,7 +9,7 @@
             "()": "photon_weave.logging.logging.PhotonWeaveJSONFormatter",
             "fmt_keys": {
                 "level": "levelname",
-                "mesage": "message",
+                "message": "message",
                 "timestamp": "timestamp",
                 "logger": "name",
                 "module": "module",
