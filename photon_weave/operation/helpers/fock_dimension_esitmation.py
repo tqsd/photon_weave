@@ -1,4 +1,10 @@
 import jax.numpy as jnp
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from photon_weave.operation import Operation
+
+
 
 
 class FockDimensions:
@@ -48,14 +54,14 @@ class FockDimensions:
         from photon_weave.operation.fock_operation import FockOperationType
 
         if self.operation._operation_type is FockOperationType.Displace:
-            cutoff = self.num_quanta + 3 * jnp.abs(self.operation.kwargs["alpha"]) ** 2
+            cutoff = int(self.num_quanta + 3 * jnp.abs(self.operation.kwargs["alpha"]) ** 2)
             if cutoff > self.dimensions:
-                self._increase_dimensions(amount=cutoff - self.dimensions)
+                self._increase_dimensions(amount=int(cutoff) - self.dimensions)
         if self.operation._operation_type is FockOperationType.Squeeze:
             r = jnp.abs(self.operation.kwargs["zeta"])
             en = (2 * self.num_quanta + 1) * jnp.sinh(r) ** 2 + self.num_quanta
-            en = int(jnp.ceil(en))
-            cutoff = int(self.num_quanta + 3 * en)
+            en_int = int(jnp.ceil(en))
+            cutoff = int(self.num_quanta + 3 * en_int)
             if cutoff > self.dimensions:
                 self._increase_dimensions(amount=cutoff - self.dimensions)
 
@@ -71,23 +77,23 @@ class FockDimensions:
             method needs to be tried again
         """
         if self.state.shape == (self.dimensions, 1):
-            self.operation._dimensions = self.dimensions
+            self.operation._dimensions = [self.dimensions]
             operator = self.operation._operation_type.compute_operator(
                 [self.dimensions],
                 **self.operation.kwargs
             )
             resulting_state = jnp.dot(operator, self.state)
-            cdf = 0
+            cdf:float = 0
             if resulting_state[-1, 0] > (1 - self.threshold) * 1e-3:
                 return -1
             for i in range(len(resulting_state)):
                 tmp = jnp.abs(resulting_state[i][0]) ** 2
-                cdf += tmp
+                cdf += float(tmp)
                 if cdf >= self.threshold:
                     return i + 3
             return -1
         if self.state.shape == (self.dimensions, self.dimensions):
-            self.operation._dimensions = self.dimensions
+            self.operation._dimensions = [self.dimensions]
             operator = self.operation._operation_type.compute_operator(
                 [self.dimensions],
                 **self.operation.kwargs
@@ -98,7 +104,7 @@ class FockDimensions:
                 return -1
             for i in range(self.dimensions):
                 tmp = jnp.abs(resulting_state[i, i])
-                cdf += tmp
+                cdf += float(tmp)
 
                 if cdf >= self.threshold:
                     return i + 3

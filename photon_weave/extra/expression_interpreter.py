@@ -5,7 +5,7 @@ from typing import List, Callable, Dict
 
 
 def interpreter(expr: tuple,
-                context: Dict[str, Callable[List[int], jnp.ndarray]],
+                context: Dict[str, Callable[[List[int]], jnp.ndarray]],
                 dimensions: List[int]) -> jnp.ndarray:
     """
     Recursively compute an operator from an expression, context and dimensions
@@ -14,7 +14,7 @@ def interpreter(expr: tuple,
     ----------
     expr: tuple
         Expression defined in a lisp style tuples
-    context: Dict[str, Callable[List[int], jnp.ndarray]]
+    context: Dict[str, Callable[[List[int]], jnp.ndarray]]
         Context is a dictionary of callables (lambda functions)
         Every lambda should accept list of integers (dimensions)
         and return a jnp.ndarray operator matrix
@@ -109,3 +109,4 @@ def interpreter(expr: tuple,
     else:
         # Grab literal value
         return expr
+    raise ValueError("Something went wrong in the expression interpreter!")

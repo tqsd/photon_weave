@@ -102,7 +102,7 @@ class ProductState:
             state = self.state.reshape(shape)
 
             # Generate the Einsum String
-            einsum = ESC.reorder_vector(self.state_objs, ordered_states)
+            einsum = ESC.reorder_vector(self.state_objs, list(ordered_states))
 
             # Perform the reordering
             state = jnp.einsum(einsum, state)
@@ -118,7 +118,7 @@ class ProductState:
             state = self.state.reshape(shape)
 
             # Get the einstein sum string
-            einsum = ESC.reorder_matrix(self.state_objs, ordered_states)
+            einsum = ESC.reorder_matrix(self.state_objs, list(ordered_states))
 
             # Perform reordering
             state = jnp.einsum(einsum, state)
@@ -346,7 +346,7 @@ class ProductState:
         ps = self.state.reshape([s.dimensions for s in self.state_objs] * 2)
 
         # Generate the operators for application of operators
-        einsum = ESC.apply_operator_matrix(self.state_objs, states)
+        einsum = ESC.apply_operator_matrix(self.state_objs, list(states))
 
         dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
 
@@ -361,7 +361,7 @@ class ProductState:
             prob_state = jnp.einsum(einsum, op, ps, jnp.conj(op))
 
             # Trace out the state to get the probabilities
-            einsum_to = ESC.trace_out_matrix(self.state_objs, states)
+            einsum_to = ESC.trace_out_matrix(self.state_objs, list(states))
             prob_state_to = jnp.einsum(einsum_to, prob_state).reshape((to_dims, to_dims))
 
             # Compute the outcome probability
@@ -429,7 +429,7 @@ class ProductState:
             operators = [op.reshape(op_shape) for op in operators]
 
             # Generate einsum
-            einsum = ESC.apply_operator_vector(self.state_objs, states)
+            einsum = ESC.apply_operator_vector(self.state_objs, list(states))
 
             # Apply all operators
             resulting_state = jnp.zeros_like(ps)
@@ -449,7 +449,7 @@ class ProductState:
             operators = [op.reshape(op_shape) for op in operators]
 
             # Genetate einsum
-            einsum = ESC.apply_operator_matrix(self.state_objs, states)
+            einsum = ESC.apply_operator_matrix(self.state_objs, list(states))
 
             # Generate a new state to sum into
             resulting_state = jnp.zeros_like(ps)
@@ -489,7 +489,7 @@ class ProductState:
             ps = self.state.reshape(shape)
 
             # Compute einsum string
-            einsum = ESC.trace_out_vector(self.state_objs, states)
+            einsum = ESC.trace_out_vector(self.state_objs, list(states))
 
             # Perform the tracing
             traced_out_state = jnp.einsum(einsum, ps)
@@ -501,7 +501,7 @@ class ProductState:
             ps = self.state.reshape([s.dimensions for s in self.state_objs] * 2)
 
             # Generate einsum string
-            einsum = ESC.trace_out_matrix(self.state_objs, states)
+            einsum = ESC.trace_out_matrix(self.state_objs, list(states))
 
             # Perform the tracing
             traced_out_state = jnp.einsum(einsum, ps)
@@ -554,6 +554,7 @@ class ProductState:
             if new_dimensions > fock.dimensions:
                 padding = new_dimensions - fock.dimensions
                 pad_config = [(0, 0) for _ in range(ps.ndim)]
+                assert isinstance(fock.index, tuple)
                 pad_config[fock.index[1]] = (0, padding)
                 ps = jnp.pad(ps, pad_config, mode="constant", constant_values=0)
                 fock.dimensions = new_dimensions
@@ -562,6 +563,8 @@ class ProductState:
                 return True
             if new_dimensions < fock.dimensions:
                 to = fock.trace_out()
+                assert isinstance(to,jnp.ndarray)
+                assert isinstance(fock.index, tuple)
                 num_quanta = num_quanta_vector(to)
                 if num_quanta >= new_dimensions:
                     return False
@@ -582,6 +585,7 @@ class ProductState:
             ]
             ps = self.state.reshape([*shape, *shape]).transpose(transpose_pattern)
             if new_dimensions > fock.dimensions:
+                assert isinstance(fock.index, tuple)
                 padding = new_dimensions - fock.dimensions
                 pad_config = [(0, 0) for _ in range(ps.ndim)]
                 pad_config[fock.index[1] * len(self.state_objs)] = (0, padding)
@@ -594,6 +598,8 @@ class ProductState:
                 return True
             if new_dimensions < fock.dimensions:
                 to = fock.trace_out()
+                assert isinstance(to, jnp.ndarray)
+                assert isinstance(fock.index, tuple)
                 num_quanta = num_quanta_matrix(to)
                 if num_quanta >= new_dimensions:
                     return False
@@ -608,6 +614,7 @@ class ProductState:
                 dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
                 self.state = jnp.array(ps.reshape((dims, dims)))
                 return True
+        return False
 
     def apply_operation(self, operation: Operation, *states: "BaseState") -> None:
         """
@@ -629,28 +636,32 @@ class ProductState:
         if isinstance(operation._operation_type, FockOperationType):
             assert isinstance(states[0], Fock)
             assert len(states) == 1
-            operation.compute_dimensions(states[0]._num_quanta, states[0].trace_out())
+            to = states[0].trace_out()
+            assert isinstance(to, jnp.ndarray)
+            operation.compute_dimensions(states[0]._num_quanta, to)
             states[0].resize(operation.dimensions[0])
         elif isinstance(operation._operation_type, PolarizationOperationType):
             assert isinstance(states[0], Polarization)
             assert len(states) == 1
             # Parameters doesn't have any effect
-            operation.compute_dimensions(0,0)
+            operation.compute_dimensions(0,jnp.array([0]))
         elif isinstance(operation._operation_type, CustomStateOperationType):
             assert isinstance(states[0], CustomState)
             assert len(states) == 1
-            operation.compute_dimensions(0, states[0].trace_out())
+            to = states[0].trace_out()
+            assert isinstance(to, jnp.ndarray)
+            operation.compute_dimensions(0, to)
         elif isinstance(operation._operation_type, CompositeOperationType):
             assert len(states) == len(
                 operation._operation_type.expected_base_state_types
             )
             for i, s in enumerate(states):
                 assert isinstance(
-                    s, operation._operation_type.expected_base_state_types[i]
+                    s, operation._operation_type.expected_base_state_types[i] # type: ignore
                 )
             operation.compute_dimensions(
                 [s._num_quanta if isinstance(s, Fock) else 0 for s in states],
-                [s.trace_out() for s in states]
+                [s.trace_out() for s in states] # type: ignore
             )
             for i, s in enumerate(states):
                 if isinstance(s, Fock):
@@ -670,7 +681,7 @@ class ProductState:
             operator = operation.operator.reshape([s.dimensions for s in states] * 2)
 
             # Generate the Einstein sum string
-            einsum = ESC.apply_operator_vector(self.state_objs, states)
+            einsum = ESC.apply_operator_vector(self.state_objs, list(states))
 
             # Constructing einsum string
             ps = jnp.einsum(einsum, operator, ps)
@@ -694,7 +705,7 @@ class ProductState:
             operator = operation.operator.reshape([s.dimensions for s in states] * 2)
 
             # Generate Einstein sum string
-            einsum = ESC.apply_operator_matrix(self.state_objs, states)
+            einsum = ESC.apply_operator_matrix(self.state_objs, list(states))
 
             # Apply the Einstein Summation
             ps = jnp.einsum(einsum, operator, ps, jnp.conj(operator))
@@ -1357,11 +1368,11 @@ class CompositeEnvelope:
         if len(ps) != 1:
             raise ValueError("Something went wrong")  # pragma : no cover
 
-        ps = ps[0]
+        new_ps = ps[0]
         self.reorder(fock)
-        return ps.resize_fock(new_dimensions, fock)
+        return new_ps.resize_fock(new_dimensions, fock)
 
-    def apply_operation(self, operator: Operation, *states: ["BaseState"]) -> None:
+    def apply_operation(self, operator: Operation, *states: Union["BaseState", "CustomState"]) -> None:
         """
         Applies the operation to the correct product space. If operator
         has type CompositeOperator, then the product states are joined if
@@ -1377,6 +1388,7 @@ class CompositeEnvelope:
 
         if len(states) == 1:
             if not isinstance(states[0].index, tuple):
+                assert hasattr(states[0], "apply_operation")
                 states[0].apply_operation(operator)
                 return
         product_states = [
@@ -1392,4 +1404,5 @@ class CompositeEnvelope:
         elif len(product_states) == 1:
             ps = product_states[0]
 
+        assert isinstance(ps, ProductState)
         ps.apply_operation(operator, *states)

@@ -66,6 +66,7 @@ class CustomState(BaseState):
         Expands the state from label to vector and from vector to matrix
         """
         if isinstance(self.index, tuple):
+            assert isinstance(self.composite_envelope, CompositeEnvelope)
             self.composite_envelope.expand(self)
         if self.expansion_level == ExpansionLevel.Label:
             assert isinstance(self.state, int)
@@ -332,11 +333,14 @@ class CustomState(BaseState):
             self.composite_envelope.apply_operation(operation, self)
             return
 
+        assert isinstance(self.expansion_level, ExpansionLevel)
         while self.expansion_level < operation.required_expansion_level:
             self.expand()
 
         # Consolidate the dimensions
-        operation.compute_dimensions(0, self.trace_out())
+        to = self.trace_out()
+        assert isinstance(to,jnp.ndarray)
+        operation.compute_dimensions(0, to)
 
         assert operation.operator.shape == (self.dimensions, self.dimensions)
 

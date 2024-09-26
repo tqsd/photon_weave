@@ -1,6 +1,6 @@
 
 from enum import Enum
-from typing import Any, List
+from typing import Any, List, Union
 import jax.numpy as jnp
 from jax.scipy.linalg import expm
 import importlib
@@ -21,7 +21,7 @@ from photon_weave.state.base_state import BaseState
 #from photon_weave.state.fock import Fock
 
 class CompositeOperationType(Enum):
-    """
+    r"""
     CompositeOperationType
 
     Constructs an operator, which acts on multiple spaces
@@ -151,17 +151,17 @@ class CompositeOperationType(Enum):
     method call.
     """
 
-    NonPolarizingBeamSplitter = (True, ["eta"], ["Fock", "Fock"], ExpansionLevel.Vector, 1)
-    CXPolarization = (True, [], ["Polarization", "Polarization"], ExpansionLevel.Vector, 2)
-    SwapPolarization = (True, [], ["Polarization", "Polarization"], ExpansionLevel.Vector, 3)
-    CSwapPolarization = (True, [], ["Polarization" for _ in range(3)], ExpansionLevel.Vector, 4)
-    CZPolarization = (True, [], ["Polarization" for _ in range(2)], ExpansionLevel.Vector, 5)
-    Expression = (True, ["expr","state_types", "context"], [], ExpansionLevel.Vector, 6)
+    NonPolarizingBeamSplitter = (True, ["eta"], ["Fock", "Fock"], ExpansionLevel.Vector, 1) # type: ignore
+    CXPolarization = (True, [], ["Polarization", "Polarization"], ExpansionLevel.Vector, 2) # type: ignore
+    SwapPolarization = (True, [], ["Polarization", "Polarization"], ExpansionLevel.Vector, 3) # type: ignore
+    CSwapPolarization = (True, [], ["Polarization" for _ in range(3)], ExpansionLevel.Vector, 4) # type: ignore
+    CZPolarization = (True, [], ["Polarization" for _ in range(2)], ExpansionLevel.Vector, 5) # type: ignore
+    Expression = (True, ["expr","state_types", "context"], [], ExpansionLevel.Vector, 6) # type: ignore
 
-    def __init__(self, renormalize: bool, required_params: list,
+    def __init__(self, renormalize: bool, required_params: List[str],
                  expected_base_state_types: List[BaseState],
                  required_expansion_level: ExpansionLevel,
-                 op_id) -> None:
+                 op_id: int) -> None:
         
         self.renormalize = renormalize
         self.required_params = required_params
@@ -190,7 +190,7 @@ class CompositeOperationType(Enum):
             elif state_type == "CustomState":
                 self.expected_base_state_types[i] = CustomState 
 
-    def compute_operator(self, dimensions:List[int], **kwargs: Any):
+    def compute_operator(self, dimensions:List[int], **kwargs: Any) -> jnp.ndarray:
         """
         Generates the operator for this operation, given
         the dimensions
@@ -223,11 +223,12 @@ class CompositeOperationType(Enum):
                 return controlled_z_operator()
             case CompositeOperationType.Expression:
                 return interpreter(kwargs["expr"], kwargs["context"], dimensions)
+        raise ValueError("Operation Type not recognized")
         
     def compute_dimensions(
             self,
-            num_quanta: List[int],
-            states: jnp.ndarray,
+            num_quanta: Union[int, List[int]],
+            states: Union[jnp.ndarray, List[jnp.ndarray]],
             threshold: float = 1 - 1e6,
             **kwargs: Any
     ) -> List[int]:
@@ -275,4 +276,7 @@ class CompositeOperationType(Enum):
             case CompositeOperationType.CZPolarization:
                 return [2,2]
             case CompositeOperationType.Expression:
+                assert isinstance(num_quanta, list)
                 return [d+1 for d in num_quanta]
+        raise ValueError("Operation Type not recognized")
+

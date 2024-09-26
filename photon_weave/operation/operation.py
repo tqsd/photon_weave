@@ -5,6 +5,8 @@ import jax.numpy as jnp
 
 from photon_weave.operation.fock_operation import FockOperationType
 from photon_weave.operation.polarization_operation import PolarizationOperationType
+from photon_weave.operation.composite_operation import CompositeOperationType
+from photon_weave.operation.custom_state_operation import CustomStateOperationType
 from photon_weave.state.expansion_levels import ExpansionLevel
 
 
@@ -22,12 +24,20 @@ class Operation:
 
     def __init__(
         self,
-        operation_type: Enum,
+        operation_type: Union[
+            FockOperationType,
+            PolarizationOperationType,
+            CompositeOperationType,
+            CustomStateOperationType],
         expression: Optional[str] = None,
         apply_count: int = 1,
         **kwargs: Any,
     ) -> None:
-        self._operation_type: Enum = operation_type
+        self._operation_type: Union[
+            FockOperationType,
+            PolarizationOperationType,
+            CompositeOperationType,
+            CustomStateOperationType] = operation_type
         self._operator: Optional[jnp.ndarray] = None
         self._apply_count: int = apply_count
         self._renormalize: bool
@@ -38,7 +48,7 @@ class Operation:
         if operation_type is FockOperationType.Custom:
             assert isinstance(kwargs["operator"], jnp.ndarray)
             self._operator = kwargs["operator"]
-            self._dimensions = [self._operator.shape[0]]
+            self._dimensions:List[int] = [self._operator.shape[0]]
 
         for param in operation_type.required_params:
             if param not in kwargs:
@@ -79,21 +89,26 @@ class Operation:
 
     @property
     def dimensions(self) -> List[int]:
+        assert isinstance(self._dimensions, list)
         return self._dimensions
 
     @dimensions.setter
     def dimensions(self, dimensions: List[int]) -> None:
         self._dimensions = dimensions
 
-    def compute_dimensions(self, num_quanta: int, state: jnp.ndarray) -> None:
+    def compute_dimensions(self, num_quanta: Union[int, List[int]],
+                           state: Union[jnp.ndarray, List[jnp.ndarray]]) -> None:
         """
         Returns the esitmated required dimensions for the
         application of this operation
 
         Parameters
         ----------
-        num_quanta: int
-            Current maximum number state amplitude
+        num_quanta: Union[int, List[int]]
+            Current maximum number state amplitude or list of the values
+        state: Union[jnp.ndarray, List[jnp.ndarray]]
+            Traced out state for the dimension estimation or list
+            of the traced out states
         """
         if not self._operation_type is FockOperationType.Custom:
             self._dimensions = self._operation_type.compute_dimensions(
@@ -117,8 +132,8 @@ class Operation:
         return self._operator
 
     @operator.setter
-    def operator(self, operator: jnp.ndarray):
+    def operator(self, operator: jnp.ndarray) -> None:
         assert isinstance(operator, jnp.ndarray)
-        if not self._operation_type not in (FockOperationType.Custom):
+        if not self._operation_type is FockOperationType.Custom:
             raise ValueError(f"Operator can only be configured for the Custom types")
         self._operator = operator

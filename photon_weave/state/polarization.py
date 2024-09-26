@@ -356,10 +356,11 @@ class Polarization(BaseState):
             self.composite_envelope.apply_operation(operation, self)
             return
 
+        assert isinstance(self.expansion_level, ExpansionLevel)
         while self.expansion_level < operation.required_expansion_level:
             self.expand()
 
-        operation.compute_dimensions(0, 0)
+        operation.compute_dimensions(0, jnp.array([0]))
 
         if self.expansion_level == ExpansionLevel.Vector:
             assert isinstance(self.state, jnp.ndarray)

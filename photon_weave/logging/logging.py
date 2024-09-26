@@ -29,9 +29,9 @@ def setup_logging() -> None:
 
     queue_handler = logging.getHandlerByName("queue_handler")
     if queue_handler is not None:
+        assert hasattr(queue_handler, "listener")
         queue_handler.listener.start()
         atexit.register(queue_handler.listener.stop)
-
 
 class PhotonWeaveJSONFormatter(logging.Formatter):
     """

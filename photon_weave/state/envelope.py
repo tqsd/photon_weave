@@ -1086,6 +1086,10 @@ class Envelope:
             return self.fock.resize(new_dimensions)
 
         reshape_shape = [-1, -1]
+        assert isinstance(self.fock.dimensions, int)
+        assert isinstance(self.fock.index, int)
+        assert isinstance(self.polarization.dimensions, int)
+        assert isinstance(self.polarization.index, int)
         reshape_shape[self.fock.index] = self.fock.dimensions
         reshape_shape[self.polarization.index] = self.polarization.dimensions
 
@@ -1104,6 +1108,7 @@ class Envelope:
                 return True
             if new_dimensions < self.fock.dimensions:
                 to = self.trace_out(self.fock)
+                assert isinstance(to, jnp.ndarray)
                 num_quanta = num_quanta_vector(to)
                 if num_quanta >= new_dimensions:
                     # Cannot hrink because amplitues exist beyond new_dimensions
@@ -1133,6 +1138,7 @@ class Envelope:
                 return True
             if new_dimensions <= self.fock.dimensions:
                 to = self.trace_out(self.fock)
+                assert isinstance(to, jnp.ndarray)
                 num_quanta = num_quanta_matrix(to)
                 if num_quanta >= new_dimensions:
                     return False
@@ -1187,15 +1193,21 @@ class Envelope:
         if isinstance(operation._operation_type, FockOperationType) and isinstance(
             states[0], Fock
         ):
-            operation.compute_dimensions(states[0]._num_quanta, self.fock.trace_out())
+            to = self.fock.trace_out()
+            assert isinstance(to, jnp.ndarray)
+            operation.compute_dimensions(states[0]._num_quanta, to)
             states[0].resize(operation.dimensions[0])
         elif isinstance(operation._operation_type, PolarizationOperationType) and isinstance(
                 states[0], Polarization
         ):
             # Given arguments 0,0 don't have an effect
-            operation.compute_dimensions(0,0)
+            operation.compute_dimensions([0],jnp.array([0]))
 
         reshape_shape = [-1, -1]
+        assert isinstance(self.fock.index, int)
+        assert isinstance(self.fock.dimensions, int)
+        assert isinstance(self.polarization.index, int)
+        assert isinstance(self.polarization.dimensions, int)
         reshape_shape[self.fock.index] = self.fock.dimensions
         reshape_shape[self.polarization.index] = self.polarization.dimensions
 

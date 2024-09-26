@@ -3,7 +3,7 @@ Operations on fock spaces
 """
 
 from enum import Enum
-from typing import Any, List
+from typing import Any, List, Tuple, Union
 
 import jax.numpy as jnp
 
@@ -21,7 +21,7 @@ from photon_weave.state.expansion_levels import ExpansionLevel
 
 
 class FockOperationType(Enum):
-    """
+    r"""
     FockOperationType
 
     Constructs an operator, which acts on a single Fock space.
@@ -111,14 +111,14 @@ class FockOperationType(Enum):
     >>> fock.apply_operation(op)
     """
 
-    Creation = (True, [], ExpansionLevel.Vector, 1)
-    Annihilation = (True, [], ExpansionLevel.Vector, 2)
-    PhaseShift = (False, ["phi"], ExpansionLevel.Vector, 3)
-    Squeeze = (True, ["zeta"], ExpansionLevel.Vector, 4)
-    Displace = (False, ["alpha"], ExpansionLevel.Vector, 5)
-    Identity = (False, [], ExpansionLevel.Vector, 6)
-    Custom = (False, ["operator"], ExpansionLevel.Vector, 7)
-    Expresion = (False, ["expr", "context"], ExpansionLevel.Vector, 8)
+    Creation:Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 1)
+    Annihilation:Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 2)
+    PhaseShift:Tuple[bool, List[str], ExpansionLevel, int] = (False, ["phi"], ExpansionLevel.Vector, 3)
+    Squeeze:Tuple[bool, List[str], ExpansionLevel, int] = (True, ["zeta"], ExpansionLevel.Vector, 4)
+    Displace:Tuple[bool, List[str], ExpansionLevel, int] = (False, ["alpha"], ExpansionLevel.Vector, 5)
+    Identity:Tuple[bool, List[str], ExpansionLevel, int] = (False, [], ExpansionLevel.Vector, 6)
+    Custom:Tuple[bool, List[str], ExpansionLevel, int] = (False, ["operator"], ExpansionLevel.Vector, 7)
+    Expresion:Tuple[bool, List[str], ExpansionLevel, int] = (False, ["expr", "context"], ExpansionLevel.Vector, 8)
 
     def __init__(
         self,
@@ -169,11 +169,12 @@ class FockOperationType(Enum):
                 return interpreter(kwargs["expr"], kwargs["context"], dimensions)
             case FockOperationType.Custom:
                 return kwargs["operator"]
+        raise ValueError("Something went wrong in operation generation")
 
     def compute_dimensions(
         self,
-        num_quanta: int,
-        state: jnp.ndarray,
+        num_quanta: Union[int, List[int]],
+        state: Union[jnp.ndarray, List[jnp.ndarray]],
         threshold: float = 1 - 1e-6,
         **kwargs: Any,
     ) -> List[int]:
@@ -209,6 +210,8 @@ class FockOperationType(Enum):
         and the dimensionality of the operator and space match
         """
         from photon_weave.operation.operation import Operation
+        assert isinstance(num_quanta, int)
+        assert isinstance(state, jnp.ndarray)
 
         match self:
             case FockOperationType.Creation:
@@ -243,3 +246,4 @@ class FockOperationType(Enum):
                     threshold,
                 )
                 return [fd.compute_dimensions()]
+        raise ValueError("Something went wrong in dimension estimation")

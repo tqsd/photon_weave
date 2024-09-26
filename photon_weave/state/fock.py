@@ -225,6 +225,7 @@ class Fock(BaseState):
                 return int(num_quanta_matrix(self.state))
         elif self.state is None:
             to = self.trace_out()
+            assert isinstance(to, jnp.ndarray)
             if to.shape == (self.dimensions, 1):
                 return int(num_quanta_vector(to))
             elif to.shape == (self.dimensions, self.dimensions):
@@ -330,7 +331,7 @@ class Fock(BaseState):
         self.index = None
         self.expansion_level = None
 
-    def resize(self, new_dimensions: bool) -> bool:
+    def resize(self, new_dimensions: int) -> bool:
         """
         Resizes the space to the new dimensions.
         If the dimensions are more, than the current dimensions, then
@@ -404,6 +405,7 @@ class Fock(BaseState):
         elif isinstance(self.index, tuple):
             assert isinstance(self.composite_envelope, CompositeEnvelope)
             return self.composite_envelope.resize_fock(new_dimensions, self)
+        return False
 
     def apply_operation(self, operation: Operation) -> None:
         """
@@ -428,11 +430,15 @@ class Fock(BaseState):
             self.composite_envelope.apply_operation(operation, self)
             return
 
+        assert isinstance(self.expansion_level, ExpansionLevel)
+        assert isinstance(operation.required_expansion_level, ExpansionLevel)
         while self.expansion_level < operation.required_expansion_level:
             self.expand()
 
         # Consolidate the dimensions
-        operation.compute_dimensions(self._num_quanta, self.trace_out())
+        to = self.trace_out()
+        assert isinstance(to, jnp.ndarray)
+        operation.compute_dimensions(self._num_quanta,to) 
         self.resize(operation.dimensions[0])
 
         if self.expansion_level == ExpansionLevel.Vector:

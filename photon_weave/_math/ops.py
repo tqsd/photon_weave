@@ -245,9 +245,12 @@ def number_operator(cutoff: int) -> jnp.ndarray:
     """
     return jnp.matmul(creation_operator(cutoff), annihilation_operator(cutoff))
 
-def _expm(mat: jnp.ndarray) -> np.ndarray:
+def _expm(mat: jnp.ndarray) -> jnp.ndarray:
+    """
+    Exponential Matrix
+    """
     eigvals, eigvecs = jnp.linalg.eig(mat)
-    return eigvecs @ jnp.diag(jnp.exp(eigvals)) @ jnp.linalg.pinv(eigvecs)
+    return jnp.array(eigvecs @ jnp.diag(jnp.exp(eigvals)) @ jnp.linalg.pinv(eigvecs))
 
 
 def squeezing_operator(cutoff: int, zeta: complex) -> jnp.ndarray:
@@ -285,7 +288,7 @@ def displacement_operator(cutoff: int, alpha: complex) -> jnp.ndarray:
 
 
 def phase_operator(cutoff: int, theta: float) -> jnp.ndarray:
-    """
+    r"""
     Returns a phase shift operator, given the dimensions
 
     .. math::
@@ -365,7 +368,6 @@ def apply_kraus(
     return new_density_matrix
 
 
-@jit
 def kraus_identity_check(
     operators: List[Union[np.ndarray, jnp.ndarray]], tol: float = 1e-6
 ) -> bool:
@@ -387,7 +389,7 @@ def kraus_identity_check(
     dim = operators[0].shape[0]
     identity_matrix = jnp.eye(dim)
     sum_kraus = sum(jnp.matmul(jnp.conjugate(K.T), K) for K in operators)
-    return jnp.allclose(sum_kraus, identity_matrix, atol=tol)
+    return jnp.allclose(sum_kraus, identity_matrix, atol=tol).item()
 
 
 @jit
@@ -398,19 +400,29 @@ def normalize_vector(vector: Union[jnp.ndarray, np.ndarray]) -> jnp.ndarray:
     ----------
     vector: Union[jnp.ndarray, np.ndarray]
         Vector which should be normalied
+
+    Returns
+    -------
+    jnp.ndarray
+        Normalized vector state
     """
     trace = jnp.trace(vector)
-    return vector / trace
+    return jnp.array(vector / trace)
 
 
-@jit
 def normalize_matrix(vector: Union[jnp.ndarray, np.ndarray]) -> jnp.ndarray:
     """
     Normalizes the given matrix and returns it
+
     Parameters
     ----------
     vector: Union[jnp.ndarray, np.ndarray]
         Vector which should be normalied
+
+    Returns
+    -------
+    jnp.ndarray
+        Normalized density matrix
     """
     norm = jnp.linalg.norm(vector)
     return vector / norm
@@ -423,12 +435,17 @@ def num_quanta_vector(vector: Union[jnp.ndarray, np.ndarray]) -> int:
     ----------
     vector: Union[jnp.ndarray, np.ndarray]
         vector for which the max possible quantua has to be calculated
+
+    Returns
+    -------
+    int
+        Highest possible measure outcome
     """
     non_zero_indices = jnp.nonzero(vector)[0]
-    return non_zero_indices[-1]
+    return int(non_zero_indices[-1])
 
 
-def num_quanta_matrix(matrix: Union[jnp.ndarray, np.ndarray]) -> int:
+def num_quanta_matrix(matrix: jnp.ndarray) -> int:
     """
     Returns highest possible measurement outcome
     Parameters
@@ -440,11 +457,13 @@ def num_quanta_matrix(matrix: Union[jnp.ndarray, np.ndarray]) -> int:
     non_zero_cols = jnp.any(matrix != 0, axis=0)
 
     highest_non_zero_index_row = (
-        jnp.where(non_zero_rows)[0][-1] if jnp.any(non_zero_rows) else None
+        jnp.where(non_zero_rows)[0][-1].item() if jnp.any(non_zero_rows) else None
     )
     highest_non_zero_index_col = (
-        jnp.where(non_zero_cols)[0][-1] if jnp.any(non_zero_cols) else None
+        jnp.where(non_zero_cols)[0][-1].item() if jnp.any(non_zero_cols) else None
     )
+    assert highest_non_zero_index_row is not None
+    assert highest_non_zero_index_col is not None
     # Determine the overall highest index
     highest_non_zero_index_matrix = max(
         highest_non_zero_index_row, highest_non_zero_index_col
