@@ -36,7 +36,7 @@ def mach_zender_single_shot(phase_shift:float):
 
 
 if __name__ == "__main__":
-    num_shots = 50
+    num_shots = 1000
     angles = jnp.linspace(0, 2 * jnp.pi, 25)
     results = {float(angle): [] for angle in angles}
     for angle in angles:
