@@ -1397,7 +1397,9 @@ class CompositeEnvelope:
             p for p in self.states if any(so in p.state_objs for so in states)
         ]
         ps = None
-        if len(product_states) > 1 or len(product_states) == 1 and not all(states in product_states[0].states):
+        if (len(product_states) > 1 or
+            (len(product_states) == 1 and not all(state in product_states[0].state_objs
+                                                  for state in states))):
             all_states = [s for s in states]
             for p in product_states:
                 all_states.extend([s for s in p.state_objs])

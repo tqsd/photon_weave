@@ -241,7 +241,6 @@ class TestCSWAPOperator(unittest.TestCase):
             jnp.allclose(env1.polarization.trace_out(), jnp.array([[0], [1]]))
         )
 
-    @pytest.mark.my_marker
     def test_CSWAP_vector(self) -> None:
         env1 = Envelope()
         env1.polarization.state = PolarizationLabel.V
