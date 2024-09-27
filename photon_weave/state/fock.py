@@ -5,17 +5,12 @@ Fock state
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 from photon_weave._math.ops import (
-    apply_kraus,
-    kraus_identity_check,
-    normalize_matrix,
-    normalize_vector,
     num_quanta_matrix,
     num_quanta_vector,
 )
@@ -450,7 +445,6 @@ class Fock(BaseState):
                 raise ValueError(
                     "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
                 )
-            cummulative = 0
             if operation.renormalize:
                 self.state = self.state / jnp.linalg.norm(self.state)
         if self.expansion_level == ExpansionLevel.Matrix:

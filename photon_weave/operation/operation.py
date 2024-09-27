@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Any, List, Optional, Union
 
 import jax.numpy as jnp
@@ -116,7 +115,7 @@ class Operation:
             Traced out state for the dimension estimation or list
             of the traced out states
         """
-        if not self._operation_type is FockOperationType.Custom:
+        if self._operation_type is not FockOperationType.Custom:
             self._dimensions = self._operation_type.compute_dimensions(
                 num_quanta, state, **self.kwargs
             )
@@ -140,6 +139,6 @@ class Operation:
     @operator.setter
     def operator(self, operator: jnp.ndarray) -> None:
         assert isinstance(operator, jnp.ndarray)
-        if not self._operation_type is FockOperationType.Custom:
-            raise ValueError(f"Operator can only be configured for the Custom types")
+        if self._operation_type is not FockOperationType.Custom:
+            raise ValueError("Operator can only be configured for the Custom types")
         self._operator = operator

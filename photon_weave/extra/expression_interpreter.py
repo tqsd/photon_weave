@@ -1,7 +1,6 @@
 from typing import Callable, Dict, List
 
 import jax.numpy as jnp
-import scipy.linalg as la
 from jax.scipy.linalg import expm
 
 

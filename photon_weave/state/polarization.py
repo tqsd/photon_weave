@@ -20,8 +20,7 @@ from .base_state import BaseState
 from .expansion_levels import ExpansionLevel
 
 if TYPE_CHECKING:
-    from photon_weave.operation import FockOperationType, Operation
-    from photon_weave.operation.polarization_operations import PolarizationOperation
+    from photon_weave.operation import Operation
 
     from .composite_envelope import CompositeEnvelope
     from .envelope import Envelope

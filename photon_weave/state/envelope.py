@@ -9,7 +9,7 @@ from __future__ import annotations
 import itertools
 import logging
 import uuid
-from enum import Enum, auto
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 import jax
@@ -18,25 +18,20 @@ import numpy as np
 from scipy.integrate import quad
 
 from photon_weave._math.ops import (
-    apply_kraus,
     kraus_identity_check,
     num_quanta_matrix,
     num_quanta_vector,
 )
 from photon_weave.constants import C0, gaussian
 from photon_weave.photon_weave import Config
-from photon_weave.state.exceptions import (
-    EnvelopeAlreadyMeasuredException,
-    EnvelopeAssignedException,
-    MissingTemporalProfileArgumentException,
-)
 from photon_weave.state.expansion_levels import ExpansionLevel
+from photon_weave.state.fock import Fock
+from photon_weave.state.polarization import Polarization
 
 if TYPE_CHECKING:
     from photon_weave.operation import Operation
     from photon_weave.state.composite_envelope import CompositeEnvelope
-    from photon_weave.state.fock import Fock
-    from photon_weave.state.polarization import Polarization, PolarizationLabel
+    from photon_weave.state.polarization import PolarizationLabel
 
     from .base_state import BaseState
 
@@ -69,8 +64,6 @@ class TemporalProfileInstance:
 
 
 class Envelope:
-    from photon_weave.state.fock import Fock
-    from photon_weave.state.polarization import Polarization
 
     __slots__ = (
         "uid",
@@ -146,7 +139,6 @@ class Envelope:
         elif self.state is not None and self.expansion_level == ExpansionLevel.Vector:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, 1)
-            flattened_vector = self.state.flatten()
             formatted_vector: Union[str, List[str]]
             formatted_vector = "\n".join(
                 [
@@ -186,7 +178,6 @@ class Envelope:
         Combines the fock and polarization into one vector or matrix and
         stores it under self.composite_vector or self.composite_matrix appropriately
         """
-        from photon_weave.state.envelope import Envelope
         from photon_weave.state.fock import Fock
         from photon_weave.state.polarization import Polarization
 
@@ -257,8 +248,6 @@ class Envelope:
         If state is in the Fock and Polarization instances
         it expands those
         """
-        from photon_weave.state.composite_envelope import CompositeEnvelope
-
         if self.state is None:
             self.fock.expand()
             self.polarization.expand()
@@ -790,7 +779,7 @@ class Envelope:
         dim = int(jnp.prod(jnp.array([s.dimensions for s in states])))
         for op in operators:
             if op.shape != (dim, dim):
-                raise ValueError(f"Kraus operator has incorrect dimension")
+                raise ValueError("Kraus operator has incorrect dimension")
 
         if not kraus_identity_check(operators):
             raise ValueError(
@@ -853,7 +842,7 @@ class Envelope:
             raise ValueError("Too many states given")
 
         for s in states_list:
-            if not s in [self.polarization, self.fock]:
+            if s not in [self.polarization, self.fock]:
                 raise ValueError(
                     "Given states have to be members of the envelope, use env.fock and env.polarization"
                 )
@@ -921,7 +910,7 @@ class Envelope:
             Tolerance when comparing matrices
         """
         # Will not attempt to contract past vector
-        final = ExpansionLevel.Vector
+        # final = ExpansionLevel.Vector
         assert isinstance(self.state, jnp.ndarray)
         assert self.state.shape == (self.dimensions, self.dimensions)
         state_squared = jnp.matmul(self.state, self.state)
@@ -929,7 +918,7 @@ class Envelope:
         if jnp.abs(state_trace - 1) < tol:
             # The state is pure
             eigenvalues, eigenvectors = jnp.linalg.eigh(self.state)
-            close_to_one = jnp.isclose(eigenvalues, 1.0, atol=tol)
+            # close_to_one = jnp.isclose(eigenvalues, 1.0, atol=tol)
             pure_state_index = jnp.argmax(jnp.abs(eigenvalues - 1.0) < tol)
             assert pure_state_index is not None, "pure_state_index should not be None"
             self.state = eigenvectors[:, pure_state_index].reshape(-1, 1)

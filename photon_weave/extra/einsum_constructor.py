@@ -1,5 +1,5 @@
 import itertools
-from typing import TYPE_CHECKING, Dict, List, Union
+from typing import TYPE_CHECKING, Dict, List
 
 if TYPE_CHECKING:
     from photon_weave.state.base_state import BaseState
@@ -179,7 +179,7 @@ def trace_out_vector(state_objs: list, states: list) -> str:
     einsum_list_list: List[List[int]] = [[], []]
     c1 = itertools.count(start=0)
     for so in state_objs:
-        if not so in states:
+        if so not in states:
             c = next(c1)
             einsum_list_list[0].append(c)
         else:
@@ -219,7 +219,7 @@ def trace_out_matrix(state_objs: list, states: list) -> str:
     sum_out = next(counter)
     for _ in range(2):
         for so in state_objs:
-            if not so in states:
+            if so not in states:
                 einsum_list_list[0].append(sum_out)
             else:
                 c = next(counter)
@@ -321,7 +321,7 @@ def measure_vector(state_objs: list, states: list) -> str:
     - State should not be transposed, only reshaped
     """
     einsum_list_list: List[List[int]] = [[], []]
-    einsum_dict: Dict["BaseState", List[int]] = {s: [] for s in state_objs}
+    # einsum_dict: Dict["BaseState", List[int]] = {s: [] for s in state_objs}
     counter = itertools.count(start=0)
 
     for so in state_objs:
@@ -357,7 +357,7 @@ def measure_matrix(state_objs: list, states: list) -> str:
     - State should not be transposed, only reshaped
     """
     einsum_list_list: List[List[int]] = [[], []]
-    einsum_dict: Dict["BaseState", List[int]] = {s: [] for s in state_objs}
+    # einsum_dict: Dict["BaseState", List[int]] = {s: [] for s in state_objs}
     counter = itertools.count(start=0)
 
     for _ in range(2):

@@ -14,7 +14,7 @@ from photon_weave.state.expansion_levels import ExpansionLevel
 if TYPE_CHECKING:
     from photon_weave.state.composite_envelope import CompositeEnvelope
     from photon_weave.state.envelope import Envelope
-    from photon_weave.state.polarization import Polarization, PolarizationLabel
+    from photon_weave.state.polarization import PolarizationLabel
 
 
 class BaseState(ABC):
@@ -32,8 +32,6 @@ class BaseState(ABC):
 
     @abstractmethod
     def __init__(self) -> None:
-        from photon_weave.state.composite_envelope import CompositeEnvelope
-        from photon_weave.state.envelope import Envelope
 
         self._uid: Union[str, UUID] = uuid4()
         self._expansion_level: Optional[ExpansionLevel] = None
@@ -112,7 +110,7 @@ class BaseState(ABC):
             elif isinstance(self.state, int):
                 return f"|{self.state}⟩"
 
-        if self.index != None or self.measured:
+        if self.index is not None or self.measured:
             return str(self.uid)
 
         elif self.expansion_level == ExpansionLevel.Vector:
@@ -268,7 +266,6 @@ class BaseState(ABC):
             is a dictionary with the other potentional measurement outcomes
         """
         from photon_weave.state.envelope import Envelope
-        from photon_weave.state.fock import Fock
         from photon_weave.state.polarization import Polarization
 
         if isinstance(self.index, int):

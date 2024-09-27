@@ -354,7 +354,7 @@ class CustomState(BaseState):
                 raise ValueError(
                     "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
                 )
-            cummulative = 0
+            # cummulative = 0
             if operation.renormalize:
                 self.state = self.state / jnp.linalg.norm(self.state)
         if self.expansion_level == ExpansionLevel.Matrix:

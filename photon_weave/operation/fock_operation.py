@@ -13,7 +13,6 @@ from photon_weave._math.ops import (
     displacement_operator,
     phase_operator,
     squeezing_operator,
-    number_operator,
 )
 from photon_weave.extra import interpreter
 from photon_weave.operation.helpers.fock_dimension_esitmation import FockDimensions

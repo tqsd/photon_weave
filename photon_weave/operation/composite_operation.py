@@ -1,22 +1,21 @@
+import importlib
 from enum import Enum
 from typing import Any, List, Union
+
 import jax.numpy as jnp
 from jax.scipy.linalg import expm
-import importlib
 
-
-from photon_weave.extra import interpreter
 from photon_weave._math.ops import (
-    creation_operator,
     annihilation_operator,
     controlled_not_operator,
-    swap_operator,
     controlled_swap_operator,
     controlled_z_operator,
+    creation_operator,
+    swap_operator,
 )
 from photon_weave.extra import interpreter
-from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.state.base_state import BaseState
+from photon_weave.state.expansion_levels import ExpansionLevel
 
 # from photon_weave.state.fock import Fock
 
@@ -73,8 +72,7 @@ class CompositeOperationType(Enum):
     >>> ce.apply_operation(op, env1.polarization, env2.polarization)
 
     Controlled-SWAP (CSwapPolarization)
-    -----------------------------------
-    
+    -----------------------------------    
     Constructs a Controlled-SWAP operation, conditionally swapping the states of
     two provided polarization states. First state is the control state and the
     next two states are target states.
