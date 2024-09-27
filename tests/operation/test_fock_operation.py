@@ -135,7 +135,7 @@ class TestFockOperationAnnihilation(unittest.TestCase):
                 f.apply_operation(op)
                 self.assertEqual(f.state, expected_state)
             else:
-                with self.assertRaises(ValueError) as context:
+                with self.assertRaises(ValueError):
                     f.apply_operation(op)
 
     def test_destruction_operation_vector(self) -> None:
@@ -153,7 +153,7 @@ class TestFockOperationAnnihilation(unittest.TestCase):
                 self.assertEqual(f.state, expected_state)
                 f.expand()
             else:
-                with self.assertRaises(ValueError) as context:
+                with self.assertRaises(ValueError):
                     f.apply_operation(op)
                     f.expand()
 
@@ -174,7 +174,7 @@ class TestFockOperationAnnihilation(unittest.TestCase):
                 f.expand()
                 f.expand()
             else:
-                with self.assertRaises(ValueError) as context:
+                with self.assertRaises(ValueError):
                     f.apply_operation(op)
                     f.expand()
                     f.expand()
@@ -196,7 +196,7 @@ class TestFockOperationAnnihilation(unittest.TestCase):
                 expected_state = expected_state.at[s * 2, 0].set(1)
                 self.assertTrue(jnp.allclose(env.state, expected_state))
             else:
-                with self.assertRaises(ValueError) as context:
+                with self.assertRaises(ValueError):
                     env.fock.apply_operation(op)
                     env.expand()
 
@@ -220,7 +220,7 @@ class TestFockOperationAnnihilation(unittest.TestCase):
                 self.assertTrue(jnp.allclose(env.state, expected_state))
                 env.expand()
             else:
-                with self.assertRaises(ValueError) as context:
+                with self.assertRaises(ValueError):
                     env.fock.apply_operation(op)
                     env.expand()
 
@@ -240,7 +240,7 @@ class TestFockOperationAnnihilation(unittest.TestCase):
                 expected_state = expected_state.at[s, 0].set(1)
                 self.assertTrue(jnp.allclose(env.fock.trace_out(), expected_state))
             else:
-                with self.assertRaises(ValueError) as context:
+                with self.assertRaises(ValueError):
                     env.fock.apply_operation(op)
 
     def test_destruction_operation_matrix_composite_envelope(self) -> None:
@@ -265,7 +265,7 @@ class TestFockOperationAnnihilation(unittest.TestCase):
                 expected_state = expected_state.at[s, 0].set(1)
                 self.assertTrue(jnp.allclose(env.fock.trace_out(), expected_state))
             else:
-                with self.assertRaises(ValueError) as context:
+                with self.assertRaises(ValueError):
                     env.fock.apply_operation(op)
 
 
@@ -416,16 +416,6 @@ class TestFockOperationSqueeze(unittest.TestCase):
         f.apply_operation(op)
         self.assertTrue(f.state.shape == (f.dimensions, 1))
 
-    def test_squeeze_fock_vector(self) -> None:
-        C = Config()
-        C.set_contraction(True)
-        f = Fock()
-        f.expand()
-        f.expand()
-        op = Operation(FockOperationType.Squeeze, zeta=0.5)
-        f.apply_operation(op)
-        self.assertTrue(f.state.shape == (f.dimensions, 1))
-
     def test_squeeze_envelope_vector(self) -> None:
         C = Config()
         C.set_contraction(True)
@@ -457,19 +447,6 @@ class TestFockOperationSqueeze(unittest.TestCase):
             == (env1.fock.dimensions * env2.fock.dimensions, 1)
         )
 
-    def test_squeeze_composite_envelope_vector(self) -> None:
-        env1 = Envelope()
-        env2 = Envelope()
-        ce = CompositeEnvelope(env1, env2)
-        ce.combine(env1.fock, env2.fock)
-        ce.expand(env1.fock)
-        op = Operation(FockOperationType.Squeeze, zeta=-0.5j)
-        env1.fock.apply_operation(op)
-        self.assertTrue(
-            ce.product_states[0].state.shape
-            == (env1.fock.dimensions * env2.fock.dimensions, 1)
-        )
-
 
 class TestExpressionOperator(unittest.TestCase):
     def test_expression_operator_fock_vector(self) -> None:
@@ -487,7 +464,7 @@ class TestExpressionOperator(unittest.TestCase):
         f.apply_operation(op)
         self.assertTrue(jnp.allclose(f.state, jnp.array([[-1], [0], [0]])))
 
-    def test_expression_operator_fock_vector(self) -> None:
+    def test_expression_operator_fock_vector_two_scalers(self) -> None:
         f = Fock()
         # DISPLACE
         context = {

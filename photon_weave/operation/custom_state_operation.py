@@ -9,6 +9,7 @@ from typing import List, Any, Union
 from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.extra import interpreter
 
+
 class CustomStateOperationType(Enum):
     """
     CustomStateOperationType
@@ -45,14 +46,17 @@ class CustomStateOperationType(Enum):
     >>> )
     >>> op = Operation(CustomStateOperationType.Custom, operator=operator)
     """
-    Expresion = (True,["expr", "context"], ExpansionLevel.Vector, 1)
-    Custom = (True,["operator"], ExpansionLevel.Vector, 2)
 
-    def __init__(self,
-                 renormalize:bool,
-                 required_params: list,
-                 required_expansion_level: ExpansionLevel,
-                 op_id: int) -> None:
+    Expresion = (True, ["expr", "context"], ExpansionLevel.Vector, 1)
+    Custom = (True, ["operator"], ExpansionLevel.Vector, 2)
+
+    def __init__(
+        self,
+        renormalize: bool,
+        required_params: list,
+        required_expansion_level: ExpansionLevel,
+        op_id: int,
+    ) -> None:
         self.renormalize = renormalize
         self.required_params = required_params
         self.required_expansion_level = required_expansion_level
@@ -83,11 +87,12 @@ class CustomStateOperationType(Enum):
         raise ValueError("Operator not recognized")
 
     def compute_dimensions(
-            self,
-            num_quanta:Union[int, List[int]],
-            state:Union[jnp.ndarray, List[jnp.ndarray]],
-            threshold: float = 1,
-            **kwargs: Any) -> List[int]:
+        self,
+        num_quanta: Union[int, List[int]],
+        state: Union[jnp.ndarray, List[jnp.ndarray]],
+        threshold: float = 1,
+        **kwargs: Any,
+    ) -> List[int]:
         """
         Compute the dimensions for the operator. Since this operator operates
         on a Custom State, which doesn't change dimensions, it always returns
@@ -111,4 +116,3 @@ class CustomStateOperationType(Enum):
         """
         assert isinstance(state, jnp.ndarray)
         return [state.shape[0]]
-
