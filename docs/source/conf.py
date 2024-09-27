@@ -15,6 +15,8 @@ project = "photon_weave"
 copyright = "2024, Simon Sekavčnik, Kareem H. El-Safty, Janis Nötzel"
 author = "Simon Sekavčnik, Kareem H. El-Safty, Janis Nötzel"
 release = "0.0.3"
+master_doc = 'index'
+
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
