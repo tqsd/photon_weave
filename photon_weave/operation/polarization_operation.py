@@ -80,7 +80,10 @@ class PolarizationOperationType(Enum):
     It rotates around X axis for given :math:`\theta` angle
     Requires an argument "theta" (:math:`\theta`)
     ..math::
-        \hat H = \begin{bmatrix}  \cos(\frac{\theta}{2}) & -i\sin(\frac{\theta}{2} \\  -i\sin(\frac{\theta}{2} & \cos(\frac{\theta}{2}) \end{bmatrix}
+        \hat{H} = \begin{pmatrix}
+        \cos\left(\frac{\theta}{2}\right) & -i\sin\left(\frac{\theta}{2}\right) \\
+        -i\sin\left(\frac{\theta}{2}\right) & \cos\left(\frac{\theta}{2}\right)
+        \end{pmatrix}
 
     Usage Example
     >>> op = Operation(PolarizationOperationType.RX, theta=jnp.pi)
@@ -90,8 +93,12 @@ class PolarizationOperationType(Enum):
     Constructs RY (:math:`\hat{RY}(\theta)`) operator
     It rotates around Y axis for given :math:`\theta` angle
     Requires an argument "theta" (:math:`\theta`)
-    ..math::
-        \hat H = \begin{bmatrix}  \cos(\frac{\theta}{2}) & -\sin(\frac{\theta}{2} \\  \sin(\frac{\theta}{2} & \cos(\frac{\theta}{2}) \end{bmatrix}
+    .. math::
+
+        \hat{H} = \begin{bmatrix}
+        \cos\left(\frac{\theta}{2}\right) & -\sin\left(\frac{\theta}{2}\right) \\
+        \sin\left(\frac{\theta}{2}\right) & \cos\left(\frac{\theta}{2}\right)
+        \end{bmatrix}
 
     Usage Example
     >>> op = Operation(PolarizationOperationType.RY, theta=jnp.pi)
@@ -101,8 +108,12 @@ class PolarizationOperationType(Enum):
     Constructs RZ (:math:`\hat{RZ}(\theta)`) operator
     It rotates around Z axis for given :math:`\theta` angle
     Requires an argument "theta" (:math:`\theta`)
-    ..math::
-        \hat H = \begin{bmatrix}  e^{-i\frac{\theta}{2}} & 0 \\ 0 & e^{i\frac{\theta}{2}}\end{bmatrix}
+    .. math::
+
+        \hat{H} = \begin{bmatrix}
+        e^{-i\frac{\theta}{2}} & 0 \\
+        0 & e^{i\frac{\theta}{2}}
+        \end{bmatrix}
 
     Usage Example
     >>> op = Operation(PolarizationOperationType.RZ, theta=jnp.pi)

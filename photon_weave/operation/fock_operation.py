@@ -56,13 +56,15 @@ class FockOperationType(Enum):
 
     Squeeze
     -------
-    Constructs a Squeezing operator :math:`\hat S(\zeta)=e^{\frac{1}{2}(z^*\hat a^2 - z \hat a^\dagger^2)}`
+    Constructs a Squeezing operator
+    :math:`\hat S(\zeta)=e^{\frac{1}{2}(z^*\hat a^2 - z \hat a^\dagger^2)}`
     The dimensions of the Fock space required to accurately represent the application
     of this operator is iteratively determined, resulting in appropriate dimension.
 
     Displace
     --------
-    Constructs a Squeezing operator :math:`\hat D(\alpha)=e^{\alpha \hat a^\dagger - \alpha^* \hat a}`
+    Constructs a Squeezing operator
+    :math:`\hat D(\alpha)=e^{\alpha \hat a^\dagger - \alpha^* \hat a}`
     The dimensions of the Fock space required to accurately represent the application
     of this operator is iteratively determined, resulting in appropriate dimension.
     The dimensions of the Fock space required to accurately represent the application
@@ -75,13 +77,13 @@ class FockOperationType(Enum):
 
     Custom
     ------
-    Constructs a custom operator, which means the operator needs to be manually provided,
-    one must pay attention to the fact that operators dimensions need to match
+    Constructs a custom operator, which means the operator needs to be manually
+    provided, one must pay attention to the fact that operators dimensions need to match
     the dimensions of the Fock space. If the operator is larger than the underlying
     fock space, then the dimensions of the respective Fock space will increase to match
-    the provided operator. Otherwise the state will be shrunk. If shrinking is not succesfull
-    then the operation will fail. Shinking is not succesfull if part of the state is removed
-    by the process of shrinking.
+    the provided operator. Otherwise the state will be shrunk. If shrinking is not
+    succesfull then the operation will fail. Shinking is not succesfull if part of the
+    state is removed by the process of shrinking.
 
     Usage Example:
     >>> operator = jnp.ndarray(

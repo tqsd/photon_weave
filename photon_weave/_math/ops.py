@@ -293,8 +293,9 @@ def phase_operator(cutoff: int, theta: float) -> jnp.ndarray:
     .. math::
       \hat{R}(\theta) = \sum_{n=0}^{\text{cutoff}-1} e^{1 n \theta }|n\rangle \langle n|
 
-    This operator applies a phase shift to each Fock state |n⟩ proportional to the integer n.
-    The phase shift is given by :math:`e^{i n \theta}`, where `theta` is the phase shift parameter.
+    This operator applies a phase shift to each Fock state |n⟩ proportional to the
+    integer n. The phase shift is given by :math:`e^{i n \theta}`, where `theta` is the
+    phase shift parameter.
 
 
     Parameters
@@ -311,9 +312,9 @@ def phase_operator(cutoff: int, theta: float) -> jnp.ndarray:
 
     Notes
     -----
-    The phase shift operator is unitary and is used to rotate the phase of a quantum state
-    in the Fock basis. The diagonal matrix elements are complex exponentials that apply a
-    phase proportional to the Fock state number.
+    The phase shift operator is unitary and is used to rotate the phase of a quantum
+    state in the Fock basis. The diagonal matrix elements are complex exponentials that
+    apply a phase proportional to the Fock state number.
     """
     indices = jnp.arange(cutoff)
     phases = jnp.exp(1j * indices * theta)

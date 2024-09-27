@@ -133,24 +133,26 @@ class ProductState:
         destructive: bool = True,
     ) -> Dict["BaseState", int]:
         """
-        Measures this subspace. If the state is measured partially, then the state are moved to their
-        respective spaces. If the measurement is destructive, then the state is destroyed post measurement.
+        Measures this subspace. If the state is measured partially, then the state
+        are moved to their respective spaces. If the measurement is destructive, then
+        the state is destroyed post measurement.
 
         Parameter
         ---------
         *states: Optional[BaseState]
             Optional, when measuring spaces individualy
         separate_measurement:bool
-            if True given states will be measured separately and the state which is not measured will be
-            preserved (False by default)
+            if True given states will be measured separately and the state which is not
+            measured will be preserved (False by default)
         destructive: bool
-            If False, the measurement will not destroy the state after the measurement. The state will still be
-            affected by the measurement (True by default)
+            If False, the measurement will not destroy the state after the measurement.
+            The state will still be affected by the measurement (True by default)
 
         Returns
         -------
         Dict[BaseState,int]
-            Dictionary of outcomes, where the state is key and its outcome measurement is the value (int)
+            Dictionary of outcomes, where the state is key and its outcome measurement
+        is the value (int)
         """
         from photon_weave.state.polarization import Polarization, PolarizationLabel
 
@@ -321,7 +323,6 @@ class ProductState:
 
         # Transform the operators to the tensors
         op_shape = [s.dimensions for s in states] * 2
-        # operators = [op.reshape(op_shape).transpose(*transpose_pattern(states)) for op in operators]
 
         # Reshape operators
         operators = [op.reshape(op_shape) for op in operators]
@@ -640,8 +641,10 @@ class ProductState:
                 operation._operation_type.expected_base_state_types
             )
             for i, s in enumerate(states):
+                op_type = operation._operation_type
                 assert isinstance(
-                    s, operation._operation_type.expected_base_state_types[i]  # type: ignore
+                    s,
+                    op_type.expected_base_state_types[i]  # type: ignore
                 )
             operation.compute_dimensions(
                 [s._num_quanta if isinstance(s, Fock) else 0 for s in states],
@@ -672,7 +675,8 @@ class ProductState:
 
             if not jnp.any(jnp.abs(ps) > 0):
                 raise ValueError(
-                    "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
+                    "The state is entirely composed of zeros, "
+                    "is |0⟩ attempted to be annihilated?"
                 )
             if operation.renormalize:
                 ps = ps / jnp.linalg.norm(ps)
@@ -696,7 +700,8 @@ class ProductState:
 
             if not jnp.any(jnp.abs(ps) > 0):
                 raise ValueError(
-                    "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
+                    "The state is entirely composed of zeros,"
+                    "is |0⟩ attempted to be annihilated?"
                 )
             if operation.renormalize:
                 ps = ps / jnp.linalg.norm(ps)
@@ -819,7 +824,11 @@ class CompositeEnvelope:
         self.update_composite_envelope_pointers()
 
     def __repr__(self) -> str:
-        return f"CompositeEnvelope(uid={self.uid}, envelopes={[e.uid for e in self.envelopes]}, state_objects={[s.uid for s in self.state_objs]})"
+        return (
+            f"CompositeEnvelope(uid={self.uid}, "
+            f"envelopes={[e.uid for e in self.envelopes]}, "
+            f"state_objects={[s.uid for s in self.state_objs]})"
+        )
 
     @property
     def envelopes(self) -> List["Envelope"]:
@@ -1037,9 +1046,9 @@ class CompositeEnvelope:
         destructive: bool = True,
     ) -> Dict["BaseState", int]:
         """
-        Measures subspace in this composite envelope. If the state is measured partially,
-        then the state are moved to their respective spaces. If the measurement is
-        destructive, then the state is destroyed post measurement.
+        Measures subspace in this composite envelope. If the state is measured
+        partially, then the state are moved to their respective spaces. If the
+        measurement is destructive, then the state is destroyed post measurement.
 
         Parameter
         ---------
@@ -1057,7 +1066,8 @@ class CompositeEnvelope:
         Returns
         -------
         Dict[BaseState,int]
-            Dictionary of outcomes, where the state is key and its outcome measurement is the value (int)
+            Dictionary of outcomes, where the state is key and its outcome measurement
+            is the value (int)
         """
         from photon_weave.state.envelope import Envelope
         from photon_weave.state.fock import Fock
@@ -1168,7 +1178,8 @@ class CompositeEnvelope:
         for op in operators:
             if op.shape != (dim, dim):
                 raise ValueError(
-                    f"At least on Kraus operator has incorrect dimensions: {op.shape}, expected({dim},{dim})"
+                    "At least on Kraus operator has incorrect dimensions: "
+                    f"{op.shape}, expected({dim},{dim})"
                 )
 
         # Get product states
@@ -1229,7 +1240,8 @@ class CompositeEnvelope:
         for op in operators:
             if op.shape != (dim, dim):
                 raise ValueError(
-                    f"At least on Kraus operator has incorrect dimensions: {op.shape}, expected({dim},{dim})"
+                    "At least on Kraus operator has incorrect dimensions: "
+                    f"{op.shape}, expected({dim},{dim})"
                 )
 
         # Check the identity sum

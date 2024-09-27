@@ -294,7 +294,8 @@ class CustomState(BaseState):
         operators: List[Union[np.ndarray, jnp.Array]]
             List of the operators
         identity_check: bool
-            Signal to check whether or not the operators sum up to identity, True by default
+            Signal to check whether or not the operators sum up to identity, True by
+            default
         """
         if self.index is not None:
             assert isinstance(self.composite_envelope, CompositeEnvelope)
@@ -306,7 +307,8 @@ class CustomState(BaseState):
         for op in operators:
             if op.shape != (self.dimensions, self.dimensions):
                 raise ValueError(
-                    f"Kraus operator has incorrect dimensions: {op.shape}, expected ({self.dimensions},{self.dimensions})"
+                    f"Kraus operator has incorrect dimensions: {op.shape}, "
+                    f"expected ({self.dimensions},{self.dimensions})"
                 )
 
         if not kraus_identity_check(operators):
@@ -352,7 +354,8 @@ class CustomState(BaseState):
             self.state = jnp.einsum("ij,jk->ik", operation.operator, self.state)
             if not jnp.any(jnp.abs(self.state) > 0):
                 raise ValueError(
-                    "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
+                    "The state is entirely composed of zeros,"
+                    " is |0⟩ attempted to be anniilated?"
                 )
             # cummulative = 0
             if operation.renormalize:
@@ -368,7 +371,8 @@ class CustomState(BaseState):
             )
             if not jnp.any(jnp.abs(self.state) > 0):
                 raise ValueError(
-                    "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
+                    "The state is entirely composed of zeros, "
+                    "is |0⟩ attempted to be anniilated?"
                 )
             if operation.renormalize:
                 self.state = self.state / jnp.linalg.norm(self.state)

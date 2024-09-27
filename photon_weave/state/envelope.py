@@ -63,6 +63,12 @@ class TemporalProfileInstance:
         return lambda t: self.func(t, **params)
 
 
+default_temporal_profile = TemporalProfile.Gaussian.with_params(
+    mu=0,
+    sigma=42.45 * 10 ** (-15),  # 100 fs pulse
+)
+
+
 class Envelope:
 
     __slots__ = (
@@ -81,10 +87,7 @@ class Envelope:
         wavelength: float = 1550,
         fock: Optional["Fock"] = None,
         polarization: Optional["Polarization"] = None,
-        temporal_profile: TemporalProfileInstance = TemporalProfile.Gaussian.with_params(
-            mu=0,
-            sigma=42.45 * 10 ** (-15),  # 100 fs pulse
-        ),
+        temporal_profile: TemporalProfileInstance = default_temporal_profile
     ):
         from photon_weave.state.fock import Fock
         from photon_weave.state.polarization import Polarization
@@ -184,7 +187,8 @@ class Envelope:
         for s in [self.fock, self.polarization]:
             if s.measured:
                 raise ValueError(
-                    "Parts of this envelope have already been destructively measured, cannot combine"
+                    "Parts of this envelope have already been destructively measured,"
+                    " cannot combine"
                 )
 
         assert isinstance(self.fock.expansion_level, ExpansionLevel)
@@ -267,25 +271,26 @@ class Envelope:
         destructive: bool = True,
     ) -> Dict["BaseState", int]:
         """
-        Measures the envelope. If the state is measured partially, then the state are moved to their
-        respective spaces. If the measurement is destructive, then the state is destroyed post measurement.
+        Measures the envelope. If the state is measured partially, then the state are
+        moved to their respective spaces. If the measurement is destructive, then the
+        state is destroyed post measurement.
 
         Parameter
         ---------
         *states: Optional[BaseState]
             Optional, when measuring spaces individualy
         separate_measurement:bool
-            if True given states will be measured separately and the state which is not measured will be
-            preserved (False by default)
+            if True given states will be measured separately and the state which is not
+            measured will be preserved (False by default)
         destructive: bool
-            If False, the measurement will not destroy the state after the measurement. The state will still be
-            affected by the measurement (True by default)
+            If False, the measurement will not destroy the state after the measurement.
+            The state will still be affected by the measurement (True by default)
 
         Returns
         -------
         Dict[BaseState,int]
-            Dictionary of outcomes, where the state is key and its outcome measurement is the value (int)
-
+            Dictionary of outcomes, where the state is key and its outcome measurement
+            is the value (int)
         """
         if self.measured:
             raise ValueError("Envelope has already been destroyed")
@@ -327,7 +332,6 @@ class Envelope:
                         jnp.abs(jnp.sum(ps, axis=self.polarization.index)).flatten()
                         ** 2
                     )
-                    # probabilities = jnp.abs(ps.take(self.fock.index, axis=self.fock.index).flatten())**2
                     key = C.random_key
                     choice = int(
                         jax.random.choice(
@@ -587,7 +591,8 @@ class Envelope:
         for s in states:
             if s is not self.polarization and s is not self.fock:
                 raise ValueError(
-                    "Given states have to be members of the envelope, use env.fock and env.polarization"
+                    "Given states have to be members of the envelope, "
+                    "use env.fock and env.polarization"
                 )
 
         # Handle partial uncombined measurement
@@ -746,7 +751,8 @@ class Envelope:
         for s in states:
             if s is not self.polarization and s is not self.fock:
                 raise ValueError(
-                    "Given states have to be members of the envelope, use env.fock and env.polarization"
+                    "Given states have to be members of the envelope, "
+                    "use env.fock and env.polarization"
                 )
 
         # If any of the states is in bigger product state apply the kraus there
@@ -844,7 +850,8 @@ class Envelope:
         for s in states_list:
             if s not in [self.polarization, self.fock]:
                 raise ValueError(
-                    "Given states have to be members of the envelope, use env.fock and env.polarization"
+                    "Given states have to be members of the envelope, "
+                    "use env.fock and env.polarization"
                 )
 
         if self.state is None:
@@ -1177,12 +1184,14 @@ class Envelope:
         if isinstance(operation._operation_type, FockOperationType):
             if not isinstance(states[0], Fock):
                 raise ValueError(
-                    "Cannot apply {type(operation._operation_type)} to {type(states[0])}"
+                    "Cannot apply {type(operation._operation_type)} to "
+                    f"{type(states[0])}"
                 )
         if isinstance(operation._operation_type, PolarizationOperationType):
             if not isinstance(states[0], Polarization):
                 raise ValueError(
-                    "Cannot apply {type(operation._operation_type)} to {type(states[0])}"
+                    "Cannot apply {type(operation._operation_type)} to "
+                    f"{type(states[0])}"
                 )
 
         if self.state is None:
@@ -1223,7 +1232,8 @@ class Envelope:
             ps = jnp.einsum("ij,jkl->ikl", operation.operator, ps)
             if not jnp.any(jnp.abs(ps) > 0):
                 raise ValueError(
-                    "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
+                    "The state is entirely composed of zeros, is |0⟩ attempted "
+                    "to be annihilated?"
                 )
             if operation.renormalize:
                 ps = ps / jnp.linalg.norm(ps)
@@ -1244,7 +1254,8 @@ class Envelope:
             ps = ps.reshape(self.dimensions, self.dimensions)
             if not jnp.any(jnp.abs(ps) > 0):
                 raise ValueError(
-                    "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
+                    "The state is entirely composed of zeros, "
+                    "is |0⟩ attempted to be annihilated?"
                 )
             if operation.renormalize:
                 ps = ps / jnp.linalg.norm(ps)

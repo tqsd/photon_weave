@@ -3,10 +3,12 @@ from setuptools import find_packages, setup
 
 setup(
     name="photon_weave",
-    version="0.0.3",
+    version="0.1.0",
     author="Simon Sekavčnik",
     author_email="simon.sekavcnik@tum.de",
-    description="Fock Envelope Simulator",
+    description="General Quantum Simulator, with focus on optics",
+    long_description_conte
+    
     license="Apache 2.0",
     packages=find_packages(where="."),
     install_requires=["jax==0.4.33", "jaxlib==0.4.33"],

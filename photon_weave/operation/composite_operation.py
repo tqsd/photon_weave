@@ -72,13 +72,13 @@ class CompositeOperationType(Enum):
     >>> ce.apply_operation(op, env1.polarization, env2.polarization)
 
     Controlled-SWAP (CSwapPolarization)
-    -----------------------------------    
+    -----------------------------------
     Constructs a Controlled-SWAP operation, conditionally swapping the states of
     two provided polarization states. First state is the control state and the
     next two states are target states.
 .. math::
 
-    \hat{CSWAP} = 
+    \hat{CSWAP} =
     \begin{bmatrix}
     1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
     0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
@@ -113,16 +113,16 @@ class CompositeOperationType(Enum):
     >>>                context=context)
     >>> ce.apply_operation(op, fock_in_ce)
 
-    It is IMPORTANT to correctly use the indexing in the context dictionary, when using dim[0],
-    this operator will be used for the first state. And the dimensions of first state will be
-    passed to the lambda function.
+    It is IMPORTANT to correctly use the indexing in the context dictionary, when using
+    dim[0], this operator will be used for the first state. And the dimensions of first
+    state will be passed to the lambda function.
 
-    It is also IMPORTANT to correctly write the expression as expression doesn't have a dimension
-    asserting functionality, meaning that if you operate on two states, you need to correctly
-    kron the operators to achieve correct operator dimensionality.
+    It is also IMPORTANT to correctly write the expression as expression doesn't have a
+    dimension asserting functionality, meaning that if you operate on two states, you
+    need to correctly kron the operators to achieve correct operator dimensionality.
 
-    For example if you which to operate on two Fock spaces like in beam splitter example you need
-    to produce the following context and expression:
+    For example if you which to operate on two Fock spaces like in beam splitter example
+    you need to produce the following context and expression:
     >>> context = {
     >>>     'a_dag': lambda dims: creation_opreator(dims[0])
     >>>     'a':     lambda dims: annihilation_opreator(dims[0])
@@ -150,12 +150,24 @@ class CompositeOperationType(Enum):
     method call.
     """
 
-    NonPolarizingBeamSplitter = (True, ["eta"], ["Fock", "Fock"], ExpansionLevel.Vector, 1)  # type: ignore
-    CXPolarization = (True, [], ["Polarization", "Polarization"], ExpansionLevel.Vector, 2)  # type: ignore
-    SwapPolarization = (True, [], ["Polarization", "Polarization"], ExpansionLevel.Vector, 3)  # type: ignore
-    CSwapPolarization = (True, [], ["Polarization" for _ in range(3)], ExpansionLevel.Vector, 4)  # type: ignore
-    CZPolarization = (True, [], ["Polarization" for _ in range(2)], ExpansionLevel.Vector, 5)  # type: ignore
-    Expression = (True, ["expr", "state_types", "context"], [], ExpansionLevel.Vector, 6)  # type: ignore
+    NonPolarizingBeamSplitter = (
+        True, ["eta"], ["Fock", "Fock"], ExpansionLevel.Vector, 1
+        )  # type: ignore
+    CXPolarization = (
+        True, [], ["Polarization", "Polarization"], ExpansionLevel.Vector, 2
+        )  # type: ignore
+    SwapPolarization = (
+        True, [], ["Polarization", "Polarization"], ExpansionLevel.Vector, 3
+        )  # type: ignore
+    CSwapPolarization = (
+        True, [], ["Polarization" for _ in range(3)], ExpansionLevel.Vector, 4
+        )  # type: ignore
+    CZPolarization = (
+        True, [], ["Polarization" for _ in range(2)], ExpansionLevel.Vector, 5
+        )  # type: ignore
+    Expression = (
+        True, ["expr", "state_types", "context"], [], ExpansionLevel.Vector, 6
+        )  # type: ignore
 
     def __init__(
         self,

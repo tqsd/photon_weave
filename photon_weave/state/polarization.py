@@ -369,7 +369,8 @@ class Polarization(BaseState):
             self.state = jnp.einsum("ij,jk->ik", operation.operator, self.state)
             if not jnp.any(jnp.abs(self.state) > 0):
                 raise ValueError(
-                    "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
+                    "The state is entirely composed of zeros, is |0⟩ "
+                    "attempted to be annihilated?"
                 )
 
         #            if operation.renormalize:
@@ -385,7 +386,8 @@ class Polarization(BaseState):
             )
             if not jnp.any(jnp.abs(self.state) > 0):
                 raise ValueError(
-                    "The state is entirely composed of zeros, is |0⟩ attempted to be anniilated?"
+                    "The state is entirely composed of zeros, is |0⟩ "
+                    "attempted to be anniilated?"
                 )
             if operation.renormalize:
                 self.state = self.state / jnp.linalg.norm(self.state)

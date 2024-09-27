@@ -69,9 +69,9 @@ def interpreter(
             In this case
             'n' will be computed as:
             >>> context['n'](dims)
-        The index 0 tells the interpreter the which state this operator should correspond to.
-        The list `dims` is passed by the interpreter and it contains, the list of
-        dimensions of the state we wish to operate on.
+        The index 0 tells the interpreter the which state this operator should
+        correspond to. The list `dims` is passed by the interpreter and it contains, the
+        list of dimensions of the state we wish to operate on.
 
     """
     if isinstance(expr, tuple):
