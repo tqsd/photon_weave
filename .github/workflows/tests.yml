@@ -3,13 +3,9 @@ name: Tests
 on:
   push:
     branches:
-      - master
-      - development
       - refractor
   pull_request:
     branches:
-      - master
-      - development
       - refractor
 
 jobs:
@@ -39,4 +35,4 @@ jobs:
         with:
           files: ./coverage.xml
           flags: unittests
-          name: codecov-umbrella
+          name: codecov-refractor-branch

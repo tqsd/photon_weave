@@ -1,4 +1,7 @@
 # Photon Weave
+![Build Status](https://github.com/tqsd/photon_weave/actions/workflows/ci.yml/badge.svg?branch=refractor)
+[![codecov](https://codecov.io/gh/<username>/photon_weave/branch/refractor/graph/badge.svg)](https://codecov.io/gh/tqsd/photon_weave/branch/refractor)
+
 
 Photon Weave is a quantum optics simulator designd for modeling and analysis of quantum systems. Focusing on individual temporal modes, it offers comprehensive support for simulating quantums tates within Fock spaces  along with their polarization degrees of freedom.
 
