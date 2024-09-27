@@ -3,10 +3,10 @@ from typing import Any, List, Optional, Union
 
 import jax.numpy as jnp
 
-from photon_weave.operation.fock_operation import FockOperationType
-from photon_weave.operation.polarization_operation import PolarizationOperationType
 from photon_weave.operation.composite_operation import CompositeOperationType
 from photon_weave.operation.custom_state_operation import CustomStateOperationType
+from photon_weave.operation.fock_operation import FockOperationType
+from photon_weave.operation.polarization_operation import PolarizationOperationType
 from photon_weave.state.expansion_levels import ExpansionLevel
 
 
@@ -64,14 +64,16 @@ class Operation:
                 f"{self._operation_type.__class__.__name__}.{self._operation_type.name}"
             )
         else:
-            repr_string = f"{self._operation_type.__class__.__name__}.{self._operation_type.name}\n"
+            repr_string = f"{self._operation_type.__class__.__name__\
+                }.{self._operation_type.name}\n"
             formatted_matrix: Union[str, List[str]]
             formatted_matrix = "\n".join(
                 [
                     "⎢ "
                     + "   ".join(
                         [
-                            f"{num.real:+.2f} {'+' if num.imag >= 0 else '-'} {abs(num.imag):.2f}j"
+                            f"{num.real:+.2f} {'+' if num.imag >= 0 else '-'\
+                                } {abs(num.imag):.2f}j"
                             for num in row
                         ]
                     )
