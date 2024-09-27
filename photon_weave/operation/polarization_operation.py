@@ -1,20 +1,21 @@
-from enum import Enum, auto
-from typing import List, Any, Tuple, Union
+from enum import Enum
+from typing import Any, List, Tuple, Union
+
 import jax.numpy as jnp
 
 from photon_weave._math.ops import (
-    identity_operator,
     hadamard_operator,
-    x_operator,
-    y_operator,
-    z_operator,
-    s_operator,
-    t_operator,
-    sx_operator,
+    identity_operator,
     rx_operator,
     ry_operator,
     rz_operator,
+    s_operator,
+    sx_operator,
+    t_operator,
     u3_operator,
+    x_operator,
+    y_operator,
+    z_operator,
 )
 from photon_weave.state.expansion_levels import ExpansionLevel
 
@@ -122,13 +123,49 @@ class PolarizationOperationType(Enum):
     >>> operator = jnp.array([[1,0],[0,1]])
     >>> op = Operation(PolarizationOperationType.Custom, operator=operator)
     """
-    I: Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 1)
-    X: Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 2)
-    Y: Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 3)
-    Z: Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 4)
-    H: Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 5)
-    S: Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 6)
-    T: Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 7)
+
+    I: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        [],
+        ExpansionLevel.Vector,
+        1,
+    )
+    X: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        [],
+        ExpansionLevel.Vector,
+        2,
+    )
+    Y: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        [],
+        ExpansionLevel.Vector,
+        3,
+    )
+    Z: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        [],
+        ExpansionLevel.Vector,
+        4,
+    )
+    H: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        [],
+        ExpansionLevel.Vector,
+        5,
+    )
+    S: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        [],
+        ExpansionLevel.Vector,
+        6,
+    )
+    T: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        [],
+        ExpansionLevel.Vector,
+        7,
+    )
     SX: Tuple[bool, List[str], ExpansionLevel, int] = (
         True,
         [],

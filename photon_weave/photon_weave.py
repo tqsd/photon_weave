@@ -1,6 +1,6 @@
 import random
 import sys
-from typing import Any, Optional
+from typing import Any
 
 import jax
 import jax.numpy as jnp

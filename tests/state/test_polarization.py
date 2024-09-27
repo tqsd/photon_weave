@@ -1,14 +1,11 @@
 import unittest
 
-import numpy as np
 import jax.numpy as jnp
 
-from photon_weave.state.envelope import Envelope
-from photon_weave.state.fock import Fock
-from photon_weave.state.polarization import Polarization, PolarizationLabel
-from photon_weave.state.expansion_levels import ExpansionLevel
-from photon_weave.state.exceptions import NotExtractedException
 from photon_weave.photon_weave import Config
+from photon_weave.state.exceptions import NotExtractedException
+from photon_weave.state.expansion_levels import ExpansionLevel
+from photon_weave.state.polarization import Polarization, PolarizationLabel
 
 
 class TestPolarizationExpansionAndContraction(unittest.TestCase):
@@ -95,7 +92,9 @@ class TestPolarizationExpansionAndContraction(unittest.TestCase):
             self.assertIsNone(item)
         self.assertTrue(jnp.allclose(density_matrix, pol.state, atol=1e-04))
 
-    def third_expansion_test(self, pol: Polarization, density_matrix: jnp.array) -> None:
+    def third_expansion_test(
+        self, pol: Polarization, density_matrix: jnp.array
+    ) -> None:
         pol.expand()
         for item in [pol.index, pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
