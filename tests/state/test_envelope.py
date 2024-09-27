@@ -33,39 +33,39 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
         representation = env.__repr__().split("\n")
         representation = [r.split(" ⊗ ") for r in representation]
         self.assertEqual(representation[0][0], "|0⟩")
-        self.assertEqual(representation[0][1], "⎡ 1.00 + 0.00j ⎤")
-        self.assertEqual(representation[1][1], "⎣ 0.00 + 0.00j ⎦")
+        self.assertEqual(representation[0][1], "⎡ +1.00 + 0.00j ⎤")
+        self.assertEqual(representation[1][1], "⎣ +0.00 + 0.00j ⎦")
 
         env.polarization.expand()
         representation = env.__repr__().split("\n")
         representation = [r.split(" ⊗ ") for r in representation]
         self.assertEqual(representation[0][0], "|0⟩")
-        self.assertEqual(representation[0][1], "⎡ 1.00 + 0.00j   0.00 + 0.00j ⎤")
-        self.assertEqual(representation[1][1], "⎣ 0.00 + 0.00j   0.00 + 0.00j ⎦")
+        self.assertEqual(representation[0][1], "⎡ +1.00 + 0.00j   +0.00 + 0.00j ⎤")
+        self.assertEqual(representation[1][1], "⎣ +0.00 + 0.00j   +0.00 + 0.00j ⎦")
 
         env.fock.expand()
         representation = env.__repr__().split("\n")
         representation = [r.split(" ⊗ ") for r in representation]
-        self.assertEqual(representation[0][0], "⎡ 1.00 + 0.00j ⎤")
-        self.assertEqual(representation[1][0], "⎢ 0.00 + 0.00j ⎥")
-        self.assertEqual(representation[2][0], "⎣ 0.00 + 0.00j ⎦")
-        self.assertEqual(representation[0][1], "⎡ 1.00 + 0.00j   0.00 + 0.00j ⎤")
-        self.assertEqual(representation[1][1], "⎣ 0.00 + 0.00j   0.00 + 0.00j ⎦")
+        self.assertEqual(representation[0][0], "⎡ +1.00 + 0.00j ⎤")
+        self.assertEqual(representation[1][0], "⎢ +0.00 + 0.00j ⎥")
+        self.assertEqual(representation[2][0], "⎣ +0.00 + 0.00j ⎦")
+        self.assertEqual(representation[0][1], "⎡ +1.00 + 0.00j   +0.00 + 0.00j ⎤")
+        self.assertEqual(representation[1][1], "⎣ +0.00 + 0.00j   +0.00 + 0.00j ⎦")
 
         env.fock.expand()
         representation = env.__repr__().split("\n")
         representation = [r.split(" ⊗ ") for r in representation]
         self.assertEqual(
-            representation[0][0], "⎡ 1.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎤"
+            representation[0][0], "⎡ +1.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎤"
         )
         self.assertEqual(
-            representation[1][0], "⎢ 0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎥"
+            representation[1][0], "⎢ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎥"
         )
         self.assertEqual(
-            representation[2][0], "⎣ 0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎦"
+            representation[2][0], "⎣ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎦"
         )
-        self.assertEqual(representation[0][1], "⎡ 1.00 + 0.00j   0.00 + 0.00j ⎤")
-        self.assertEqual(representation[1][1], "⎣ 0.00 + 0.00j   0.00 + 0.00j ⎦")
+        self.assertEqual(representation[0][1], "⎡ +1.00 + 0.00j   +0.00 + 0.00j ⎤")
+        self.assertEqual(representation[1][1], "⎣ +0.00 + 0.00j   +0.00 + 0.00j ⎦")
 
         env = Envelope()
         env.fock.state = 1
@@ -73,10 +73,10 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
         representation = env.__repr__().split("\n")
         representation = [r.split(" ⊗ ") for r in representation]
         self.assertEqual(representation[0][1], "|H⟩")
-        self.assertEqual(representation[0][0], "⎡ 0.00 + 0.00j ⎤")
-        self.assertEqual(representation[1][0], "⎢ 1.00 + 0.00j ⎥")
-        self.assertEqual(representation[2][0], "⎢ 0.00 + 0.00j ⎥")
-        self.assertEqual(representation[3][0], "⎣ 0.00 + 0.00j ⎦")
+        self.assertEqual(representation[0][0], "⎡ +0.00 + 0.00j ⎤")
+        self.assertEqual(representation[1][0], "⎢ +1.00 + 0.00j ⎥")
+        self.assertEqual(representation[2][0], "⎢ +0.00 + 0.00j ⎥")
+        self.assertEqual(representation[3][0], "⎣ +0.00 + 0.00j ⎦")
 
         env.fock.expand()
         representation = env.__repr__().split("\n")
@@ -84,19 +84,19 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
         self.assertEqual(representation[0][1], "|H⟩")
         self.assertEqual(
             representation[0][0],
-            "⎡ 0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎤",
+            "⎡ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎤",
         )
         self.assertEqual(
             representation[1][0],
-            "⎢ 0.00 + 0.00j   1.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎥",
+            "⎢ +0.00 + 0.00j   +1.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎥",
         )
         self.assertEqual(
             representation[2][0],
-            "⎢ 0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎥",
+            "⎢ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎥",
         )
         self.assertEqual(
             representation[3][0],
-            "⎣ 0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎦",
+            "⎣ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎦",
         )
 
         env.polarization.expand()
@@ -105,57 +105,57 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
 
         self.assertEqual(
             representation[0][0],
-            "⎡ 0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎤",
+            "⎡ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎤",
         )
         self.assertEqual(
             representation[1][0],
-            "⎢ 0.00 + 0.00j   1.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎥",
+            "⎢ +0.00 + 0.00j   +1.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎥",
         )
         self.assertEqual(
             representation[2][0],
-            "⎢ 0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎥",
+            "⎢ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎥",
         )
         self.assertEqual(
             representation[3][0],
-            "⎣ 0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎦",
+            "⎣ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎦",
         )
-        self.assertEqual(representation[0][1], "⎡ 1.00 + 0.00j ⎤")
-        self.assertEqual(representation[1][1], "⎣ 0.00 + 0.00j ⎦")
+        self.assertEqual(representation[0][1], "⎡ +1.00 + 0.00j ⎤")
+        self.assertEqual(representation[1][1], "⎣ +0.00 + 0.00j ⎦")
 
         env.polarization.expand()
         representation = env.__repr__().split("\n")
         representation = [r.split(" ⊗ ") for r in representation]
         self.assertEqual(
             representation[0][0],
-            "⎡ 0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎤",
+            "⎡ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎤",
         )
         self.assertEqual(
             representation[1][0],
-            "⎢ 0.00 + 0.00j   1.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎥",
+            "⎢ +0.00 + 0.00j   +1.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎥",
         )
         self.assertEqual(
             representation[2][0],
-            "⎢ 0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎥",
+            "⎢ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎥",
         )
         self.assertEqual(
             representation[3][0],
-            "⎣ 0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎦",
+            "⎣ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎦",
         )
-        self.assertEqual(representation[0][1], "⎡ 1.00 + 0.00j   0.00 + 0.00j ⎤")
-        self.assertEqual(representation[1][1], "⎣ 0.00 + 0.00j   0.00 + 0.00j ⎦")
+        self.assertEqual(representation[0][1], "⎡ +1.00 + 0.00j   +0.00 + 0.00j ⎤")
+        self.assertEqual(representation[1][1], "⎣ +0.00 + 0.00j   +0.00 + 0.00j ⎦")
 
         env = Envelope()
         env.fock.state = 1
         env.combine()
         representation = env.__repr__().split("\n")
-        self.assertEqual(representation[0], "⎡ 0.00 + 0.00j ⎤")
-        self.assertEqual(representation[1], "⎢ 0.00 + 0.00j ⎥")
-        self.assertEqual(representation[2], "⎢ 1.00 + 0.00j ⎥")
-        self.assertEqual(representation[3], "⎢ 0.00 + 0.00j ⎥")
-        self.assertEqual(representation[4], "⎢ 0.00 + 0.00j ⎥")
-        self.assertEqual(representation[5], "⎢ 0.00 + 0.00j ⎥")
-        self.assertEqual(representation[6], "⎢ 0.00 + 0.00j ⎥")
-        self.assertEqual(representation[7], "⎣ 0.00 + 0.00j ⎦")
+        self.assertEqual(representation[0], "⎡ +0.00 + 0.00j ⎤")
+        self.assertEqual(representation[1], "⎢ +0.00 + 0.00j ⎥")
+        self.assertEqual(representation[2], "⎢ +1.00 + 0.00j ⎥")
+        self.assertEqual(representation[3], "⎢ +0.00 + 0.00j ⎥")
+        self.assertEqual(representation[4], "⎢ +0.00 + 0.00j ⎥")
+        self.assertEqual(representation[5], "⎢ +0.00 + 0.00j ⎥")
+        self.assertEqual(representation[6], "⎢ +0.00 + 0.00j ⎥")
+        self.assertEqual(representation[7], "⎣ +0.00 + 0.00j ⎦")
 
         env = Envelope()
         env.fock.state = 1
@@ -166,19 +166,19 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
         representation = env.__repr__().split("\n")
         self.assertEqual(
             representation[0],
-            "⎡ 0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎤",
+            "⎡ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎤",
         )
         self.assertEqual(
             representation[1],
-            "⎢ 0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎥",
+            "⎢ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎥",
         )
         self.assertEqual(
             representation[2],
-            "⎢ 0.00 + 0.00j   0.00 + 0.00j   1.00 + 0.00j   0.00 + 0.00j ⎥",
+            "⎢ +0.00 + 0.00j   +0.00 + 0.00j   +1.00 + 0.00j   +0.00 + 0.00j ⎥",
         )
         self.assertEqual(
             representation[3],
-            "⎣ 0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j   0.00 + 0.00j ⎦",
+            "⎣ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎦",
         )
         env = Envelope()
         env.measure()
