@@ -449,8 +449,10 @@ class TestFockOperationSqueeze(unittest.TestCase):
 
 
 class TestExpressionOperator(unittest.TestCase):
+    @pytest.mark.my_marker
     def test_expression_operator_fock_vector(self) -> None:
         f = Fock()
+        f.state = 1
         context = {
             "a": lambda dims: annihilation_operator(dims[0]),
             "a_dag": lambda dims: creation_operator(dims[0]),
@@ -462,7 +464,8 @@ class TestExpressionOperator(unittest.TestCase):
             context=context,
         )
         f.apply_operation(op)
-        self.assertTrue(jnp.allclose(f.state, jnp.array([[-1], [0], [0]])))
+        print(f)
+        self.assertTrue(jnp.allclose(f.state, jnp.array([[0],[-1], [0], [0]])))
 
     def test_expression_operator_fock_vector_two_scalers(self) -> None:
         f = Fock()
