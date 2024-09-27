@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "photon_weave"
+version = "0.0.3"
+description = "A quantum optics simulator for modeling and analysis of quantum systems."
+authors = ["Your Name <your.email@example.com>"]
+license = "Apache-2.0"
+readme = "README.md"
+homepage = "https://github.com/tqsd/photon_weave"
+repository = "https://github.com/tqsd/photon_weave"
+keywords = ["quantum optics", "simulation", "quantum mechanics"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+numpy = "^1.21"
+scipy = "^1.7"
+matplotlib = "^3.4"
+jax = "^0.4.33"
+jaxlib = "^0.4.33"
+# Add other dependencies as required
+
+[tool.poetry.dev-dependencies]
+pytest = "^8.2"
+sphinx = "^7.4"
+sphinx-rtd-theme = "^0.5"
+# Add other development dependencies as required
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
