@@ -34,22 +34,22 @@ class TestFockSmallFunctions(unittest.TestCase):
         for ln, line in enumerate(representation):
             if ln == 0:
                 if label == ln:
-                    self.assertEqual("⎡ 1.00 + 0.00j ⎤", line)
+                    self.assertEqual("⎡ +1.00 + 0.00j ⎤", line)
                 else:
-                    self.assertEqual("⎡ 0.00 + 0.00j ⎤", line)
+                    self.assertEqual("⎡ +0.00 + 0.00j ⎤", line)
             elif ln == len(representation) - 1:
                 if label == ln:
-                    self.assertEqual("⎣ 1.00 + 0.00j ⎦", line)
+                    self.assertEqual("⎣ +1.00 + 0.00j ⎦", line)
                 else:
-                    self.assertEqual("⎣ 0.00 + 0.00j ⎦", line)
+                    self.assertEqual("⎣ +0.00 + 0.00j ⎦", line)
             else:
                 if label == ln:
-                    self.assertEqual("⎢ 1.00 + 0.00j ⎥", line)
+                    self.assertEqual("⎢ +1.00 + 0.00j ⎥", line)
                 else:
-                    self.assertEqual("⎢ 0.00 + 0.00j ⎥", line)
+                    self.assertEqual("⎢ +0.00 + 0.00j ⎥", line)
         fock.expand()
         representation = fock.__repr__().split("\n")
-        v = lambda x: f" {x}.00 + 0.00j "
+        v = lambda x: f" +{x}.00 + 0.00j "
         for ln, line in enumerate(representation):
             constructed_line_1 = " ".join(
                 [v(1) if ln == i else v(0) for i in range(fock.dimensions)]
