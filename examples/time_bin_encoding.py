@@ -1,11 +1,38 @@
 import jax.numpy as jnp
+from typing import List
 
 from photon_weave.state.envelope import Envelope
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.operation import Operation, FockOperationType, CompositeOperationType
 
 
-def time_bin_encoding(alpha:float, beta:float):
+def time_bin_encoding(alpha:float, beta:float)->List[List[int]]:
+    """
+    Simulates time bin encoding
+
+    Time Bin encoding makes use of four beam splitters
+    and two phase shifters (see diagram below):
+        ┍━[PS:a]━┑    ┍━[PS:b]━┑
+        │        │    │        │
+    ———[/]━━━━━━[\]━━[/]━━━━━━[\]━━◽
+                               ┃
+                              ◽
+
+    Parameters
+    ----------
+    alpha: float
+        Phase shift for the first arm
+    beta: float
+        Phase shift for the second arm
+
+    Returns:
+    List[List[int]]
+        Measurement outcomes
+        Three lists correspond to three measurement times
+        Each list has two elements first corresponding to the
+        measurement outcome at top detector and second corresponding
+        to the bottom detector
+    """
     # Create an envelope with one photon
     env1=Envelope()
     env1.fock.state = 3
