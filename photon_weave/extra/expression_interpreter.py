@@ -1,7 +1,8 @@
+from typing import Callable, Dict, List
+
 import jax.numpy as jnp
-from jax.scipy.linalg import expm
 import scipy.linalg as la
-from typing import List, Callable, Dict
+from jax.scipy.linalg import expm
 
 
 def interpreter(
