@@ -165,7 +165,8 @@ class Envelope:
             formatted_matrix: Union[str, List[str]]
             formatted_matrix = "\n".join(
                 [
-                    f"⎢ {'   '.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
+                    f"⎢ {'   '.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"\
+                        } {abs(num.imag):.2f}j' for num in row])} ⎥"
                     for row in self.state
                 ]
             )
@@ -256,6 +257,7 @@ class Envelope:
         it expands those
         """
         from photon_weave.state.composite_envelope import CompositeEnvelope
+
         if self.state is None:
             self.fock.expand()
             self.polarization.expand()
@@ -332,7 +334,8 @@ class Envelope:
                     or len(states) == 2
                 ):
                     probabilities = (
-                        jnp.abs(jnp.sum(ps, axis=self.polarization.index)).flatten() ** 2
+                        jnp.abs(jnp.sum(ps, axis=self.polarization.index)).flatten()
+                        ** 2
                     )
                     # probabilities = jnp.abs(ps.take(self.fock.index, axis=self.fock.index).flatten())**2
                     key = C.random_key
@@ -631,7 +634,9 @@ class Envelope:
         reshape_shape[self.polarization.index] = self.polarization.dimensions
 
         assert isinstance(self.state, jnp.ndarray)
-        ps = self.state.reshape([*reshape_shape, *reshape_shape]).transpose([0, 2, 1, 3])
+        ps = self.state.reshape([*reshape_shape, *reshape_shape]).transpose(
+            [0, 2, 1, 3]
+        )
 
         # Handle POVM measurement when both spaces are measured
         if len(states) == 2:
@@ -644,7 +649,9 @@ class Envelope:
             # Compute probabilities
             probabilities = []
             for op in operators:
-                op = op.reshape([*reshape_shape, *reshape_shape]).transpose([0, 2, 1, 3])
+                op = op.reshape([*reshape_shape, *reshape_shape]).transpose(
+                    [0, 2, 1, 3]
+                )
                 prob_state = (
                     jnp.einsum(einsum, op, ps, jnp.conj(op))
                     .transpose([0, 2, 1, 3])
@@ -962,7 +969,9 @@ class Envelope:
         if self.state is None and self.composite_envelope is None:
             if len(states) == 1:
                 assert isinstance(states[0], (Polarization, Fock))
-                assert isinstance(states[0].state, (int, PolarizationLabel, jnp.ndarray))
+                assert isinstance(
+                    states[0].state, (int, PolarizationLabel, jnp.ndarray)
+                )
                 return states[0].state
             elif len(states) == 2:
                 self.combine()
@@ -1153,7 +1162,9 @@ class Envelope:
                 return True
         return False  # pragma: no cover
 
-    def apply_operation(self, operation: "Operation", *states:Union['Fock', 'Polarization']) -> None:
+    def apply_operation(
+        self, operation: "Operation", *states: Union["Fock", "Polarization"]
+    ) -> None:
         """
         Applies given operation to the correct state
 
@@ -1167,7 +1178,7 @@ class Envelope:
 
         from photon_weave.operation.fock_operation import FockOperationType
         from photon_weave.operation.polarization_operation import (
-            PolarizationOperationType
+            PolarizationOperationType,
         )
         from photon_weave.state.fock import Fock
         from photon_weave.state.polarization import Polarization
@@ -1197,11 +1208,11 @@ class Envelope:
             assert isinstance(to, jnp.ndarray)
             operation.compute_dimensions(states[0]._num_quanta, to)
             states[0].resize(operation.dimensions[0])
-        elif isinstance(operation._operation_type, PolarizationOperationType) and isinstance(
-                states[0], Polarization
-        ):
+        elif isinstance(
+            operation._operation_type, PolarizationOperationType
+        ) and isinstance(states[0], Polarization):
             # Given arguments 0,0 don't have an effect
-            operation.compute_dimensions([0],jnp.array([0]))
+            operation.compute_dimensions([0], jnp.array([0]))
 
         reshape_shape = [-1, -1]
         assert isinstance(self.fock.index, int)
@@ -1217,7 +1228,6 @@ class Envelope:
             reshape_shape.append(1)
 
             ps = self.state.reshape(reshape_shape)
-
 
             # state is reordered, so the state operated on is in the first state
             ps = jnp.einsum("ij,jkl->ikl", operation.operator, ps)

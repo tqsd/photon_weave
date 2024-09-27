@@ -16,10 +16,10 @@ from photon_weave._math.ops import (
     num_quanta_vector,
 )
 from photon_weave.operation import (
+    CustomStateOperationType,
     FockOperationType,
     Operation,
     PolarizationOperationType,
-    CustomStateOperationType,
 )
 from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
@@ -628,10 +628,10 @@ class ProductState:
             The states in the correct order to which the operation
             will be applied
         """
+        from photon_weave.operation import CompositeOperationType
+        from photon_weave.state.custom_state import CustomState
         from photon_weave.state.fock import Fock
         from photon_weave.state.polarization import Polarization
-        from photon_weave.state.custom_state import CustomState
-        from photon_weave.operation import CompositeOperationType
 
         if isinstance(operation._operation_type, FockOperationType):
             assert isinstance(states[0], Fock)

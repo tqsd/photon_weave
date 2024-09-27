@@ -1,9 +1,10 @@
-import jax.numpy as jnp
 from typing import List
 
-from photon_weave.state.envelope import Envelope
+import jax.numpy as jnp
+
+from photon_weave.operation import CompositeOperationType, FockOperationType, Operation
 from photon_weave.state.composite_envelope import CompositeEnvelope
-from photon_weave.operation import Operation, FockOperationType, CompositeOperationType
+from photon_weave.state.envelope import Envelope
 
 
 def time_bin_encoding(alpha: float, beta: float) -> List[List[int]]:

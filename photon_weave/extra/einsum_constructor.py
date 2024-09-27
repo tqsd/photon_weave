@@ -1,5 +1,5 @@
 import itertools
-from typing import List, Dict, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Union
 
 if TYPE_CHECKING:
     from photon_weave.state.base_state import BaseState
