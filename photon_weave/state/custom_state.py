@@ -6,18 +6,18 @@ such as qubits or quantum dots
 """
 
 import uuid
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 
 from photon_weave._math.ops import apply_kraus, kraus_identity_check
+from photon_weave.operation import CustomStateOperationType, Operation
 from photon_weave.photon_weave import Config
 from photon_weave.state.base_state import BaseState
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.expansion_levels import ExpansionLevel
-from photon_weave.operation import CustomStateOperationType, Operation
 
 
 class CustomState(BaseState):
@@ -157,7 +157,9 @@ class CustomState(BaseState):
         elif major >= 0 and minor >= 0:
             self.index = (major, minor)
         else:
-            raise ValueError("Either set both parameters (minor, major) or none of them")
+            raise ValueError(
+                "Either set both parameters (minor, major) or none of them"
+            )
 
     def measure(
         self, separate_measurement: bool = False, destructive: bool = True

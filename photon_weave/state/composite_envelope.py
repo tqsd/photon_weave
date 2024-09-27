@@ -1,8 +1,6 @@
-import itertools
 import uuid
-from contextlib import ExitStack
-from dataclasses import InitVar, dataclass, field
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple, Union, cast
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union, cast
 
 import jax
 import jax.numpy as jnp
@@ -30,7 +28,6 @@ if TYPE_CHECKING:
     from photon_weave.state.custom_state import CustomState  # pragma: no cover
     from photon_weave.state.envelope import Envelope  # pragma: no cover
     from photon_weave.state.fock import Fock  # pragma: no cover
-    from photon_weave.state.polarization import Polarization  # pragma: no cover
 
 
 @dataclass(slots=True)
@@ -89,12 +86,10 @@ class ProductState:
         *ordered_states: 'BaseState'
             States ordered in the new order
         """
-        from photon_weave.state.base_state import BaseState
 
         assert all(
             so in ordered_states for so in self.state_objs
         ), "All state objects need to be given"
-        old_dims = [os.dimensions for os in ordered_states]
         if self.expansion_level == ExpansionLevel.Vector:
             # Get the state and reshape it
             shape = [so.dimensions for so in self.state_objs]
@@ -157,7 +152,6 @@ class ProductState:
         Dict[BaseState,int]
             Dictionary of outcomes, where the state is key and its outcome measurement is the value (int)
         """
-        from photon_weave.state.custom_state import CustomState
         from photon_weave.state.polarization import Polarization, PolarizationLabel
 
         assert all(
@@ -167,7 +161,6 @@ class ProductState:
         C = Config()
 
         remaining_states = [s for s in self.state_objs]
-        remove_states = [s for s in states]
 
         if self.expansion_level == ExpansionLevel.Vector:
             # Get the state and reshape it into tensor
@@ -220,9 +213,6 @@ class ProductState:
                 self.state_objs.remove(state)
             if len(self.state_objs) > 0:
                 # Handle reshaping and storing the post measurement product state
-                outcome_dims = sum(
-                    [obj.dimensions for obj in self.state_objs if obj not in states]
-                )
                 self.state = ps.reshape(-1, 1)
                 self.state /= jnp.linalg.norm(self.state)
             else:
@@ -282,9 +272,6 @@ class ProductState:
 
             # Reconstruct the post measurement product state
             if len(self.state_objs) > 0:
-                outcome_dims = sum(
-                    [obj.dimensions for obj in self.state_objs if obj not in states]
-                )
                 ps = ps.flatten()
                 num_elements = ps.size
                 sqrt = int(jnp.ceil(jnp.sqrt(num_elements)))
@@ -334,9 +321,6 @@ class ProductState:
 
         # Transform the operators to the tensors
         op_shape = [s.dimensions for s in states] * 2
-        transpose_pattern = lambda x: [
-            item for i in range(len(x)) for item in [i, i + len(x)]
-        ]
         # operators = [op.reshape(op_shape).transpose(*transpose_pattern(states)) for op in operators]
 
         # Reshape operators
@@ -347,8 +331,6 @@ class ProductState:
 
         # Generate the operators for application of operators
         einsum = ESC.apply_operator_matrix(self.state_objs, list(states))
-
-        dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
 
         # Get the probabilities
         prob_list: List[float] = []
@@ -362,7 +344,9 @@ class ProductState:
 
             # Trace out the state to get the probabilities
             einsum_to = ESC.trace_out_matrix(self.state_objs, list(states))
-            prob_state_to = jnp.einsum(einsum_to, prob_state).reshape((to_dims, to_dims))
+            prob_state_to = jnp.einsum(einsum_to, prob_state).reshape(
+                (to_dims, to_dims)
+            )
 
             # Compute the outcome probability
             prob_list.append(float(jnp.trace(prob_state_to)))
@@ -884,10 +868,7 @@ class CompositeEnvelope:
            Accepts many state_objs
         """
         from photon_weave.state.base_state import BaseState
-        from photon_weave.state.custom_state import CustomState
         from photon_weave.state.envelope import Envelope
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
 
         # Check for the types
         for so in state_objs:
@@ -1397,9 +1378,10 @@ class CompositeEnvelope:
             p for p in self.states if any(so in p.state_objs for so in states)
         ]
         ps = None
-        if (len(product_states) > 1 or
-            (len(product_states) == 1 and not all(state in product_states[0].state_objs
-                                                  for state in states))):
+        if len(product_states) > 1 or (
+            len(product_states) == 1
+            and not all(state in product_states[0].state_objs for state in states)
+        ):
             all_states = [s for s in states]
             for p in product_states:
                 all_states.extend([s for s in p.state_objs])

@@ -2,21 +2,17 @@ import unittest
 
 import jax.numpy as jnp
 import pytest
-import qutip as qt
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
 
+from photon_weave._math.ops import (
+    annihilation_operator,
+    creation_operator,
+    number_operator,
+)
 from photon_weave.operation import FockOperationType, Operation
 from photon_weave.photon_weave import Config
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.envelope import Envelope
 from photon_weave.state.fock import Fock
-from photon_weave._math.ops import (
-    creation_operator,
-    annihilation_operator,
-    number_operator,
-)
 
 
 class TestFockOperationIdentity(unittest.TestCase):
@@ -540,7 +536,9 @@ class TestExpressionOperator(unittest.TestCase):
         env.combine()
         env.fock.apply_operation(op)
         self.assertTrue(
-            jnp.allclose(env.state, jnp.array([[0], [0], [-1], [0], [0], [0], [0], [0]]))
+            jnp.allclose(
+                env.state, jnp.array([[0], [0], [-1], [0], [0], [0], [0], [0]])
+            )
         )
 
     def test_expression_operator_envelope_matrix(self) -> None:
@@ -584,7 +582,9 @@ class TestExpressionOperator(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array([[0], [0], [0], [-1], [0], [0], [0], [0], [0], [0], [0], [0]]),
+                jnp.array(
+                    [[0], [0], [0], [-1], [0], [0], [0], [0], [0], [0], [0], [0]]
+                ),
             )
         )
 

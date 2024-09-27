@@ -10,70 +10,69 @@ def interpreter(
     context: Dict[str, Callable[[List[int]], jnp.ndarray]],
     dimensions: List[int],
 ) -> jnp.ndarray:
-    """
-    Recursively compute an operator from an expression, context and dimensions
+    r"""
+        Recursively compute an operator from an expression, context and dimensions
 
     Parameters
     ----------
-    expr: tuple
-        Expression defined in a lisp style tuples
-    context: Dict[str, Callable[[List[int]], jnp.ndarray]]
-        Context is a dictionary of callables (lambda functions)
-        Every lambda should accept list of integers (dimensions)
-        and return a jnp.ndarray operator matrix
-    dimensions: List[int]
-        List of dimensions, ordered in the same way as the states
-        operated on
+        expr: tuple
+            Expression defined in a lisp style tuples
+        context: Dict[str, Callable[[List[int]], jnp.ndarray]]
+            Context is a dictionary of callables (lambda functions)
+            Every lambda should accept list of integers (dimensions)
+            and return a jnp.ndarray operator matrix
+        dimensions: List[int]
+            List of dimensions, ordered in the same way as the states
+            operated on
 
     Returns
     -------
-    jnp.ndarray
-        Correctly computed operator
-
+        jnp.ndarray
+            Correctly computed operator
 
     Notes
     -----
-    When constructing operator which acts on multiple spaces, be
-    carefull that you correctly kron the operators. Wrong order
-    will not result in correct operator, but no exceptions will
-    be produced.
+        When constructing operator which acts on multiple spaces, be
+        carefull that you correctly kron the operators. Wrong order
+        will not result in correct operator, but no exceptions will
+        be produced.
 
     Usage
     -----
-    Tuples are evaluated from the inner most tuple to the outer most
-    one. The first element in a tuple is a `command`, followed by
-    `arguments˙. There can be multiple arguments for some commands.
-    Interpreter understands the following commands:
-    - add: adds all arguments together, accepts any number of arguments
-      >>> ('add', 1, 2, 3) -> Sums the arguments and is evaluated to 6
-    - sub: substracts the arguments, accepts 2 arguments
-      >>> ('sub', 3, 2) -> 1
-    - s_mult: Scalar multiplication, accepts any number of arguments
-      >>> ('s_mult', 1,2,A) -> 2*A, where A is a matrix
-    - m_mult: Matrix multiplication, accepts and number of arguments
-      >>> ('m_mult', A,B,C) -> A@B@C
-    - div: Divides the values, accpets two arguments
-      >>> ('div', A, B) -> A/B
-    - kron: Kronecker multiplication, accepts and number of arguments
-      >>> ('kron', A,B,C) -> jnp.kron(A,jnp.kron(B,C))
-    - expm: Exponentiate matrix term, accepts one argument
-      >>> ('expm', A) -> e^A
+        Tuples are evaluated from the inner most tuple to the outer most
+        one. The first element in a tuple is a `command`, followed by
+        `arguments˙. There can be multiple arguments for some commands.
+        Interpreter understands the following commands:
+            - add: adds all arguments together, accepts any number of arguments
+            >>> ('add', 1, 2, 3) -> Sums the arguments and is evaluated to 6
+            - sub: substracts the arguments, accepts 2 arguments
+            >>> ('sub', 3, 2) -> 1
+            - s_mult: Scalar multiplication, accepts any number of arguments
+            >>> ('s_mult', 1,2,A) -> 2*A, where A is a matrix
+            - m_mult: Matrix multiplication, accepts and number of arguments
+            >>> ('m_mult', A,B,C) -> A@B@C
+            - div: Divides the values, accpets two arguments
+            >>> ('div', A, B) -> A/B
+            - kron: Kronecker multiplication, accepts and number of arguments
+            >>> ('kron', A,B,C) -> jnp.kron(A,jnp.kron(B,C))
+            - expm: Exponentiate matrix term, accepts one argument
+            >>> ('expm', A) -> e^A
 
-    Expressions can be nested to produce complex expressions:
-    >>> ('expm', ('s_mult', 1j, jnp.pi, 'n'))
+            Expressions can be nested to produce complex expressions:
+            >>> ('expm', ('s_mult', 1j, jnp.pi, 'n'))
 
-    Arguments can be numbers, arrays or matrices. Arguments can also
-    be string types. If an argument is a string type, like in example 'n',
-    then its value will be computed from the context.
-    >>> context = {
-    >>>    'n': lambda dims: number_operator(dims[0])
-    >>>}
-    In this case
-    'n' will be computed as:
-    >>> context['n'](dims)
-    The index 0 tells the interpreter the which state this operator should correspond to.
-    The list `dims` is passed by the interpreter and it contains, the list of
-    dimensions of the state we wish to operate on.
+        Arguments can be numbers, arrays or matrices. Arguments can also
+        be string types. If an argument is a string type, like in example 'n',
+        then its value will be computed from the context.
+            >>> context = {
+            >>>    'n': lambda dims: number_operator(dims[0])
+            >>>}
+            In this case
+            'n' will be computed as:
+            >>> context['n'](dims)
+        The index 0 tells the interpreter the which state this operator should correspond to.
+        The list `dims` is passed by the interpreter and it contains, the list of
+        dimensions of the state we wish to operate on.
 
     """
     if isinstance(expr, tuple):

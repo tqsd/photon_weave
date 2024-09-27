@@ -11,12 +11,10 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 
-from photon_weave._math.ops import apply_kraus, compute_einsum, kraus_identity_check
+from photon_weave.operation import PolarizationOperationType
 from photon_weave.photon_weave import Config
 from photon_weave.state.exceptions import NotExtractedException
-from photon_weave.operation import PolarizationOperationType
 
 from .base_state import BaseState
 from .expansion_levels import ExpansionLevel
@@ -108,7 +106,9 @@ class Polarization(BaseState):
 
     @dimensions.setter
     def dimensions(self, dimensions: int) -> None:
-        raise ValueError("Dimensions can not be set for Polarization type, 2 by default")
+        raise ValueError(
+            "Dimensions can not be set for Polarization type, 2 by default"
+        )
 
     def expand(self) -> None:
         """
@@ -344,8 +344,8 @@ class Polarization(BaseState):
         operation: Operation
             Operation with operation type: PolarizationOperationType
         """
-        from photon_weave.state.envelope import Envelope
         from photon_weave.state.composite_envelope import CompositeEnvelope
+        from photon_weave.state.envelope import Envelope
 
         assert isinstance(operation._operation_type, PolarizationOperationType)
 
