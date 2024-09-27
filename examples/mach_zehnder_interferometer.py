@@ -28,7 +28,6 @@ def mach_zender_single_shot(phase_shift:float):
     ce.apply_operation(bs1, env1.fock, env2.fock)
     env1.fock.apply_operation(ps)
     ce.apply_operation(bs2, env1.fock, env2.fock)
-    print(ce.product_states[0].state)
 
     out1 = env1.fock.measure()
     out2 = env2.fock.measure()
