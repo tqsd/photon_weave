@@ -1,5 +1,3 @@
-name: Tests
-
 on:
   push:
     branches:
@@ -10,6 +8,7 @@ on:
 
 jobs:
   test:
+    if: "!contains(github.event.head_commit.message, 'Update coverage badge')"
     runs-on: ubuntu-latest
 
     steps:
@@ -24,15 +23,29 @@ jobs:
       - name: Install dependencies
         run: |
           pip install .
+          pip install coverage coverage-badge
           pip install pytest pytest-cov
 
       - name: Run tests with coverage
         run: |
-          pytest --cov=photon_weave --cov-report=xml
+          coverage run -m pytest
+          coverage report
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+      - name: Generate coverage badge
+        run: |
+          mkdir -p assets
+          coverage-badge -o assets/coverage.svg -f
+
+      - name: Upload coverage badge
+        uses: actions/upload-artifact@v3
         with:
-          files: ./coverage.xml
-          flags: unittests
-          name: codecov-refractor-branch
+          name: coverage-badge
+          path: assets/coverage.svg
+
+      - name: Commit coverage badge to repository
+        run: |
+          git config --local user.name "GitHub Actions"
+          git config --local user.email "actions@github.com"
+          git add assets/coverage.svg
+          git commit -m "Update coverage badge"
+          git push origin HEAD:${{ github.ref_name }}
