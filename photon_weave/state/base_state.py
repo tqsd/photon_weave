@@ -121,7 +121,8 @@ class BaseState(ABC):
             formatted_vector: Union[str, List[str]]
             formatted_vector = "\n".join(
                 [
-                    f"⎢ {''.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
+                    f"⎢ {''.join([f'{num.real:+.2f} {"+" if num.imag >= 0 else "-"\
+                        } {abs(num.imag):.2f}j' for num in row])} ⎥"
                     for row in self.state
                 ]
             )
@@ -136,7 +137,8 @@ class BaseState(ABC):
             formatted_matrix: Union[str, List[str]]
             formatted_matrix = "\n".join(
                 [
-                    f"⎢ {'   '.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"} {abs(num.imag):.2f}j' for num in row])} ⎥"
+                    f"⎢ {'   '.join([f'{num.real:.2f} {"+" if num.imag >= 0 else "-"\
+                        } {abs(num.imag):.2f}j' for num in row])} ⎥"
                     for row in self.state
                 ]
             )
@@ -163,7 +165,8 @@ class BaseState(ABC):
         operators: List[Union[np.ndarray, jnp.Array]]
             List of the operators
         identity_check: bool
-            Signal to check whether or not the operators sum up to identity, True by default
+            Signal to check whether or not the operators sum up to identity, 
+            True by default
         """
 
         assert isinstance(self.expansion_level, ExpansionLevel)
