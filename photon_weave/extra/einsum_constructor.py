@@ -4,6 +4,7 @@ from typing import List, Dict, Union, TYPE_CHECKING
 if TYPE_CHECKING:
     from photon_weave.state.base_state import BaseState
 
+
 def apply_operator_vector(state_objs: list, operator_objs: list) -> str:
     """
     Constructs an Einstein Sum string
@@ -31,7 +32,7 @@ def apply_operator_vector(state_objs: list, operator_objs: list) -> str:
     counter = itertools.count(start=0)
 
     # Consturcting state indices
-    einsum_dict: Dict[BaseState,List[int]] = {s: [] for s in state_objs}
+    einsum_dict: Dict[BaseState, List[int]] = {s: [] for s in state_objs}
     for s in state_objs:
         c = next(counter)
         einsum_dict[s].append(c)
@@ -110,7 +111,7 @@ def apply_operator_matrix(state_objs: list, operator_objs: list) -> str:
     """
 
     einsum_list_list: List[List[int]] = [[], [], [], []]
-    einsum_dict:Dict['BaseState', List[int]] = {k: [] for k in state_objs}
+    einsum_dict: Dict["BaseState", List[int]] = {k: [] for k in state_objs}
     counter = itertools.count(start=0)
 
     # Create indices for the current states
@@ -213,7 +214,7 @@ def trace_out_matrix(state_objs: list, states: list) -> str:
     - State should not be transposed, only reshaped
     """
 
-    einsum_list_list:List[List[int]] = [[], []]
+    einsum_list_list: List[List[int]] = [[], []]
     counter = itertools.count(start=0)
     sum_out = next(counter)
     for _ in range(2):
@@ -247,11 +248,11 @@ def reorder_vector(state_objs: list, states: list) -> str:
     -----
     - State should not be transposed, only reshaped
     """
-    einsum_dict:Dict['BaseState', int] = {s: -1 for s in state_objs}
+    einsum_dict: Dict["BaseState", int] = {s: -1 for s in state_objs}
     counter = itertools.count(start=0)
     # For the last index
     other = next(counter)
-    einsum_list_list:List[List[int]] = [[], []]
+    einsum_list_list: List[List[int]] = [[], []]
     for s in state_objs:
         c = next(counter)
         einsum_list_list[0].append(c)
@@ -283,8 +284,8 @@ def reorder_matrix(state_objs: list, states: list) -> str:
     -----
     - State should not be transposed, only reshaped
     """
-    einsum_list_list:List[List[int]] = [[], []]
-    einsum_dict:Dict['BaseState',List[int]] = {s: [] for s in state_objs}
+    einsum_list_list: List[List[int]] = [[], []]
+    einsum_dict: Dict["BaseState", List[int]] = {s: [] for s in state_objs}
     counter = itertools.count(start=0)
 
     for _ in range(2):
@@ -319,8 +320,8 @@ def measure_vector(state_objs: list, states: list) -> str:
     -----
     - State should not be transposed, only reshaped
     """
-    einsum_list_list:List[List[int]] = [[], []]
-    einsum_dict:Dict['BaseState',List[int]] = {s: [] for s in state_objs}
+    einsum_list_list: List[List[int]] = [[], []]
+    einsum_dict: Dict["BaseState", List[int]] = {s: [] for s in state_objs}
     counter = itertools.count(start=0)
 
     for so in state_objs:
@@ -355,8 +356,8 @@ def measure_matrix(state_objs: list, states: list) -> str:
     -----
     - State should not be transposed, only reshaped
     """
-    einsum_list_list:List[List[int]] = [[], []]
-    einsum_dict:Dict['BaseState', List[int]] = {s: [] for s in state_objs}
+    einsum_list_list: List[List[int]] = [[], []]
+    einsum_dict: Dict["BaseState", List[int]] = {s: [] for s in state_objs}
     counter = itertools.count(start=0)
 
     for _ in range(2):

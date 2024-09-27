@@ -4,9 +4,11 @@ import scipy.linalg as la
 from typing import List, Callable, Dict
 
 
-def interpreter(expr: tuple,
-                context: Dict[str, Callable[[List[int]], jnp.ndarray]],
-                dimensions: List[int]) -> jnp.ndarray:
+def interpreter(
+    expr: tuple,
+    context: Dict[str, Callable[[List[int]], jnp.ndarray]],
+    dimensions: List[int],
+) -> jnp.ndarray:
     """
     Recursively compute an operator from an expression, context and dimensions
 
@@ -63,7 +65,7 @@ def interpreter(expr: tuple,
     be string types. If an argument is a string type, like in example 'n',
     then its value will be computed from the context.
     >>> context = {
-    >>>    'n': lambda dims: number_operator(dims[0]) 
+    >>>    'n': lambda dims: number_operator(dims[0])
     >>>}
     In this case
     'n' will be computed as:
@@ -102,7 +104,9 @@ def interpreter(expr: tuple,
         elif op == "expm":
             return expm(interpreter(args[0], context, dimensions))
         elif op == "div":
-            return interpreter(args[0], context, dimensions) / interpreter(args[1], context, dimensions)
+            return interpreter(args[0], context, dimensions) / interpreter(
+                args[1], context, dimensions
+            )
     elif isinstance(expr, str):
         # Grab a value from the context
         return context[expr](dimensions)

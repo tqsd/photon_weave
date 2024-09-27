@@ -14,7 +14,7 @@ from photon_weave._math.ops import (
     rx_operator,
     ry_operator,
     rz_operator,
-    u3_operator
+    u3_operator,
 )
 from photon_weave.state.expansion_levels import ExpansionLevel
 
@@ -105,7 +105,7 @@ class PolarizationOperationType(Enum):
 
     Usage Example
     >>> op = Operation(PolarizationOperationType.RZ, theta=jnp.pi)
-    
+
     U3 operator
     -----------
     Rotation with 3 Euler angles (:math:`\hat{U3}(\phi,\theta,\omega))`)
@@ -122,26 +122,57 @@ class PolarizationOperationType(Enum):
     >>> operator = jnp.array([[1,0],[0,1]])
     >>> op = Operation(PolarizationOperationType.Custom, operator=operator)
     """
-    I:Tuple[bool, List[str], ExpansionLevel, int]  = (True, [], ExpansionLevel.Vector, 1) 
-    X:Tuple[bool, List[str], ExpansionLevel, int]  = (True, [], ExpansionLevel.Vector, 2) 
-    Y:Tuple[bool, List[str], ExpansionLevel, int]  = (True, [], ExpansionLevel.Vector, 3) 
-    Z:Tuple[bool, List[str], ExpansionLevel, int]  = (True, [], ExpansionLevel.Vector, 4) 
-    H:Tuple[bool, List[str], ExpansionLevel, int]  = (True, [], ExpansionLevel.Vector, 5) 
-    S:Tuple[bool, List[str], ExpansionLevel, int]  = (True, [], ExpansionLevel.Vector, 6) 
-    T:Tuple[bool, List[str], ExpansionLevel, int]  = (True, [], ExpansionLevel.Vector, 7) 
-    SX:Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 8) 
-    RX:Tuple[bool, List[str], ExpansionLevel, int] = (True, ["theta"], ExpansionLevel.Vector, 9) 
-    RY:Tuple[bool, List[str], ExpansionLevel, int] = (True, ["theta"], ExpansionLevel.Vector, 10) 
-    RZ:Tuple[bool, List[str], ExpansionLevel, int] = (True, ["theta"], ExpansionLevel.Vector, 11) 
-    U3:Tuple[bool, List[str], ExpansionLevel, int] = (True, ["phi", "theta", "omega"], ExpansionLevel.Vector, 12) 
-    Custom:Tuple[bool, List[str], ExpansionLevel, int] = (True, ["operator"], ExpansionLevel.Vector, 13)
+    I: Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 1)
+    X: Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 2)
+    Y: Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 3)
+    Z: Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 4)
+    H: Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 5)
+    S: Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 6)
+    T: Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 7)
+    SX: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        [],
+        ExpansionLevel.Vector,
+        8,
+    )
+    RX: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        ["theta"],
+        ExpansionLevel.Vector,
+        9,
+    )
+    RY: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        ["theta"],
+        ExpansionLevel.Vector,
+        10,
+    )
+    RZ: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        ["theta"],
+        ExpansionLevel.Vector,
+        11,
+    )
+    U3: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        ["phi", "theta", "omega"],
+        ExpansionLevel.Vector,
+        12,
+    )
+    Custom: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        ["operator"],
+        ExpansionLevel.Vector,
+        13,
+    )
 
     def __init__(
-            self,
-            renormalize: bool,
-            required_params: List[str],
-            required_expansion_level: ExpansionLevel,
-            op_id: int) -> None:
+        self,
+        renormalize: bool,
+        required_params: List[str],
+        required_expansion_level: ExpansionLevel,
+        op_id: int,
+    ) -> None:
         self.renormalize = renormalize
         self.required_params = required_params
         self.required_expansion_level = required_expansion_level
@@ -152,7 +183,7 @@ class PolarizationOperationType(Enum):
         """
         return
 
-    def compute_operator(self, dimensions: List[int], **kwargs:Any) -> jnp.ndarray:
+    def compute_operator(self, dimensions: List[int], **kwargs: Any) -> jnp.ndarray:
         """
         Computes an operator
 
@@ -198,10 +229,12 @@ class PolarizationOperationType(Enum):
         raise ValueError("Operator not recognized")
 
     def compute_dimensions(
-            self,
-            num_quanta: Union[int, List[int]],
-            state:Union[jnp.ndarray, List[jnp.ndarray]],
-            threshold:float = 1, **kwargs:Any) -> List[int]:
+        self,
+        num_quanta: Union[int, List[int]],
+        state: Union[jnp.ndarray, List[jnp.ndarray]],
+        threshold: float = 1,
+        **kwargs: Any,
+    ) -> List[int]:
         """
         Computes operation
 

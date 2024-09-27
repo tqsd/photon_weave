@@ -33,6 +33,7 @@ def setup_logging() -> None:
         queue_handler.listener.start()
         atexit.register(queue_handler.listener.stop)
 
+
 class PhotonWeaveJSONFormatter(logging.Formatter):
     """
     Custom Photon Weave JSON Formatter

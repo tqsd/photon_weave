@@ -339,7 +339,7 @@ class CustomState(BaseState):
 
         # Consolidate the dimensions
         to = self.trace_out()
-        assert isinstance(to,jnp.ndarray)
+        assert isinstance(to, jnp.ndarray)
         operation.compute_dimensions(0, to)
 
         assert operation.operator.shape == (self.dimensions, self.dimensions)

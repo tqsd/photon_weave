@@ -103,30 +103,22 @@ class TestNonPolarizingBeamSplitter(unittest.TestCase):
 
 
 class TestExpressionOperator(unittest.TestCase):
-
     def test_expression_operator_on_vector(self) -> None:
         env1 = Envelope()
         env1.fock.state = 1
         env2 = Envelope()
         ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.fock, env2.polarization)
-        context={
-            "n": lambda dims: number_operator(dims[0])
-        }
+        context = {"n": lambda dims: number_operator(dims[0])}
         op = Operation(
             CompositeOperationType.Expression,
-            expr=("expm",("s_mult", 1j, jnp.pi, "n")),
+            expr=("expm", ("s_mult", 1j, jnp.pi, "n")),
             context=context,
-            state_types=(Fock,)
+            state_types=(Fock,),
         )
         ce.apply_operation(op, env1.fock)
         self.assertTrue(
-            jnp.allclose(
-                ce.product_states[0].state,
-                jnp.array(
-                    [[0],[0],[-1],[0]]
-                )
-            )
+            jnp.allclose(ce.product_states[0].state, jnp.array([[0], [0], [-1], [0]]))
         )
 
 
@@ -140,10 +132,7 @@ class TestCNOTOperator(unittest.TestCase):
         op = Operation(CompositeOperationType.CXPolarization)
         ce.apply_operation(op, env1.polarization, env2.polarization)
         self.assertTrue(
-            jnp.allclose(
-                jnp.array([[0],[0],[0],[1]]),
-                ce.product_states[0].state
-            )
+            jnp.allclose(jnp.array([[0], [0], [0], [1]]), ce.product_states[0].state)
         )
 
     def test_cnot_matirx(self) -> None:
@@ -156,10 +145,7 @@ class TestCNOTOperator(unittest.TestCase):
         op = Operation(CompositeOperationType.CXPolarization)
         ce.apply_operation(op, env1.polarization, env2.polarization)
         self.assertTrue(
-            jnp.allclose(
-                jnp.array([[0],[0],[0],[1]]),
-                ce.product_states[0].state
-            )
+            jnp.allclose(jnp.array([[0], [0], [0], [1]]), ce.product_states[0].state)
         )
 
 
@@ -174,10 +160,7 @@ class TestCZOperator(unittest.TestCase):
         op = Operation(CompositeOperationType.CZPolarization)
         ce.apply_operation(op, env1.polarization, env2.polarization)
         self.assertTrue(
-            jnp.allclose(
-                jnp.array([[0],[0],[0],[-1]]),
-                ce.product_states[0].state
-            )
+            jnp.allclose(jnp.array([[0], [0], [0], [-1]]), ce.product_states[0].state)
         )
 
     def test_cz_operator_matrix(self) -> None:
@@ -191,11 +174,9 @@ class TestCZOperator(unittest.TestCase):
         op = Operation(CompositeOperationType.CZPolarization)
         ce.apply_operation(op, env1.polarization, env2.polarization)
         self.assertTrue(
-            jnp.allclose(
-                jnp.array([[0],[0],[0],[-1]]),
-                ce.product_states[0].state
-            )
+            jnp.allclose(jnp.array([[0], [0], [0], [-1]]), ce.product_states[0].state)
         )
+
 
 class TestSWAPOperator(unittest.TestCase):
     def test_swap_operator_vector(self) -> None:
@@ -209,21 +190,11 @@ class TestSWAPOperator(unittest.TestCase):
         op = Operation(CompositeOperationType.SwapPolarization)
         ce.apply_operation(op, env1.polarization, env2.polarization)
         self.assertTrue(
-            jnp.allclose(
-                env1.polarization.trace_out(),
-                jnp.array(
-                    [[1],[0]]
-                )
-            )
+            jnp.allclose(env1.polarization.trace_out(), jnp.array([[1], [0]]))
         )
 
         self.assertTrue(
-            jnp.allclose(
-                env2.polarization.trace_out(),
-                jnp.array(
-                    [[0],[1]]
-                )
-            )
+            jnp.allclose(env2.polarization.trace_out(), jnp.array([[0], [1]]))
         )
 
     def test_swap_operator_matrix(self) -> None:
@@ -238,22 +209,13 @@ class TestSWAPOperator(unittest.TestCase):
         op = Operation(CompositeOperationType.SwapPolarization)
         ce.apply_operation(op, env1.polarization, env2.polarization)
         self.assertTrue(
-            jnp.allclose(
-                env1.polarization.trace_out(),
-                jnp.array(
-                    [[1],[0]]
-                )
-            )
+            jnp.allclose(env1.polarization.trace_out(), jnp.array([[1], [0]]))
         )
 
         self.assertTrue(
-            jnp.allclose(
-                env2.polarization.trace_out(),
-                jnp.array(
-                    [[0],[1]]
-                )
-            )
+            jnp.allclose(env2.polarization.trace_out(), jnp.array([[0], [1]]))
         )
+
 
 class TestCSWAPOperator(unittest.TestCase):
     def test_CSWAP_vector(self) -> None:
@@ -270,28 +232,13 @@ class TestCSWAPOperator(unittest.TestCase):
         ce.apply_operation(op, env1.polarization, env2.polarization, env3.polarization)
 
         self.assertTrue(
-            jnp.allclose(
-                env1.polarization.trace_out(),
-                jnp.array(
-                    [[0],[1]]
-                )
-            )
+            jnp.allclose(env1.polarization.trace_out(), jnp.array([[0], [1]]))
         )
         self.assertTrue(
-            jnp.allclose(
-                env2.polarization.trace_out(),
-                jnp.array(
-                    [[1],[0]]
-                )
-            )
+            jnp.allclose(env2.polarization.trace_out(), jnp.array([[1], [0]]))
         )
         self.assertTrue(
-            jnp.allclose(
-                env1.polarization.trace_out(),
-                jnp.array(
-                    [[0],[1]]
-                )
-            )
+            jnp.allclose(env1.polarization.trace_out(), jnp.array([[0], [1]]))
         )
 
     @pytest.mark.my_marker
@@ -310,26 +257,11 @@ class TestCSWAPOperator(unittest.TestCase):
         ce.apply_operation(op, env1.polarization, env2.polarization, env3.polarization)
 
         self.assertTrue(
-            jnp.allclose(
-                env1.polarization.trace_out(),
-                jnp.array(
-                    [[0],[1]]
-                )
-            )
+            jnp.allclose(env1.polarization.trace_out(), jnp.array([[0], [1]]))
         )
         self.assertTrue(
-            jnp.allclose(
-                env2.polarization.trace_out(),
-                jnp.array(
-                    [[1],[0]]
-                )
-            )
+            jnp.allclose(env2.polarization.trace_out(), jnp.array([[1], [0]]))
         )
         self.assertTrue(
-            jnp.allclose(
-                env1.polarization.trace_out(),
-                jnp.array(
-                    [[0],[1]]
-                )
-            )
+            jnp.allclose(env1.polarization.trace_out(), jnp.array([[0], [1]]))
         )

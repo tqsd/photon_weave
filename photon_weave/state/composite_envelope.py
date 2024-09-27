@@ -19,7 +19,7 @@ from photon_weave.operation import (
     FockOperationType,
     Operation,
     PolarizationOperationType,
-    CustomStateOperationType
+    CustomStateOperationType,
 )
 from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
@@ -563,7 +563,7 @@ class ProductState:
                 return True
             if new_dimensions < fock.dimensions:
                 to = fock.trace_out()
-                assert isinstance(to,jnp.ndarray)
+                assert isinstance(to, jnp.ndarray)
                 assert isinstance(fock.index, tuple)
                 num_quanta = num_quanta_vector(to)
                 if num_quanta >= new_dimensions:
@@ -644,7 +644,7 @@ class ProductState:
             assert isinstance(states[0], Polarization)
             assert len(states) == 1
             # Parameters doesn't have any effect
-            operation.compute_dimensions(0,jnp.array([0]))
+            operation.compute_dimensions(0, jnp.array([0]))
         elif isinstance(operation._operation_type, CustomStateOperationType):
             assert isinstance(states[0], CustomState)
             assert len(states) == 1
@@ -657,11 +657,11 @@ class ProductState:
             )
             for i, s in enumerate(states):
                 assert isinstance(
-                    s, operation._operation_type.expected_base_state_types[i] # type: ignore
+                    s, operation._operation_type.expected_base_state_types[i]  # type: ignore
                 )
             operation.compute_dimensions(
                 [s._num_quanta if isinstance(s, Fock) else 0 for s in states],
-                [s.trace_out() for s in states] # type: ignore
+                [s.trace_out() for s in states],  # type: ignore
             )
             for i, s in enumerate(states):
                 if isinstance(s, Fock):
@@ -1372,7 +1372,9 @@ class CompositeEnvelope:
         self.reorder(fock)
         return new_ps.resize_fock(new_dimensions, fock)
 
-    def apply_operation(self, operator: Operation, *states: Union["BaseState", "CustomState"]) -> None:
+    def apply_operation(
+        self, operator: Operation, *states: Union["BaseState", "CustomState"]
+    ) -> None:
         """
         Applies the operation to the correct product space. If operator
         has type CompositeOperator, then the product states are joined if

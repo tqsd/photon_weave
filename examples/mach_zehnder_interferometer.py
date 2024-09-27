@@ -10,7 +10,7 @@ from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.operation import FockOperationType, CompositeOperationType, Operation
 
 
-def mach_zender_single_shot(phase_shift:float):
+def mach_zender_single_shot(phase_shift: float):
     # Create one envelope
     env1 = Envelope()
     # Create one photon
@@ -20,9 +20,9 @@ def mach_zender_single_shot(phase_shift:float):
     env2 = Envelope()
 
     # Generate operator
-    bs1 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi/4)
-    ps  = Operation(FockOperationType.PhaseShift, phi=phase_shift)
-    bs2 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi/4)
+    bs1 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
+    ps = Operation(FockOperationType.PhaseShift, phi=phase_shift)
+    bs2 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
 
     ce = CompositeEnvelope(env1, env2)
     ce.apply_operation(bs1, env1.fock, env2.fock)
@@ -61,5 +61,3 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid(True)
     plt.show()
-
-

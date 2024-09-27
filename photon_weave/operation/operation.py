@@ -28,7 +28,8 @@ class Operation:
             FockOperationType,
             PolarizationOperationType,
             CompositeOperationType,
-            CustomStateOperationType],
+            CustomStateOperationType,
+        ],
         expression: Optional[str] = None,
         apply_count: int = 1,
         **kwargs: Any,
@@ -37,7 +38,8 @@ class Operation:
             FockOperationType,
             PolarizationOperationType,
             CompositeOperationType,
-            CustomStateOperationType] = operation_type
+            CustomStateOperationType,
+        ] = operation_type
         self._operator: Optional[jnp.ndarray] = None
         self._apply_count: int = apply_count
         self._renormalize: bool
@@ -48,14 +50,13 @@ class Operation:
         if operation_type is FockOperationType.Custom:
             assert isinstance(kwargs["operator"], jnp.ndarray)
             self._operator = kwargs["operator"]
-            self._dimensions:List[int] = [self._operator.shape[0]]
+            self._dimensions: List[int] = [self._operator.shape[0]]
 
         for param in operation_type.required_params:
             if param not in kwargs:
                 raise KeyError(
                     f"The '{param}' argument is required for {operation_type.name}"
                 )
-
 
     def __repr__(self) -> str:
         if self._operator is None:
@@ -96,8 +97,11 @@ class Operation:
     def dimensions(self, dimensions: List[int]) -> None:
         self._dimensions = dimensions
 
-    def compute_dimensions(self, num_quanta: Union[int, List[int]],
-                           state: Union[jnp.ndarray, List[jnp.ndarray]]) -> None:
+    def compute_dimensions(
+        self,
+        num_quanta: Union[int, List[int]],
+        state: Union[jnp.ndarray, List[jnp.ndarray]],
+    ) -> None:
         """
         Returns the esitmated required dimensions for the
         application of this operation

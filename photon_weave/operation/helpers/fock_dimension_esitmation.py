@@ -5,8 +5,6 @@ if TYPE_CHECKING:
     from photon_weave.operation import Operation
 
 
-
-
 class FockDimensions:
     """
     An estimator for fock dimensions, used when Displace, Squeeze or Expression
@@ -21,7 +19,13 @@ class FockDimensions:
         Enough state is contained in the post operation state
     """
 
-    def __init__(self, state:jnp.ndarray, operation: "Operation", num_quanta:int, threshold:float) -> None:
+    def __init__(
+        self,
+        state: jnp.ndarray,
+        operation: "Operation",
+        num_quanta: int,
+        threshold: float,
+    ) -> None:
         self.state = state
         self.dimensions = state.shape[0]
         self.operation = operation
@@ -54,7 +58,9 @@ class FockDimensions:
         from photon_weave.operation.fock_operation import FockOperationType
 
         if self.operation._operation_type is FockOperationType.Displace:
-            cutoff = int(self.num_quanta + 3 * jnp.abs(self.operation.kwargs["alpha"]) ** 2)
+            cutoff = int(
+                self.num_quanta + 3 * jnp.abs(self.operation.kwargs["alpha"]) ** 2
+            )
             if cutoff > self.dimensions:
                 self._increase_dimensions(amount=int(cutoff) - self.dimensions)
         if self.operation._operation_type is FockOperationType.Squeeze:
@@ -79,11 +85,10 @@ class FockDimensions:
         if self.state.shape == (self.dimensions, 1):
             self.operation._dimensions = [self.dimensions]
             operator = self.operation._operation_type.compute_operator(
-                [self.dimensions],
-                **self.operation.kwargs
+                [self.dimensions], **self.operation.kwargs
             )
             resulting_state = jnp.dot(operator, self.state)
-            cdf:float = 0
+            cdf: float = 0
             if resulting_state[-1, 0] > (1 - self.threshold) * 1e-3:
                 return -1
             for i in range(len(resulting_state)):
@@ -95,8 +100,7 @@ class FockDimensions:
         if self.state.shape == (self.dimensions, self.dimensions):
             self.operation._dimensions = [self.dimensions]
             operator = self.operation._operation_type.compute_operator(
-                [self.dimensions],
-                **self.operation.kwargs
+                [self.dimensions], **self.operation.kwargs
             )
             resulting_state = operator @ self.state @ operator.T.conj()
             cdf = 0
@@ -111,8 +115,7 @@ class FockDimensions:
             return -1
         return -1
 
-
-    def _increase_dimensions(self, amount:int=1) -> None:
+    def _increase_dimensions(self, amount: int = 1) -> None:
         """
         Increases the dimensions of the state for the requested amount
 

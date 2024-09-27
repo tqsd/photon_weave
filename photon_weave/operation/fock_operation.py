@@ -13,7 +13,7 @@ from photon_weave._math.ops import (
     displacement_operator,
     phase_operator,
     squeezing_operator,
-    number_operator
+    number_operator,
 )
 from photon_weave.extra import interpreter
 from photon_weave.operation.helpers.fock_dimension_esitmation import FockDimensions
@@ -111,14 +111,54 @@ class FockOperationType(Enum):
     >>> fock.apply_operation(op)
     """
 
-    Creation:Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 1)
-    Annihilation:Tuple[bool, List[str], ExpansionLevel, int] = (True, [], ExpansionLevel.Vector, 2)
-    PhaseShift:Tuple[bool, List[str], ExpansionLevel, int] = (False, ["phi"], ExpansionLevel.Vector, 3)
-    Squeeze:Tuple[bool, List[str], ExpansionLevel, int] = (True, ["zeta"], ExpansionLevel.Vector, 4)
-    Displace:Tuple[bool, List[str], ExpansionLevel, int] = (False, ["alpha"], ExpansionLevel.Vector, 5)
-    Identity:Tuple[bool, List[str], ExpansionLevel, int] = (False, [], ExpansionLevel.Vector, 6)
-    Custom:Tuple[bool, List[str], ExpansionLevel, int] = (False, ["operator"], ExpansionLevel.Vector, 7)
-    Expresion:Tuple[bool, List[str], ExpansionLevel, int] = (False, ["expr", "context"], ExpansionLevel.Vector, 8)
+    Creation: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        [],
+        ExpansionLevel.Vector,
+        1,
+    )
+    Annihilation: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        [],
+        ExpansionLevel.Vector,
+        2,
+    )
+    PhaseShift: Tuple[bool, List[str], ExpansionLevel, int] = (
+        False,
+        ["phi"],
+        ExpansionLevel.Vector,
+        3,
+    )
+    Squeeze: Tuple[bool, List[str], ExpansionLevel, int] = (
+        True,
+        ["zeta"],
+        ExpansionLevel.Vector,
+        4,
+    )
+    Displace: Tuple[bool, List[str], ExpansionLevel, int] = (
+        False,
+        ["alpha"],
+        ExpansionLevel.Vector,
+        5,
+    )
+    Identity: Tuple[bool, List[str], ExpansionLevel, int] = (
+        False,
+        [],
+        ExpansionLevel.Vector,
+        6,
+    )
+    Custom: Tuple[bool, List[str], ExpansionLevel, int] = (
+        False,
+        ["operator"],
+        ExpansionLevel.Vector,
+        7,
+    )
+    Expresion: Tuple[bool, List[str], ExpansionLevel, int] = (
+        False,
+        ["expr", "context"],
+        ExpansionLevel.Vector,
+        8,
+    )
 
     def __init__(
         self,
@@ -131,7 +171,7 @@ class FockOperationType(Enum):
         self.required_params = required_params
         self.required_expansion_level = required_expansion_level
 
-    def update(self, **kwargs:Any) -> None:
+    def update(self, **kwargs: Any) -> None:
         """
         Empty method, doesnt do anything in FockOperationType
         """
@@ -210,6 +250,7 @@ class FockOperationType(Enum):
         and the dimensionality of the operator and space match
         """
         from photon_weave.operation.operation import Operation
+
         assert isinstance(num_quanta, int)
         assert isinstance(state, jnp.ndarray)
 

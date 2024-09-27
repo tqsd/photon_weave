@@ -199,10 +199,7 @@ def u3_operator(phi: float, theta: float, omega: float) -> jax.Array:
     sin_term = jnp.sin(theta / 2)
     return jnp.array(
         [
-            [
-                cos_term,
-                -jnp.exp(1j * omega) * sin_term
-            ],
+            [cos_term, -jnp.exp(1j * omega) * sin_term],
             [
                 jnp.exp(1j * phi) * sin_term,
                 jnp.exp(1j * (phi + omega)) * cos_term,
@@ -234,6 +231,7 @@ def creation_operator(cutoff: int) -> jnp.ndarray:
     """
     return jnp.conjugate(annihilation_operator(cutoff=cutoff)).T
 
+
 def number_operator(cutoff: int) -> jnp.ndarray:
     """
     number_operator _summary_
@@ -244,6 +242,7 @@ def number_operator(cutoff: int) -> jnp.ndarray:
     :rtype: jnp.ndarray
     """
     return jnp.matmul(creation_operator(cutoff), annihilation_operator(cutoff))
+
 
 def _expm(mat: jnp.ndarray) -> jnp.ndarray:
     """

@@ -118,6 +118,7 @@ class Polarization(BaseState):
         then it gets expanded to density matrix
         """
         from photon_weave.state.composite_envelope import CompositeEnvelope
+
         # If the state is in composite envelope expand the product space there
         if isinstance(self.index, tuple) or isinstance(self.index, list):
             assert isinstance(self.composite_envelope, CompositeEnvelope)
@@ -345,6 +346,7 @@ class Polarization(BaseState):
         """
         from photon_weave.state.envelope import Envelope
         from photon_weave.state.composite_envelope import CompositeEnvelope
+
         assert isinstance(operation._operation_type, PolarizationOperationType)
 
         if isinstance(self.index, int):

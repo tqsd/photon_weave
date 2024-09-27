@@ -6,7 +6,7 @@ from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.operation import Operation, FockOperationType, CompositeOperationType
 
 
-def time_bin_encoding(alpha:float, beta:float)->List[List[int]]:
+def time_bin_encoding(alpha: float, beta: float) -> List[List[int]]:
     """
     Simulates time bin encoding
 
@@ -34,14 +34,13 @@ def time_bin_encoding(alpha:float, beta:float)->List[List[int]]:
         to the bottom detector
     """
     # Create an envelope with one photon
-    env1=Envelope()
+    env1 = Envelope()
     env1.fock.state = 3
 
     # Create an empty envelope
     env2 = Envelope()
 
-
-    bs = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi/4)
+    bs = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
     ps1 = Operation(FockOperationType.PhaseShift, phi=alpha)
     ps2 = Operation(FockOperationType.PhaseShift, phi=beta)
 
@@ -51,7 +50,7 @@ def time_bin_encoding(alpha:float, beta:float)->List[List[int]]:
     #######################
     # First Beam Splitter #
     #######################
-    
+
     # Apply first beam splitter
     ce.apply_operation(bs, env1.fock, env2.fock)
 
@@ -115,7 +114,6 @@ def time_bin_encoding(alpha:float, beta:float)->List[List[int]]:
     ce.apply_operation(ps2, env1.fock)
     ce.apply_operation(ps2, env2.fock)
 
-    
     ########################
     # Fourth Beam Splitter #
     ########################
@@ -149,7 +147,6 @@ def time_bin_encoding(alpha:float, beta:float)->List[List[int]]:
     # t_3
     ce.apply_operation(bs, env1.fock, env_2_2.fock)
 
-
     #############
     # MEASURING #
     #############
@@ -178,9 +175,8 @@ def time_bin_encoding(alpha:float, beta:float)->List[List[int]]:
     m_t_2_1 = env_2_2.measure()[env_2_2.fock]
     m_t2 = (m_t_2_0, m_t_2_1)
 
-
     return (m_t0, m_t1, m_t2)
 
 
 if __name__ == "__main__":
-    print(time_bin_encoding(0,0))
+    print(time_bin_encoding(0, 0))

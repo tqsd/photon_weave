@@ -419,6 +419,7 @@ class Fock(BaseState):
             Operation with operation type: FockOperationType
         """
         from photon_weave.state.envelope import Envelope
+
         assert isinstance(operation._operation_type, FockOperationType)
 
         if isinstance(self.index, int):
@@ -438,7 +439,7 @@ class Fock(BaseState):
         # Consolidate the dimensions
         to = self.trace_out()
         assert isinstance(to, jnp.ndarray)
-        operation.compute_dimensions(self._num_quanta,to) 
+        operation.compute_dimensions(self._num_quanta, to)
         self.resize(operation.dimensions[0])
 
         if self.expansion_level == ExpansionLevel.Vector:
