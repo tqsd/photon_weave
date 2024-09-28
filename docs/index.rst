@@ -37,10 +37,10 @@ The **Polarization space** :math:`\mathcal{P}` describes the polarization state,
 
 .. math::
    \begin{align}
-   |H\rangle = \begin{bmatrix} 1 \\ 0 \end{bmatrix}
-   |V\rangle = \begin{bmatrix} 0 \\ 1 \end{bmatrix}
-   |R\rangle = \begin{bmatrix} \frac{1}{\sqrt{2}} \\ \frac{i}{\sqrt{2} \end{bmatrix}
-   |L\rangle = \begin{bmatrix} \frac{1}{\sqrt{2}} \\ \frac{-i}{\sqrt{2} \end{bmatrix}
+   |H\rangle &= \begin{bmatrix} 1 \\ 0 \end{bmatrix} \\
+   |V\rangle &= \begin{bmatrix} 0 \\ 1 \end{bmatrix} \\
+   |R\rangle &= \begin{bmatrix} \frac{1}{\sqrt{2}} \\ \frac{i}{\sqrt{2} \end{bmatrix} \\
+   |L\rangle &= \begin{bmatrix} \frac{1}{\sqrt{2}} \\ \frac{-i}{\sqrt{2} \end{bmatrix}
    \end{align}
 
 
@@ -76,6 +76,34 @@ This logic relieves the user from having to implement complex product space trac
 
 Applying Operations
 =====================
+
+**Photon Weave** ships with some predefined oprations. Operations can be defined in the following way:
+.. code-block:: python
+		import jax.numpy as jnp
+		from photon_weave.operations import (
+		    Operation, FockOperationType, PolarizationOperationType,
+		    CustomStateOperationType, CompostieOperationType
+		)
+		fock_operation = Operation(FockOperationType.PhaseShift, phi=jnp.pi)
+		polarization_operation = Operation(PolarizationOperationType.X)
+		custom_state_operation = Operation(CustomStateOperationType.Expression, expr=expr)
+		composite_opreation = Operation(
+		    CompositeOperationType.NonPolarizingBeamSplitter,
+		    eta=jnp.pi/4
+		)
+Each operation is defined thorugh `Operation` class. The type of operation is defined with the first parameter, additional parameters must then be defined through key word arguments. Some predefined operatrions require specific key word arguments, like for example in the case of non polarizing beam splitter operation. Beside the predefined operation, user can also create `Custom` operator for the base states (`FockOperationType`, `PolarizationOperationType`, `CustomStateOPerationType`), where the operator matrix needs to be passed as a `operator` key word paramter.
+
+.. code-block:: python
+		operator = jnp.array(
+		    [[0,0],
+		     [1,0]]
+		)
+		op = Operation(
+		    FockOperationType.Custom,
+		    operator=operator
+		)
+		 
+
 
 
 Applying Quantum Channels
