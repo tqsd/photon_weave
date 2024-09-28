@@ -36,10 +36,12 @@ Polarization Space
 The **Polarization space** :math:`\mathcal{P}` describes the polarization state, usually of some Envelope. The polarization space is a two-dimensional hilbert space :math:`\mathcal{H}^2`. With the following basis states:
 
 .. math::
-   |H\rangle = \begin{bmatrix} 1 \\ 0 \end{bmatrix}\
-   |V\rangle = \begin{bmatrix} 0 \\ 1 \end{bmatrix}\
-   |R\rangle = \begin{bmatrix} \frac{1}{\sqrt{2}} \\ \frac{i}{\sqrt{2} \end{bmatrix}\
+   \begin{align}
+   |H\rangle = \begin{bmatrix} 1 \\ 0 \end{bmatrix}
+   |V\rangle = \begin{bmatrix} 0 \\ 1 \end{bmatrix}
+   |R\rangle = \begin{bmatrix} \frac{1}{\sqrt{2}} \\ \frac{i}{\sqrt{2} \end{bmatrix}
    |L\rangle = \begin{bmatrix} \frac{1}{\sqrt{2}} \\ \frac{-i}{\sqrt{2} \end{bmatrix}
+   \end{align}
 
 
 The **Polarization Space** can also be represented in three different forms:
