@@ -275,10 +275,10 @@ When measuring `Fock` or `Polarization` by default you measure the whole envelop
 The states can be measured in an envelope, by defining which state should be measured and optionally setting the `separate_measurement` and `destructive` key word arguments after specifying the state that should be measured:
 
 .. code:: python
+
     env1 = Envelope()
     outcome = env1.measure(env1.fock, separate_measurement=True)
     # will return only measurement outcome for the Fock space
-
     env1 = Envelope()
     env2 = Envelope()
     ce = CompositeEnvelope(env1, env2)
@@ -321,8 +321,8 @@ Reproducability
 For Reproducability **Photon Weave** allows the user to set the seed that is used with random processes. The seed is configured though `Config` class. `Config` class is a singleton class and is consulted at every random process.
 
 .. code:: python
-    from photon_weave.photon_weave import Config
 
+    from photon_weave.photon_weave import Config
     C = Config()
     C.set_seed(1)
 
