@@ -148,8 +148,8 @@ class Operation:
                 f"{self._operation_type.__class__.__name__}.{self._operation_type.name}"
             )
         else:
-            repr_string = f"{self._operation_type.__class__.__name__\
-                }.{self._operation_type.name}\n"
+            repr_string = f"{self._operation_type.__class__.__name__}"
+            repr_string += f".{self._operation_type.name}\n"
             formatted_matrix: Union[str, List[str]]
             formatted_matrix = ""
 
