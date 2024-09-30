@@ -146,28 +146,24 @@ class BaseState(ABC):
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, self.dimensions)
 
-            
             formatted_matrix: Union[str, List[str]]
             formatted_matrix = ""
 
             for row in self.state:
-                formatted_row = "⎢ "  # Start each row with the ⎢ symbol
+                formatted_row = "⎢ "
                 for num in row:
-                    formatted_row += f"{num.real:+.2f} "  # Include a space after the real part
+                    formatted_row += f"{num.real:+.2f} "
 
-                    # Add either "+" or "-" for the imaginary part based on the sign
                     if num.imag >= 0:
                         formatted_row += "+ "
                     else:
                         formatted_row += "- "
 
-                    # Format the imaginary part and add "j"
                     formatted_row += f"{abs(num.imag):.2f}j   "
 
                 formatted_row = formatted_row.strip() + " ⎥\n"
                 formatted_matrix += formatted_row
-            
-            # Add top and bottom brackets
+
             formatted_matrix = formatted_matrix.strip().split("\n")
             formatted_matrix[0] = "⎡" + formatted_matrix[0][1:-1] + "⎤"
             formatted_matrix[-1] = "⎣" + formatted_matrix[-1][1:-1] + "⎦"
