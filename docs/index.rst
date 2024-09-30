@@ -77,40 +77,155 @@ This logic relieves the user from having to implement complex product space trac
 Applying Operations
 =====================
 
-**Photon Weave** ships with some predefined oprations. Operations can be defined in the following way:
-.. code-block:: python
 
-    import jax.numpy as jnp
-    from photon_weave.operations import (
-        Operation, FockOperationType, PolarizationOperationType,
-        CustomStateOperationType, CompositeOperationType
+**Photon Weave** ships with intuitive operation definition and application. All operations are defined through `Operation` class. First argument when defining the operation is the operation type. There are four operation types `Enum` classes defined:
+- `FockOperationType`: `Enum` class defining operations on Fock spaces.
+- `PolarizationOperationType`: `Enum` class defining operations on polarization spaces.
+- `CustomStateOperationType`: `Enum` class defining operations on Custom State spaces.
+- `CompositeOperationType`: `Enum` class defining operations on multiple spaces. This operation type can be applied to a product space with multiple spaces, where the spaces can be an arbitrary type.
+
+Defining and applying operators is as straight forward as defining an operator and applying it to a space:
+.. code:: python
+    from photon_weave.operation import (
+        Operation, FockOperationType,
+        PolarizationOperationType,
+        CustomStateOperaitonType,
+        CompositeOperationType
     )
 
-    fock_operation = Operation(FockOperationType.PhaseShift, phi=jnp.pi)
-    polarization_operation = Operation(PolarizationOperationType.X)
-    custom_state_operation = Operation(CustomStateOperationType.Expression, expr=expr)
-    composite_operation = Operation(
-        CompositeOperationType.NonPolarizingBeamSplitter,
-        eta=jnp.pi/4
+    fock = Fock()
+    fock_op = Operation(FockOperationType.Displace, alpha=0.5)
+    fock.apply_operation(fock_op)
+
+    polarization = Polarization()
+    polarization_op = Operation(PolarizationOperationType.RX, theta=0.5)
+    polarization.apply_operation(polarization_op)
+
+    custom_state = CustomState(3)
+
+    custom_operator = jnp.array(
+        [[0, 0, 0],
+         [1, 0, 0],
+    	[0, 1, 0]]
+    )
+    custom_state_op= Operation(
+        CustomStateOperation.Custom,
+        operator = custom_operator
+    )
+    custom_state.apply_operation(custom_state_op)
+
+    env=Envelope()
+    # Envelope can extract the state into a product state
+    env.combine()
+
+    # Apply operation in an envelope
+    env.apply_operation(fock_op, env.fock)
+    env.apply_operation(polarization_op, env.polarization)
+    # Or apply operation on individual spaces
+    env.fock.apply_operation(fock_op)
+    env.polarization.apply_operation(polarization_operation)
+
+
+    ce = CompositeEnvelope(env, custom_state)
+    # Composite Envelope can combine the states in any configuration
+    ce.combine(env.fock, env.polarization, custom_state)
+
+    # Operations can be applied at the state level
+    env.fock.apply_operation(fock_operation)
+    env.polarization.apply_operaiton(polarization_op)
+    custom_state.apply_operation(custom_state_op)
+
+    # Operations can be applied at the envelope level
+    env.apply_operation(fock_op, env.fock)
+    env.apply_operation(polarization_op, env.polarization)
+
+    # Operations can also be applied at the composite operation level
+    ce.apply_operation(fock_op, env.fock)
+    ce.apply_operation(polarization_op, env.polarization)
+    ce.apply_operation(custom_state_op, custom_state)
+
+    # Additionaly Composite operations can be applied only in
+    # Composite envelope
+    bs = Operation(
+        CompositeOperaiton.NonPolarizingBeamSplitter,
+	theta=jnp.pi/4
     )
 
-Each operation is defined thorugh `Operation` class. The type of operation is defined with the first parameter, additional parameters must then be defined through key word arguments. Some predefined operatrions require specific key word arguments, like for example in the case of non polarizing beam splitter operation. Beside the predefined operation, user can also create `Custom` operator for the base states (`FockOperationType`, `PolarizationOperationType`, `CustomStateOPerationType`), where the operator matrix needs to be passed as a `operator` key word paramter.
+    # Beam Split operation requires additional Fock space
+    env2 = Envelope()
 
-.. code-block:: python
-		operator = jnp.array(
-		    [[0,0],
-		     [1,0]]
-		)
-		op = Operation(
-		    FockOperationType.Custom,
-		    operator=operator
-		)
-		 
+    # Add the new envelope to the composite envelope
+    ce = CompositeEnvelope(ce, env2)
+
+    ce.apply_operation(bs, env.fock, env2.fock)
+    
 
 
+Fock Operations
+^^^^^^^^^^^^^^^^
+
+
+Operations on Fock spaces are defined through `FockOperationType` class. `FockOperationType` will size the defined operator to the appropriate size before applying, so user doesn't need to explicitly control the dimensions. Furthermore in some cases, post operation state requires more dimensions in order to accurately represent the state. **Photon Weave** tries to compute number of dimensions needed to correctly represent the state. **Photon Weave** implements some of the common operations: (creation, annihilation, phase shift, squeezing, displacing and identity. Addinitonally the user can define an operator using an `Expression` or manually providing an operator with the `Custom` enumeration.
+
+Fock operations can be applied on three levels, depending on the situation. If the fock state is in some product space, either in `Envelope` or in `CompositeEnvelope`, **Photon Weave** will correctly route the operation to the appropriate space.
+
+To see the list of implemented operations on the consult the `fock_operation.py`.
+
+Polarization Operations
+^^^^^^^^^^^^^^^^^^^^^
+
+Operations on Polarization spaces are defined through `PolarizationOperationType` class. Since `Polarization` is always two dimensional Hilber space, the operations need to be of same dimensions. Beside the implemented operators, Polarization operation also implements a `Custom` operation, but not `Expression` operation types.
+
+To see the list of implemented operations and required parameters for each of them, consult `polarization_operation.py`.
+
+Custom State Operations
+^^^^^^^^^^^^^^^^^^^^^^
+
+Custom State Operations define operations which operate on `CustomState`. Custom state operations only defines two types of operations: `Custom` and `Expression`, requiring the user to explicitly define the operators either through expression or by providing the operator manually. Keep in mind that the dimensionalty of the operator must match the dimensionality of the space, on which the operator will act.
+
+Further documentation can be found at `custom_state_operation.py`.
+
+Composite Operations 
+^^^^^^^^^^^^^^^^^^^^
+
+Composite Operations define an operatrions on multiple spaces. Prior to operation the states must be members of the same composite envelope. These operations must be applied to the composite envelope and correct order of the spaces it acts on must be given. The order of operator tensoring must reflect the order of given spaces in the `apply_operation` method call.
+
+Custom Operators
+^^^^^^^^^^^^^^^^
+
+Custom operation is a simple way of manually providing an operation. The user must make sure that the dimensionalty of the operator matches the dimensionality of the target space. In case of `FockOperationType.Custom`, **Photon Weave** will resize the state to the dimensionality of the operator. If the operator has smaller dimension than the underlying state, the **Photon Weave** will try to shirnk the state, but the shrinking process may fail if part of the state would fall outside of the new dimension cutoff.
+
+
+Expression defined operators
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some operations types offer `Expression` defined operators. When defining `Expression` type of operation, the user must give at least two key word arguments: `expr` and `context`.
+
+`context` must be a dictionary, with keys of `str` type and values must be of a `Callable` type. Each callable must consume one argument. Each callable must compute a matrix operator, with dimensionality given as a parameter:
+.. code:: python
+    context = {
+       "a_dag": lambda dims: creation_operator(dims[0])
+       "a":     lambda dims: annihilation_operator(dims[0])
+       "n":     lambda dims: number_operator(dims[0])
+    }
+
+In some cases the operation dimensions are not necessary:
+.. code:: python
+    context = {
+    "a": lambda dims: jnp.array([[0,0,0],[1,0,0],[0,0,0]]),
+    "b": lambda dims: jnp.array([[0,0,0],[0,0,0],[0,1,0]])
+    }
+
+In those cases the `Callable` must still consume one dimension parameter, even if it doesn't use it.
+
+The `expr` expression is then constructed in a Lisp inspired way with tuples. Tuples are evaluated from the inner most tuple to the outer most one. The first element in every single tuple is a string, which defines the operation. Following arguments are operands, on which the operation is evaluated.
+
+To find out more and examples see `expression_interpreter.py`.
 
 Applying Quantum Channels
 =============================
+
+
 
 
 Measuring
