@@ -9,7 +9,7 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../../"))
+sys.path.insert(0, os.path.abspath("../"))
 
 project = "photon_weave"
 copyright = "2024, Simon Sekavčnik, Kareem H. El-Safty, Janis Nötzel"
