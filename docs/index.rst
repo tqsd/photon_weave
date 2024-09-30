@@ -39,8 +39,8 @@ The **Polarization space** :math:`\mathcal{P}` describes the polarization state,
    \begin{align}
    |H\rangle &= \begin{bmatrix} 1 \\ 0 \end{bmatrix} \\
    |V\rangle &= \begin{bmatrix} 0 \\ 1 \end{bmatrix} \\
-   |R\rangle &= \begin{bmatrix} \frac{1}{\sqrt{2}} \\ \frac{i}{\sqrt{2} \end{bmatrix} \\
-   |L\rangle &= \begin{bmatrix} \frac{1}{\sqrt{2}} \\ \frac{-i}{\sqrt{2} \end{bmatrix}
+   |R\rangle &= \begin{bmatrix} \frac{1}{\sqrt{2}} \\ \frac{i}{\sqrt{2}} \end{bmatrix} \\
+   |L\rangle &= \begin{bmatrix} \frac{1}{\sqrt{2}} \\ \frac{-i}{\sqrt{2}} \end{bmatrix}
    \end{align}
 
 
