@@ -262,9 +262,10 @@ Measuring
 Measuring is as simple as calling the `measure()` method on any of the state containers (`Fock`, `Polarization`, `CustomState`, `Envelope` or `CompositeEnvelope`). Measuring `CustomState` is the most straight forward:
 
 .. code:: python
-   cs = CustomState(2)
-   outcome = cs.measure()
-   print(outcome[cs]) # prints: 0
+
+    cs = CustomState(2)
+    outcome = cs.measure()
+    print(outcome[cs]) # prints: 0
 
 `measures()` method returns a dictionary of outcomes, where key is the measured state and value is the measurement outcome of that state. Post measurement state then reflects the measured state. If state is in product space, than it is removed from the product state and stored in the original container in *Label* form.
 
