@@ -10,6 +10,64 @@ from photon_weave.state.expansion_levels import ExpansionLevel
 
 
 class Operation:
+    """
+    Represents a quantum operation applied to a state in various frameworks (Fock, Polarization, Composite, or Custom).
+    The `Operation` class provides functionalities for applying quantum operations, managing operator matrices,
+    and computing dimensions for these operations. It is designed to handle custom and predefined operations,
+    updating internal parameters based on the specific operation type.
+
+    Attributes
+    ----------
+    _operator : Optional[jnp.ndarray]
+        The matrix representation of the operation. This is only used for custom operations.
+    _operation_type : Union[FockOperationType, PolarizationOperationType, CompositeOperationType, CustomStateOperationType]
+        The type of the operation, which determines how the operation behaves.
+    _apply_count : int
+        Specifies how many times this operation will be applied. Defaults to 1.
+    _renormalize : bool
+        Determines if renormalization is required after applying the operation.
+    kwargs : dict
+        Additional keyword arguments required for the operation, such as specific parameters related to the operation type.
+    _expansion_level : ExpansionLevel
+        Expansion level required for the operation (inferred from the operation type).
+    _expression : str
+        String-based expression defining the operation if applicable (e.g., custom operations).
+    _dimensions : List[int]
+        The estimated dimensions required to apply the operation, computed based on the number of quanta and state.
+
+    Methods
+    -------
+    __init__(operation_type, expression=None, apply_count=1, **kwargs)
+        Initializes the operation, updates internal parameters based on the operation type, and validates required parameters.
+
+    __repr__()
+        Provides a string representation of the operation, including matrix formatting for custom operators.
+
+    dimensions
+        Getter and setter for the dimensions required for the operation.
+
+    compute_dimensions(num_quanta, state)
+        Computes the required dimensions for applying the operation based on the provided quanta and state.
+
+    required_expansion_level
+        Returns the required expansion level for the operation.
+
+    renormalize
+        Returns whether renormalization is required after applying the operation.
+
+    operator
+        Getter and setter for the operator matrix. This is computed automatically unless the operation type is custom.
+
+    Raises
+    ------
+    KeyError
+        If required parameters for the operation type are not provided.
+    ValueError
+        If an attempt is made to manually set the operator for non-custom operation types.
+    AssertionError
+        If the provided operator is not a valid `jnp.ndarray` for custom operations.
+    """
+
     __slots__ = (
         "_operator",
         "_operation_type",
@@ -33,6 +91,29 @@ class Operation:
         apply_count: int = 1,
         **kwargs: Any,
     ) -> None:
+        """
+        Initializes an `Operation` instance with the specified type, expression, and
+        application count.
+
+        Parameters
+        ----------
+        operation_type : Union[FockOperationType, PolarizationOperationType,
+        CompositeOperationType, CustomStateOperationType] The type of operation
+        (e.g., Fock, Polarization, Composite, or Custom).
+        expression : Optional[str], optional
+            A string expression for custom operations, by default None.
+        apply_count : int, optional
+            The number of times to apply the operation, by default 1.
+        **kwargs : Any
+            Additional keyword arguments required for the operation type.
+
+        Raises
+        ------
+        KeyError
+            If any required parameter for the operation type is missing.
+        AssertionError
+            If the operator for a custom operation is not a valid `jnp.ndarray`.
+        """
         self._operation_type: Union[
             FockOperationType,
             PolarizationOperationType,
@@ -58,6 +139,10 @@ class Operation:
                 )
 
     def __repr__(self) -> str:
+        """
+        Returns a string representation of the operation, including the operator matrix
+        for custom operations.
+        """
         if self._operator is None:
             repr_string = (
                 f"{self._operation_type.__class__.__name__}.{self._operation_type.name}"
@@ -91,11 +176,27 @@ class Operation:
 
     @property
     def dimensions(self) -> List[int]:
+        """
+        Gets or sets the estimated dimensions required for applying the operation.
+
+        Returns
+        -------
+        List[int]
+            The list of required dimensions.
+        """
         assert isinstance(self._dimensions, list)
         return self._dimensions
 
     @dimensions.setter
     def dimensions(self, dimensions: List[int]) -> None:
+        """
+        Sets the dimensions required for applying the operation.
+
+        Parameters
+        ----------
+        dimensions : List[int]
+            The dimensions to be set.
+        """
         self._dimensions = dimensions
 
     def compute_dimensions(
@@ -104,16 +205,14 @@ class Operation:
         state: Union[jnp.ndarray, List[jnp.ndarray]],
     ) -> None:
         """
-        Returns the esitmated required dimensions for the
-        application of this operation
+        Computes and updates the required dimensions for applying this operation.
 
         Parameters
         ----------
-        num_quanta: Union[int, List[int]]
-            Current maximum number state amplitude or list of the values
-        state: Union[jnp.ndarray, List[jnp.ndarray]]
-            Traced out state for the dimension estimation or list
-            of the traced out states
+        num_quanta : Union[int, List[int]]
+            The current maximum number state amplitude or a list of values.
+        state : Union[jnp.ndarray, List[jnp.ndarray]]
+            The traced-out state(s) for dimension estimation.
         """
         if self._operation_type is not FockOperationType.Custom:
             self._dimensions = self._operation_type.compute_dimensions(
@@ -122,14 +221,43 @@ class Operation:
 
     @property
     def required_expansion_level(self) -> ExpansionLevel:
+        """
+        Returns the required expansion level for the operation.
+
+        Returns
+        -------
+        ExpansionLevel
+            The expansion level required.
+        """
         return self._operation_type.required_expansion_level
 
     @property
     def renormalize(self) -> bool:
+        """
+        Indicates whether renormalization is required after applying the operation.
+
+        Returns
+        -------
+        bool
+            True if renormalization is required, False otherwise.
+        """
         return self._operation_type.renormalize
 
     @property
     def operator(self) -> jnp.ndarray:
+        """
+        Gets or computes the operator matrix for the operation.
+
+        Returns
+        -------
+        jnp.ndarray
+            The matrix representing the operation.
+
+        Raises
+        ------
+        AssertionError
+            If the computed operator is not a valid `jnp.ndarray`.
+        """
         self._operator = self._operation_type.compute_operator(
             self.dimensions, **self.kwargs
         )
@@ -138,6 +266,21 @@ class Operation:
 
     @operator.setter
     def operator(self, operator: jnp.ndarray) -> None:
+        """
+        Sets the operator matrix for custom operations only.
+
+        Parameters
+        ----------
+        operator : jnp.ndarray
+            The matrix to be set as the operator.
+
+        Raises
+        ------
+        ValueError
+            If the operation type is not custom.
+        AssertionError
+            If the provided operator is not a valid `jnp.ndarray`.
+        """
         assert isinstance(operator, jnp.ndarray)
         if self._operation_type is not FockOperationType.Custom:
             raise ValueError("Operator can only be configured for the Custom types")
