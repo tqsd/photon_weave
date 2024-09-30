@@ -19,7 +19,7 @@ def mach_zender_single_shot(phase_shift: float):
     # Other port will consume vacuum
     env2 = Envelope()
 
-    # Generate operator
+    # Generate operators
     bs1 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
     ps = Operation(FockOperationType.PhaseShift, phi=phase_shift)
     bs2 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)

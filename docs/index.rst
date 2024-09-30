@@ -53,7 +53,7 @@ Transition between the **Label**, **State Vector** and **Density Matrix** repres
  
 Custom Hilbert Space
 ---------------------
-The **Custom Hilbert Space** :math:`\mathcal{H}^d` can describe any arbitrary finite dimensional quantum system Hilbert space. When creating `CustomState(d)` the dimensionality of that space needs to be provided through :math:`m`.
+The **Custom Hilbert Space** :math:`\mathcal{H}^d` can describe any arbitrary finite dimensional quantum system Hilbert space. When creating `CustomState(d)` the dimensionality of that space needs to be provided through :math:`d`.
 
 The **Custom Hilbert Space** can also be represented in three different forms:
  - **Label**: Minimizes the memory required for representation, represented by an integer.
@@ -79,18 +79,21 @@ Applying Operations
 
 **Photon Weave** ships with some predefined oprations. Operations can be defined in the following way:
 .. code-block:: python
-		import jax.numpy as jnp
-		from photon_weave.operations import (
-		    Operation, FockOperationType, PolarizationOperationType,
-		    CustomStateOperationType, CompostieOperationType
-		)
-		fock_operation = Operation(FockOperationType.PhaseShift, phi=jnp.pi)
-		polarization_operation = Operation(PolarizationOperationType.X)
-		custom_state_operation = Operation(CustomStateOperationType.Expression, expr=expr)
-		composite_opreation = Operation(
-		    CompositeOperationType.NonPolarizingBeamSplitter,
-		    eta=jnp.pi/4
-		)
+
+    import jax.numpy as jnp
+    from photon_weave.operations import (
+        Operation, FockOperationType, PolarizationOperationType,
+        CustomStateOperationType, CompositeOperationType
+    )
+
+    fock_operation = Operation(FockOperationType.PhaseShift, phi=jnp.pi)
+    polarization_operation = Operation(PolarizationOperationType.X)
+    custom_state_operation = Operation(CustomStateOperationType.Expression, expr=expr)
+    composite_operation = Operation(
+        CompositeOperationType.NonPolarizingBeamSplitter,
+        eta=jnp.pi/4
+    )
+
 Each operation is defined thorugh `Operation` class. The type of operation is defined with the first parameter, additional parameters must then be defined through key word arguments. Some predefined operatrions require specific key word arguments, like for example in the case of non polarizing beam splitter operation. Beside the predefined operation, user can also create `Custom` operator for the base states (`FockOperationType`, `PolarizationOperationType`, `CustomStateOPerationType`), where the operator matrix needs to be passed as a `operator` key word paramter.
 
 .. code-block:: python
