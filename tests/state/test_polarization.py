@@ -3,7 +3,6 @@ import unittest
 import jax.numpy as jnp
 
 from photon_weave.photon_weave import Config
-from photon_weave.state.exceptions import NotExtractedException
 from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.state.polarization import Polarization, PolarizationLabel
 
@@ -151,7 +150,7 @@ class TestPolarizationSmallFunctions(unittest.TestCase):
 
     def test_set_index(self) -> None:
         pol = Polarization()
-        with self.assertRaises(NotExtractedException) as context:
+        with self.assertRaises(ValueError) as context:
             pol.set_index(1)
 
         pol = Polarization()

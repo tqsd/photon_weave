@@ -14,7 +14,6 @@ import jax.numpy as jnp
 
 from photon_weave.operation import PolarizationOperationType
 from photon_weave.photon_weave import Config
-from photon_weave.state.exceptions import NotExtractedException
 
 from .base_state import BaseState
 from .expansion_levels import ExpansionLevel
@@ -254,7 +253,7 @@ class Polarization(BaseState):
             else:
                 self.index = minor
         else:
-            raise NotExtractedException(
+            raise ValueError(
                 "Polarization state does not seem to be extracted"
             )
 
