@@ -449,7 +449,6 @@ class TestFockOperationSqueeze(unittest.TestCase):
 
 
 class TestExpressionOperator(unittest.TestCase):
-    @pytest.mark.my_marker
     def test_expression_operator_fock_vector(self) -> None:
         f = Fock()
         f.state = 1

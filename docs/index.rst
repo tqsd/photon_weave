@@ -108,7 +108,7 @@ Defining and applying operators is as straight forward as defining an operator a
     custom_operator = jnp.array(
         [[0, 0, 0],
          [1, 0, 0],
-    	[0, 1, 0]]
+    	 [0, 1, 0]]
     )
     custom_state_op= Operation(
         CustomStateOperation.Custom,
@@ -166,7 +166,6 @@ Defining and applying operators is as straight forward as defining an operator a
 Fock Operations
 ^^^^^^^^^^^^^^^^
 
-
 Operations on Fock spaces are defined through `FockOperationType` class. `FockOperationType` will size the defined operator to the appropriate size before applying, so user doesn't need to explicitly control the dimensions. Furthermore in some cases, post operation state requires more dimensions in order to accurately represent the state. **Photon Weave** tries to compute number of dimensions needed to correctly represent the state. **Photon Weave** implements some of the common operations: (creation, annihilation, phase shift, squeezing, displacing and identity. Addinitonally the user can define an operator using an `Expression` or manually providing an operator with the `Custom` enumeration.
 
 Fock operations can be applied on three levels, depending on the situation. If the fock state is in some product space, either in `Envelope` or in `CompositeEnvelope`, **Photon Weave** will correctly route the operation to the appropriate space.
@@ -197,6 +196,16 @@ Custom Operators
 
 Custom operation is a simple way of manually providing an operation. The user must make sure that the dimensionalty of the operator matches the dimensionality of the target space. In case of `FockOperationType.Custom`, **Photon Weave** will resize the state to the dimensionality of the operator. If the operator has smaller dimension than the underlying state, the **Photon Weave** will try to shirnk the state, but the shrinking process may fail if part of the state would fall outside of the new dimension cutoff.
 
+.. code:: python
+   
+   operator = jnp.array(
+	  [[0,0,0],
+	   [1,0,0],
+	   [0,1,0]]
+    )
+    op = Operation(CustomStateOperationType.Custom, operator=operator)
+
+
 
 Expression defined operators
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -212,8 +221,13 @@ Some operations types offer `Expression` defined operators. When defining `Expre
        "a":     lambda dims: annihilation_operator(dims[0])
        "n":     lambda dims: number_operator(dims[0])
     }
+    op = Operation(
+	FockOperationType.Expresion,
+	expr=("expm", ("s_mult", -1j, jnp.pi, "n")),
+	context=context,
+    )
 
-In some cases the operation dimensions are not necessary:
+In some cases the operation dimensions are not necessary (e.g. when operating on a fixed dimensional systems):
 
 .. code:: python
 
@@ -221,17 +235,22 @@ In some cases the operation dimensions are not necessary:
     "a": lambda dims: jnp.array([[0,0,0],[1,0,0],[0,0,0]]),
     "b": lambda dims: jnp.array([[0,0,0],[0,0,0],[0,1,0]])
     }
+    expr = ("add", "a", "b")
+    op = Operation(CustomStateOperationType.Expresion, expr=expr, context=context)
 
 In those cases the `Callable` must still consume one dimension parameter, even if it doesn't use it.
 
-The `expr` expression is then constructed in a Lisp inspired way with tuples. Tuples are evaluated from the inner most tuple to the outer most one. The first element in every single tuple is a string, which defines the operation. Following arguments are operands, on which the operation is evaluated.
+The `expr` expression is then constructed in a Lisp inspired way with tuples. Tuples are evaluated from the inner most tuple to the outer most one. The first element in every single tuple is a string, which defines the operation. Following arguments are operands, on which the operation is evaluated. The operands can take value in any form (`Number`, `jnp.ndarray`, `Tuple` or `str`). If tuple is given, then this statement will be evaluated first and it's output will take the place of the tuple, and if `str` is given, it will be replaced by the value from given `context`.
 
 To find out more and examples see `expression_interpreter.py`.
 
 Applying Quantum Channels
 =============================
 
+Each of the states (`Fock`, `Polarization`, `CustomState` and `CompositeEnvelope`) allows an user to apply a Quantum Channel represented with Kraus operators. A quantum channel is a CPTC (Completely positive, trace preserving) map between two spaces and it can be defined with kraus operators :math:`K_i`, where it must hold :math:`\sum_{k=0}^\infty K_i^\astK_i \leq \mathbb{1}`. Any given channel is then applied
 
+..math::
+  \psi= \sum_i K_i \rho \K_i^\ast
 
 
 Measuring
