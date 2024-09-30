@@ -85,7 +85,9 @@ Applying Operations
 - `CompositeOperationType`: `Enum` class defining operations on multiple spaces. This operation type can be applied to a product space with multiple spaces, where the spaces can be an arbitrary type.
 
 Defining and applying operators is as straight forward as defining an operator and applying it to a space:
+
 .. code:: python
+    
     from photon_weave.operation import (
         Operation, FockOperationType,
         PolarizationOperationType,
@@ -202,7 +204,9 @@ Expression defined operators
 Some operations types offer `Expression` defined operators. When defining `Expression` type of operation, the user must give at least two key word arguments: `expr` and `context`.
 
 `context` must be a dictionary, with keys of `str` type and values must be of a `Callable` type. Each callable must consume one argument. Each callable must compute a matrix operator, with dimensionality given as a parameter:
+
 .. code:: python
+   
     context = {
        "a_dag": lambda dims: creation_operator(dims[0])
        "a":     lambda dims: annihilation_operator(dims[0])
@@ -210,7 +214,9 @@ Some operations types offer `Expression` defined operators. When defining `Expre
     }
 
 In some cases the operation dimensions are not necessary:
+
 .. code:: python
+
     context = {
     "a": lambda dims: jnp.array([[0,0,0],[1,0,0],[0,0,0]]),
     "b": lambda dims: jnp.array([[0,0,0],[0,0,0],[0,1,0]])

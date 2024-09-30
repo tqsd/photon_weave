@@ -9,14 +9,13 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath(".../.../"))
+sys.path.insert(0, os.path.abspath("../../"))
 
 project = "photon_weave"
 copyright = "2024, Simon Sekavčnik, Kareem H. El-Safty, Janis Nötzel"
 author = "Simon Sekavčnik, Kareem H. El-Safty, Janis Nötzel"
 release = "0.0.3"
 master_doc = 'index'
-
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -30,7 +29,7 @@ extensions = [
 
 templates_path = ["_templates"]
 exclude_patterns = []
-
+highlight_language = "python"
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
