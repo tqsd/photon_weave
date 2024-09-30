@@ -247,14 +247,25 @@ To find out more and examples see `expression_interpreter.py`.
 Applying Quantum Channels
 =============================
 
-Each of the states (`Fock`, `Polarization`, `CustomState` and `CompositeEnvelope`) allows an user to apply a Quantum Channel represented with Kraus operators. A quantum channel is a CPTC (Completely positive, trace preserving) map between two spaces and it can be defined with kraus operators :math:`K_i`, where it must hold :math:`\sum_{k=0}^\infty K_i^\astK_i \leq \mathbb{1}`. Any given channel is then applied
+Each of the states (`Fock`, `Polarization`, `CustomState` and `CompositeEnvelope`) allows an user to apply a Quantum Channel represented with Kraus operators. A quantum channel is a CPTC (Completely positive, trace preserving) map between two spaces and it can be defined with kraus operators :math:`K_i`, where it must hold :math:`\sum_{k=0}^\infty K_i^\ast K_i \leq \mathbb{1}`. Any given channel is then applied
 
-..math::
+.. math::
   \psi= \sum_i K_i \rho \K_i^\ast
 
 
 Measuring
 ===========
+
+Measuring is as simple as calling the `measure()` method on any of the state containers (`Fock`, `Polarization`, `CustomState`, `Envelope` or `CompositeEnvelope`). Measuring `CustomState` is the most straight forward:
+
+.. code:: python
+   cs = CustomState(2)
+   outcome = cs.measure()
+   print(outcome[cs])
+
+`measures()` method returns a dictionary of outcomes, where key is the measured state and value is the measurement outcome of that state.
+
+
 
 
 Measuring with POVM Operators
