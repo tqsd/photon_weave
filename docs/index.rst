@@ -250,7 +250,7 @@ Applying Quantum Channels
 Each of the states (`Fock`, `Polarization`, `CustomState` and `CompositeEnvelope`) allows an user to apply a Quantum Channel represented with Kraus operators. A quantum channel is a CPTC (Completely positive, trace preserving) map between two spaces and it can be defined with kraus operators :math:`K_i`, where it must hold :math:`\sum_{k=0}^\infty K_i^\ast K_i \leq \mathbb{1}`. Any given channel is then applied
 
 .. math::
-  \psi= \sum_i K_i \rho \K_i^\ast
+  \psi= \sum_i K_i \rho \rangle K_i^\ast
 
 
 Measuring
@@ -261,18 +261,66 @@ Measuring is as simple as calling the `measure()` method on any of the state con
 .. code:: python
    cs = CustomState(2)
    outcome = cs.measure()
-   print(outcome[cs])
+   print(outcome[cs]) # prints: 0
 
-`measures()` method returns a dictionary of outcomes, where key is the measured state and value is the measurement outcome of that state.
+`measures()` method returns a dictionary of outcomes, where key is the measured state and value is the measurement outcome of that state. Post measurement state then reflects the measured state. If state is in product space, than it is removed from the product state and stored in the original container in *Label* form.
 
 
+When measuring `Fock` or `Polarization` by default you measure the whole envelope, if the states were part of any envelope. Measuring by default is also *destructive*, which destroys the state and any operations post measurements are impossible. Thus measuring the `Fock` or `Polarization`, which is a part of an `Envelope` will also measure the other member of the `Envelope` and `measure()` call will return a dictionary of outcomes containing both outcomes. If you want to *separately* measure one of these states, you could invoke `measure(separate_measurement=True)`. If you need to measure non-destructively you can invoke measurement call with `measure(destructive=False)`. This will measure the state and the state will be retained, but still affected by the measurement process.
+
+The states can be measured in an envelope, by defining which state should be measured and optionally setting the `separate_measurement` and `destructive` key word arguments after specifying the state that should be measured:
+
+.. code:: python
+    env1 = Envelope()
+    outcome = env1.measure(env1.fock, separate_measurement=True)
+    # will return only measurement outcome for the Fock space
+
+    env1 = Envelope()
+    env2 = Envelope()
+    ce = CompositeEnvelope(env1, env2)
+
+    outcome = ce.measure(env1.fock, env2.fock, destructive=False)
+    # Will measure both fock and polarization states and return outcomes
+    # Since it is not a destructive measurement, the post-mesurement states
+    # will be contained in respective Fock and Polarization instances
 
 
 Measuring with POVM Operators
 =================================
 
+**Photon Weave** also allows for measuring the states with POVM operators. POVM measurement is invoked by calling `measure_POVM()` method call of any of the state containers (`Fock`, `Polarization`, `CustomState`, `Envelope`, `CompositeEnvelope`). When measuring in `Fock`, `Polarization` or `CustomState`, only operators need be provided. When measuring in `Envelope` or `CompositeEnvelope` also measured states need to be provided. When providing the states order is important and should reflect the tensoring order in the operator.
+
+Mathematically, a POVM is a set of positive semi-definite operators :math:\{E_i\} that sum up to the identity operator, i.e.,
+
+.. math:: \sum_i E_i = \mathbb{1}.
+
+When measuring a quantum state :math:\rho with a POVM :math:\{E_i\}, the probability of obtaining the outcome :math:i is given by:
+
+.. math:: p(i) = \mathrm{Tr}(E_i \rho).
+
+The state after measurement, conditioned on the outcome :math:i, becomes:
+
+.. math:: \rho_i = \frac{E_i \rho E_i^\dagger}{\mathrm{Tr}(E_i \rho)}.
+
+The `measure_POVM()` method will return tuple with the outcome as the first value and outcomes dictionary as the second value. If for example you measure part of an envelope with POVM operators, you will receive measurement outcome for the other part in a dictionary. You can choose to measure non-destructively with `destructive=False` keyword argument, where all of the measurements will be performed non-destructively.
+
+.. code:: python
+
+    env = Envelope()
+    operators = [jnp.array([[1, 0], [0, 0]]), jnp.array([[0, 0], [0, 1]])]
+    m = env.measure_POVM(operators, env.polarization)
 
 
+Reproducability
+===============
+
+For reproducability **Photon Weave** allows the user to set the seed that is used with random processes. The seed is configured though `Config` class. `Config` class is a singleton class and is consulted at every random process.
+
+.. code:: python
+    from photon_weave.photon_weave import Config
+
+    C = Config()
+    C.set_seed(1)
 
 
 
