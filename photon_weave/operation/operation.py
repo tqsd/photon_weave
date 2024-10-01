@@ -153,7 +153,10 @@ class Operation:
             formatted_matrix: Union[str, List[str]]
             formatted_matrix = ""
 
-            for row in self.state:
+            if self._operator is None:
+                return repr_string
+
+            for row in self._operator:
                 formatted_row = "⎢ "  # Start each row with the ⎢ symbol
                 for num in row:
                     formatted_row += f"{num.real:+.2f} "  # Include a space after the real part
