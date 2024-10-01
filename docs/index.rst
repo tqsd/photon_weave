@@ -1,7 +1,10 @@
 .. photon_weave documentation master file, created by
-   sphinx-quickstart on Fri Sep 27 12:42:52 2024.
+   sphinx-quickstart on Tue Oct  1 12:24:20 2024.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
+
+Welcome to photon_weave's documentation!
+========================================
 
 Welcome to Photon Weave's Documentation!
 =============================================
@@ -334,9 +337,6 @@ For Reproducability **Photon Weave** allows the user to set the seed that is use
 
    installation
    usage
-   API
-   faq
-   modules
    photon_weave
    photon_weave.state
    photon_weave.operation
@@ -352,3 +352,13 @@ For Reproducability **Photon Weave** allows the user to set the seed that is use
 ..  LocalWords:  CompositeOperaiton NonPolarizingBeamSplitter ndarray
 ..  LocalWords:  tensoring Expresion Kraus CPTP infty ast leq env1
 ..  LocalWords:  POVM mathrm Reproducability Config maxdepth faq
+
+
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
