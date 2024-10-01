@@ -29,49 +29,49 @@ class PolarizationOperationType(Enum):
     Identity (I)
     ------------
     Constructs Identity (:math:`\hat I`) operator
-    ..math::
+    .. math::
         \hat I = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}
 
     Pauli X (X)
     -----------
     Constructs Pauli X  (:math:`\hat \sigma_X`) operator
-    ..math::
+    .. math::
         \hat \sigma_X = \begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix}
 
     Pauli Y (Y)
     -----------
     Constructs Pauli Y  (:math:`\hat \sigma_Y`) operator
-    ..math::
+    .. math::
         \hat \sigma_X = \begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix}
 
     Pauli Z (Z)
     -----------
     Constructs Pauli Z  (:math:`\hat \sigma_Z`) operator
-    ..math::
+    .. math::
         \hat \sigma_X = \begin{bmatrix} 1 & 0 \\ 0 & -1 \end{bmatrix}
 
     Hadamard (H)
     ------------
     Constructs Hadamard (:math:`\hat H`) operator
-    ..math::
+    .. math::
         \hat H = \frac{1}{\sqrt{2}} \begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}
 
     Phase Opeator (S)
     -----------------
     Constructs Phase (:math:`\hat S`) operator
-    ..math::
+    .. math::
         \hat H = \begin{bmatrix} 1 & 0 \\ 0 & i \end{bmatrix}
 
     T Opeator (T)
-    -----------------
+    -------------
     Constructs T (:math:`\hat T`) operator
-    ..math::
+    .. math::
         \hat H = \begin{bmatrix} 1 & 0 \\ 0 & e^{i \pi/4} \end{bmatrix}
 
     Sqrt(X) Operator (SX)
-    -----------------
+    ---------------------
     Constructs SX (:math:`\hat{SX}`) operator
-    ..math::
+    .. math::
         \hat H = \frac{1}{2} \begin{bmatrix} 1+i & 1-i \\ 1-i & 1+i \end{bmatrix}
 
     RX Operator (RX)
@@ -79,7 +79,7 @@ class PolarizationOperationType(Enum):
     Constructs RX (:math:`\hat{RX}(\theta)`) operator
     It rotates around X axis for given :math:`\theta` angle
     Requires an argument "theta" (:math:`\theta`)
-    ..math::
+    .. math::
         \hat{H} = \begin{pmatrix}
         \cos\left(\frac{\theta}{2}\right) & -i\sin\left(\frac{\theta}{2}\right) \\
         -i\sin\left(\frac{\theta}{2}\right) & \cos\left(\frac{\theta}{2}\right)
@@ -284,7 +284,8 @@ class PolarizationOperationType(Enum):
         **kwargs: Any,
     ) -> List[int]:
         """
-        Computes operation
+        Computes required dimensions for the operator. In this
+        case the required dimension is always 2.
 
         Parameters
         ----------
