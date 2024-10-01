@@ -227,6 +227,7 @@ class Polarization(BaseState):
         joined into a product space. Then the
         index is set and the label, density_matrix and
         state_vector is set to None
+
         Parameters:
         index: Union[int, Tuple[int, int]
             Index of the state in the product state
@@ -253,9 +254,7 @@ class Polarization(BaseState):
             else:
                 self.index = minor
         else:
-            raise ValueError(
-                "Polarization state does not seem to be extracted"
-            )
+            raise ValueError("Polarization state does not seem to be extracted")
 
     def _set_measured(self) -> None:
         """

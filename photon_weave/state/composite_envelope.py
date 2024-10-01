@@ -759,7 +759,7 @@ class CompositeEnvelopeContainer:
 class CompositeEnvelope:
     """
     Composite Envelope is a pointer to a container, which includes the state
-    Multiple Composite enveopes can point to the same containers.
+    Multiple Composite envelopes can point to the same containers.
     """
 
     _containers: Dict[Union["str", uuid.UUID], CompositeEnvelopeContainer] = {}
