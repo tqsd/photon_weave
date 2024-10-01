@@ -28,51 +28,64 @@ class PolarizationOperationType(Enum):
 
     Identity (I)
     ------------
-    Constructs Identity (:math:`\hat I`) operator
+    Constructs Identity (:math:`\hat{I}`) operator    
     .. math::
-        \hat I = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}
+
+        \hat{I} = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}
 
     Pauli X (X)
     -----------
-    Constructs Pauli X  (:math:`\hat \sigma_X`) operator
+    Constructs Pauli X  (:math:`\hat{\sigma_X}`) operator
+
     .. math::
-        \hat \sigma_X = \begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix}
+
+        \hat{\sigma_X} = \begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix}
 
     Pauli Y (Y)
     -----------
-    Constructs Pauli Y  (:math:`\hat \sigma_Y`) operator
+    Constructs Pauli Y  (:math:`\hat{\sigma_Y}`) operator
+
     .. math::
-        \hat \sigma_X = \begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix}
+
+        \hat{\sigma_y} = \begin{bmatrix}
+            0 & -i \\
+            i & 0
+            \end{bmatrix}
 
     Pauli Z (Z)
     -----------
-    Constructs Pauli Z  (:math:`\hat \sigma_Z`) operator
+    Constructs Pauli Z  (:math:`\hat {\sigma_Z}`) operator
+
     .. math::
-        \hat \sigma_X = \begin{bmatrix} 1 & 0 \\ 0 & -1 \end{bmatrix}
+
+        \hat{\sigma_Z} = \begin{bmatrix} 1 & 0 \\ 0 & -1 \end{bmatrix}
 
     Hadamard (H)
     ------------
-    Constructs Hadamard (:math:`\hat H`) operator
-    .. math::
-        \hat H = \frac{1}{\sqrt{2}} \begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}
+    Constructs Hadamard (:math:`\hat{H}`) operator
 
+    .. math::
+
+        \hat{H} = \frac{1}{\sqrt{2}} \begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}
     Phase Opeator (S)
     -----------------
     Constructs Phase (:math:`\hat S`) operator
     .. math::
-        \hat H = \begin{bmatrix} 1 & 0 \\ 0 & i \end{bmatrix}
+
+        \hat{S} = \begin{bmatrix} 1 & 0 \\ 0 & i \end{bmatrix}
 
     T Opeator (T)
     -------------
     Constructs T (:math:`\hat T`) operator
     .. math::
-        \hat H = \begin{bmatrix} 1 & 0 \\ 0 & e^{i \pi/4} \end{bmatrix}
+        \hat{T} = \begin{bmatrix} 1 & 0 \\ 0 & e^{i \pi/4} \end{bmatrix}
 
     Sqrt(X) Operator (SX)
     ---------------------
-    Constructs SX (:math:`\hat{SX}`) operator
+    Constructs SX (:math:`\hat{SX}`) operator    
     .. math::
-        \hat H = \frac{1}{2} \begin{bmatrix} 1+i & 1-i \\ 1-i & 1+i \end{bmatrix}
+
+        \hat{SX} = \frac{1}{2} \begin{bmatrix} 1+i & 1-i \\ 1-i & 1+i \end{bmatrix}
 
     RX Operator (RX)
     ----------------
@@ -80,10 +93,11 @@ class PolarizationOperationType(Enum):
     It rotates around X axis for given :math:`\theta` angle
     Requires an argument "theta" (:math:`\theta`)
     .. math::
-        \hat{H} = \begin{pmatrix}
+
+        \hat{RX} = \begin{bmatrix}
         \cos\left(\frac{\theta}{2}\right) & -i\sin\left(\frac{\theta}{2}\right) \\
         -i\sin\left(\frac{\theta}{2}\right) & \cos\left(\frac{\theta}{2}\right)
-        \end{pmatrix}
+        \end{bmatrix}
 
     Usage Example
     >>> op = Operation(PolarizationOperationType.RX, theta=jnp.pi)
@@ -93,9 +107,10 @@ class PolarizationOperationType(Enum):
     Constructs RY (:math:`\hat{RY}(\theta)`) operator
     It rotates around Y axis for given :math:`\theta` angle
     Requires an argument "theta" (:math:`\theta`)
+
     .. math::
 
-        \hat{H} = \begin{bmatrix}
+        \hat{RY} = \begin{bmatrix}
         \cos\left(\frac{\theta}{2}\right) & -\sin\left(\frac{\theta}{2}\right) \\
         \sin\left(\frac{\theta}{2}\right) & \cos\left(\frac{\theta}{2}\right)
         \end{bmatrix}
@@ -107,10 +122,10 @@ class PolarizationOperationType(Enum):
     ----------------
     Constructs RZ (:math:`\hat{RZ}(\theta)`) operator
     It rotates around Z axis for given :math:`\theta` angle
-    Requires an argument "theta" (:math:`\theta`)
+    Requires an argument "theta" (:math:`\theta`)    
     .. math::
 
-        \hat{H} = \begin{bmatrix}
+        \hat{RZ} = \begin{bmatrix}
         e^{-i\frac{\theta}{2}} & 0 \\
         0 & e^{i\frac{\theta}{2}}
         \end{bmatrix}

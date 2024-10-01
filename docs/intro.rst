@@ -1,9 +1,3 @@
-.. photon_weave documentation master file, created by
-   sphinx-quickstart on Tue Oct  1 12:24:20 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-=============================================
 Welcome to Photon Weave's Documentation!
 =============================================
 
@@ -15,7 +9,7 @@ Mathematical Introduction
 The **Photon Weave** framework is built around the representation and manipulation of optical states in various Hilbert spaces. The primary spaces used within the framework are the **Fock Space**, the **Polarization Space**, and a general **Custom Hilbert Space**.
 
 Fock Space
------------
+----------
 
 The **Fock space** :math:`\mathcal{F}` is a Hilbert space that describes quantum state with discrete photon numbers. Each state in the Fock space is represented by a photon number basis :math:`|n\rangle`, where :math:`n=0,1,2,\ldots` denotes the number of photons. The Fock states are orthonormal and satifsy the following relation ship:
 
@@ -32,7 +26,7 @@ In **Photon Weave**, a single Fock space can be represented in three different w
 Transition between the **Label**, **State Vector** and **Density Matrix** representations can be easily achieved using `expand()` or `contract()` methods. However, contractions may not always be successful if the state is not representable in the target form. For instance, contracting mixed state to a vector state will fail without raising an error. It is also important to node that contracting **Density matrix** to **State vector** also disregards the global phase.
 
 Polarization Space
-------------------
+-----------------
 
 The **Polarization space** :math:`\mathcal{P}` describes the polarization state, usually of some Envelope. The polarization space is a two-dimensional Hilbert space :math:`\mathcal{H}^2`. With the following basis states:
 
@@ -165,7 +159,7 @@ Defining and applying operators is as straight forward as defining an operator a
 
 
 Fock Operations
-~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^
 
 Operations on Fock spaces are defined through `FockOperationType` class. `FockOperationType` will size the defined operator to the appropriate size before applying, so user doesn't need to explicitly control the dimensions. Furthermore in some cases, post operation state requires more dimensions in order to accurately represent the state. **Photon Weave** tries to compute number of dimensions needed to correctly represent the state. **Photon Weave** implements some of the common operations: (creation, annihilation, phase shift, squeezing, displacing and identity. Additionally the user can define an operator using an `Expression` or manually providing an operator with the `Custom` enumeration.
 
@@ -174,24 +168,26 @@ Fock operations can be applied on three levels, depending on the situation. If t
 To see the list of implemented operations on the consult the `fock_operation.py`.
 
 Polarization Operations
-~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 Operations on Polarization spaces are defined through `PolarizationOperationType` class. Since `Polarization` is always two dimensional Hilbert space, the operations need to be of same dimensions. Beside the implemented operators, Polarization operation also implements a `Custom` operation, but not `Expression` operation types.
 
 To see the list of implemented operations and required parameters for each of them, consult `polarization_operation.py`.
 
 Custom State Operations
-~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^
+
 Custom State Operations define operations which operate on `CustomState`. Custom state operations only defines two types of operations: `Custom` and `Expression`, requiring the user to explicitly define the operators either through expression or by providing the operator manually. Keep in mind that the dimensionality of the operator must match the dimensionality of the space, on which the operator will act.
 
 Further documentation can be found at `custom_state_operation.py`.
 
 Composite Operations 
-~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^
+
 Composite Operations define an operations on multiple spaces. Prior to operation the states must be members of the same composite envelope. These operations must be applied to the composite envelope and correct order of the spaces it acts on must be given. The order of operator tensoring must reflect the order of given spaces in the `apply_operation` method call.
 
 Custom Operators
-~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^
 
 Custom operation is a simple way of manually providing an operation. The user must make sure that the dimensionality of the operator matches the dimensionality of the target space. In case of `FockOperationType.Custom`, **Photon Weave** will resize the state to the dimensionality of the operator. If the operator has smaller dimension than the underlying state, the **Photon Weave** will try to shrink the state, but the shrinking process may fail if part of the state would fall outside of the new dimension cutoff.
 
@@ -207,7 +203,7 @@ Custom operation is a simple way of manually providing an operation. The user mu
 
 
 Expression defined operators
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Some operations types offer `Expression` defined operators. When defining `Expression` type of operation, the user must give at least two key word arguments: `expr` and `context`.
 
@@ -261,9 +257,10 @@ Measuring
 Measuring is as simple as calling the `measure()` method on any of the state containers (`Fock`, `Polarization`, `CustomState`, `Envelope` or `CompositeEnvelope`). Measuring `CustomState` is the most straight forward:
 
 .. code:: python
-   cs = CustomState(2)
-   outcome = cs.measure()
-   print(outcome[cs]) # prints: 0
+
+    cs = CustomState(2)
+    outcome = cs.measure()
+    print(outcome[cs]) # prints: 0
 
 `measures()` method returns a dictionary of outcomes, where key is the measured state and value is the measurement outcome of that state. Post measurement state then reflects the measured state. If state is in product space, than it is removed from the product state and stored in the original container in *Label* form.
 
@@ -273,10 +270,10 @@ When measuring `Fock` or `Polarization` by default you measure the whole envelop
 The states can be measured in an envelope, by defining which state should be measured and optionally setting the `separate_measurement` and `destructive` key word arguments after specifying the state that should be measured:
 
 .. code:: python
+
     env1 = Envelope()
     outcome = env1.measure(env1.fock, separate_measurement=True)
     # will return only measurement outcome for the Fock space
-
     env1 = Envelope()
     env2 = Envelope()
     ce = CompositeEnvelope(env1, env2)
@@ -319,42 +316,7 @@ Reproducability
 For Reproducability **Photon Weave** allows the user to set the seed that is used with random processes. The seed is configured though `Config` class. `Config` class is a singleton class and is consulted at every random process.
 
 .. code:: python
-    from photon_weave.photon_weave import Config
 
+    from photon_weave.photon_weave import Config
     C = Config()
     C.set_seed(1)
-
-
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-   intro
-   installation
-   usage
-   photon_weave
-   photon_weave.state
-   photon_weave.operation
-   
-
-..  LocalWords:  toctree Fock CustomState mathcal rangle ldots langle
-..  LocalWords:  orthonormal nm mathbb representable bmatrix frac jnp
-..  LocalWords:  sqrt PolarizationLabel enum dimensionality fock env
-..  LocalWords:  CompositeEnvelope CompostieEnvelope ce bs env2 py 1j
-..  LocalWords:  FockOperationType PolarizationOperationType expr str
-..  LocalWords:  CustomStateOperationType CompositeOperationType expm
-..  LocalWords:  CustomStateOperaitonType CustomStateOperation mult
-..  LocalWords:  CompositeOperaiton NonPolarizingBeamSplitter ndarray
-..  LocalWords:  tensoring Expresion Kraus CPTP infty ast leq env1
-..  LocalWords:  POVM mathrm Reproducability Config maxdepth faq
-
-
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

@@ -31,7 +31,8 @@ class CompositeOperationType(Enum):
     Constructs a non-polarizing  beam splitter operator that acts on two Fock spaces.
     The operator is represented by a unitary transformation that mices the two modes.
     The constructed operator is of the form:
-    ..math::
+    .. math::
+
         \hat U_{BS} = e^{i\theta(\hat a^\dagger \hat b + \hat a \hat b^\dagger)}
 
     For a 50/50 beam splitter, :math:`\theta = \frac{\pi}{4}\`, which leas to equal
@@ -42,7 +43,8 @@ class CompositeOperationType(Enum):
     Constructs a CNOT operator operating on two polarization states. First state
     provided is control and the second is target
 
-    ..math::
+    .. math::
+
         \hat{CX} = \begin{bmatrix}1&0&0&0\\0&0&0&1\\0&0&1&0\\0&1&0&0\end{bmatrix}
 
     >>> op = Operation(CompositeOperationType.CXPolarization)
@@ -51,10 +53,10 @@ class CompositeOperationType(Enum):
     CZ (CZPolarization)
     -----------------------
     Constructs a controlled-Z opreator operating on two polarization states.
-    First state provided is control and the second is target.
+    First state provided is control and the second is target.    
+    .. math::
 
-    ..math::
-        \hat{CX} = \begin{bmatrix}1&0&0&0\\0&1&0&0\\0&0&1&0\\0&0&0&-1\end{bmatrix}
+        \hat{CZ} = \begin{bmatrix}1&0&0&0\\0&1&0&0\\0&0&1&0\\0&0&0&-1\end{bmatrix}
 
     >>> op = Operation(CompositeOperationType.CZPolarization)
     >>> ce.apply_operation(op, control_pol, target_pol)
@@ -64,8 +66,8 @@ class CompositeOperationType(Enum):
     Constructs a SWAP operation, swaping the states of two provided polarization
     states.
 
-    ..math::
-        \hat{CX} = \begin{bmatrix}1&0&0&0\\0&0&1&0\\0&1&0&0\\0&0&0&1\end{bmatrix}
+    .. math::
+        \hat{SWAP} = \begin{bmatrix}1&0&0&0\\0&0&1&0\\0&1&0&0\\0&0&0&1\end{bmatrix}
 
     Example Usage:
     >>> op = Operation(CompositeOperationType.SwapPolarization)
@@ -76,19 +78,19 @@ class CompositeOperationType(Enum):
     Constructs a Controlled-SWAP operation, conditionally swapping the states of
     two provided polarization states. First state is the control state and the
     next two states are target states.
-.. math::
+    .. math::
 
-    \hat{CSWAP} =
-    \begin{bmatrix}
-    1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
-    0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
-    0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
-    0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 \\
-    0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\
-    0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 \\
-    0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\
-    0 & 0 & 0 & 0 & 0 & 0 & 0 & 1
-    \end{bmatrix}
+        \hat{CSWAP} =
+        \begin{bmatrix}
+        1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+        0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
+        0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
+        0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 \\
+        0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\
+        0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 \\
+        0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\
+        0 & 0 & 0 & 0 & 0 & 0 & 0 & 1
+        \end{bmatrix}
 
     Example Usage:
     >>> op = Operation(CompositeOperationType.SwapPolarization)
@@ -151,23 +153,47 @@ class CompositeOperationType(Enum):
     """
 
     NonPolarizingBeamSplitter = (
-        True, ["eta"], ["Fock", "Fock"], ExpansionLevel.Vector, 1
-        )  # type: ignore
+        True,
+        ["eta"],
+        ["Fock", "Fock"],
+        ExpansionLevel.Vector,
+        1,
+    )  # type: ignore
     CXPolarization = (
-        True, [], ["Polarization", "Polarization"], ExpansionLevel.Vector, 2
-        )  # type: ignore
+        True,
+        [],
+        ["Polarization", "Polarization"],
+        ExpansionLevel.Vector,
+        2,
+    )  # type: ignore
     SwapPolarization = (
-        True, [], ["Polarization", "Polarization"], ExpansionLevel.Vector, 3
-        )  # type: ignore
+        True,
+        [],
+        ["Polarization", "Polarization"],
+        ExpansionLevel.Vector,
+        3,
+    )  # type: ignore
     CSwapPolarization = (
-        True, [], ["Polarization" for _ in range(3)], ExpansionLevel.Vector, 4
-        )  # type: ignore
+        True,
+        [],
+        ["Polarization" for _ in range(3)],
+        ExpansionLevel.Vector,
+        4,
+    )  # type: ignore
     CZPolarization = (
-        True, [], ["Polarization" for _ in range(2)], ExpansionLevel.Vector, 5
-        )  # type: ignore
+        True,
+        [],
+        ["Polarization" for _ in range(2)],
+        ExpansionLevel.Vector,
+        5,
+    )  # type: ignore
     Expression = (
-        True, ["expr", "state_types", "context"], [], ExpansionLevel.Vector, 6
-        )  # type: ignore
+        True,
+        ["expr", "state_types", "context"],
+        [],
+        ExpansionLevel.Vector,
+        6,
+    )  # type: ignore
 
     def __init__(
         self,

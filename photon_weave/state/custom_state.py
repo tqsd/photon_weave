@@ -85,7 +85,7 @@ class CustomState(BaseState):
         self, final: ExpansionLevel = ExpansionLevel.Label, tol: float = 1e-6
     ) -> None:
         """
-        Attempts to contract the representation to the level defined in `final`argument.
+        Attempts to contract the representation to the level defined in final argument.
 
         Parameters
         ----------
@@ -287,8 +287,9 @@ class CustomState(BaseState):
         identity_check: bool = True,
     ) -> None:
         """
-        Apply Kraus operators to the state.
-        State is automatically expanded to the density matrix representation
+        Apply Kraus operators to the state. The State is automatically expanded to the
+        density matrix representation.
+
         Parameters
         ----------
         operators: List[Union[np.ndarray, jnp.Array]]
