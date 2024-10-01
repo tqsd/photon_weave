@@ -77,8 +77,8 @@ class Polarization(BaseState):
         polarization: PolarizationLabel = PolarizationLabel.H,
         envelope: Union["Envelope", None] = None,
     ):
-        from photon_weave.state.composite_envelope import CompositeEnvelope
-        from photon_weave.state.envelope import Envelope
+        # from photon_weave.state.composite_envelope import CompositeEnvelope
+        # from photon_weave.state.envelope import Envelope
 
         self.uid: uuid.UUID = uuid.uuid4()
         logger.info("Creating polarization with uid %s", self.uid)
@@ -154,7 +154,7 @@ class Polarization(BaseState):
         self, final: ExpansionLevel = ExpansionLevel.Label, tol: float = 1e-6
     ) -> None:
         """
-        Attempts to contract the representation to the level defined in `final`argument.
+        Attempts to contract the representation to the level defined in final argument.
 
         Parameters
         ----------
@@ -223,12 +223,11 @@ class Polarization(BaseState):
 
     def extract(self, index: Union[int, Tuple[int, int]]) -> None:
         """
-        This method is called, when the state is
-        joined into a product space. Then the
-        index is set and the label, density_matrix and
-        state_vector is set to None
+        This method is called, when the state is joined into a product space. Then the
+        index is set and the label, density_matrix and state_vector is set to None.
 
         Parameters:
+
         index: Union[int, Tuple[int, int]
             Index of the state in the product state
         """

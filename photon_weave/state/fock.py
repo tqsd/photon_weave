@@ -145,7 +145,7 @@ class Fock(BaseState):
         self, final: ExpansionLevel = ExpansionLevel.Label, tol: float = 1e-6
     ) -> None:
         """
-        Attempts to contract the representation to the level defined in `final`argument.
+        Attempts to contract the representation to the level defined in final argument.
 
         Parameters
         ----------

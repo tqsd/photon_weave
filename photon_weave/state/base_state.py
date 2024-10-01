@@ -123,7 +123,9 @@ class BaseState(ABC):
                 formatted_row = "⎢ "  # Start each row with the ⎢ symbol
                 for num in row:
                     # Format real part
-                    formatted_row += f"{num.real:+.2f} "  # Include a space after the real part
+                    formatted_row += (
+                        f"{num.real:+.2f} "  # Include a space after the real part
+                    )
 
                     # Add either "+" or "-" for the imaginary part based on the sign
                     if num.imag >= 0:
@@ -180,12 +182,13 @@ class BaseState(ABC):
         """
         Apply Kraus operators to the state.
         State is automatically expanded to the density matrix representation
+
         Parameters
         ----------
         operators: List[Union[np.ndarray, jnp.Array]]
             List of the operators
         identity_check: bool
-            Signal to check whether or not the operators sum up to identity, 
+            Signal to check whether or not the operators sum up to identity,
             True by default
         """
 
@@ -221,7 +224,7 @@ class BaseState(ABC):
         self, final: ExpansionLevel = ExpansionLevel.Label, tol: float = 1e-6
     ) -> None:
         """
-        Attempts to contract the representation to the level defined in `final`argument.
+        Attempts to contract the representation to the level defined in final argument.
 
         Parameters
         ----------

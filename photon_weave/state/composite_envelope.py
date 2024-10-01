@@ -139,7 +139,7 @@ class ProductState:
 
         Parameter
         ---------
-        *states: Optional[BaseState]
+        states: Optional[BaseState]
             Optional, when measuring spaces individualy
         separate_measurement:bool
             if True given states will be measured separately and the state which is not
@@ -643,8 +643,7 @@ class ProductState:
             for i, s in enumerate(states):
                 op_type = operation._operation_type
                 assert isinstance(
-                    s,
-                    op_type.expected_base_state_types[i]  # type: ignore
+                    s, op_type.expected_base_state_types[i]  # type: ignore
                 )
             operation.compute_dimensions(
                 [s._num_quanta if isinstance(s, Fock) else 0 for s in states],
@@ -1052,7 +1051,7 @@ class CompositeEnvelope:
 
         Parameter
         ---------
-        *states: Optional[BaseState]
+        states: Optional[BaseState]
             States that should be measured
         separate_measurement:bool
             If true given states will be measured separately. Has only affect on the
