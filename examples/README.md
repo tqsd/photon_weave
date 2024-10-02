@@ -13,4 +13,7 @@ The diagram below illustrates the simulated output from the Mach-Zehnder Interfe
 ## Time Bin Encoding
 
 [time_bin_encoding.py](./time_bin_encoding.py)
+
+The plot displays average photon count at the outputs 0 and 1 at times t0, t1 and t2.
+
 ![Mach-Zehnder Interferometer](plots/time_bin_encoding.png)
