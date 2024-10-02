@@ -184,10 +184,10 @@ def time_bin_encoding(intensity: int, alpha: float, beta: float) -> List[List[in
 
 if __name__ == "__main__":
 
-    alpha = 1
-    beta = 0
+    alpha = jnp.pi
+    beta = jnp.pi/2
     intensity = 3
-    rounds = 100
+    rounds = 50
 
     outputs = {
         "t0_0" : [],
@@ -223,7 +223,7 @@ if __name__ == "__main__":
 
     colors = ['skyblue', 'lightgreen']*3
 
-    annotation_text = f"Alpha: {alpha}, Beta: {beta}, Intensity: {intensity}"
+    annotation_text = f"Alpha: {alpha:.2f}, Beta: {beta:.2f}, Intensity: {intensity}"
 
     plt.bar(ordered_keys, ordered_mean_values, color=colors, edgecolor='black')
     plt.xlabel('Output bins')
