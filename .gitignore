@@ -209,3 +209,4 @@ flycheck_*.el
 
 #vscode files
 .vscode/
+**/.vscode/

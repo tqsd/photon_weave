@@ -137,8 +137,8 @@ class ProductState:
         are moved to their respective spaces. If the measurement is destructive, then
         the state is destroyed post measurement.
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         states: Optional[BaseState]
             Optional, when measuring spaces individualy
         separate_measurement:bool

@@ -8,7 +8,6 @@ extend-ignore =
         # Ignoring whitespace after '(' or '[' for matrices
         E201,
 	E203,
-        E502,
         E731,
         W291,
         E124

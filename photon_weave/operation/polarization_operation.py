@@ -28,7 +28,7 @@ class PolarizationOperationType(Enum):
 
     Identity (I)
     ------------
-    Constructs Identity (:math:`\hat{I}`) operator    
+    Constructs Identity (:math:`\hat{I}`) operator
     .. math::
 
         \hat{I} = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}
@@ -82,7 +82,7 @@ class PolarizationOperationType(Enum):
 
     Sqrt(X) Operator (SX)
     ---------------------
-    Constructs SX (:math:`\hat{SX}`) operator    
+    Constructs SX (:math:`\hat{SX}`) operator
     .. math::
 
         \hat{SX} = \frac{1}{2} \begin{bmatrix} 1+i & 1-i \\ 1-i & 1+i \end{bmatrix}
@@ -122,7 +122,7 @@ class PolarizationOperationType(Enum):
     ----------------
     Constructs RZ (:math:`\hat{RZ}(\theta)`) operator
     It rotates around Z axis for given :math:`\theta` angle
-    Requires an argument "theta" (:math:`\theta`)    
+    Requires an argument "theta" (:math:`\theta`)
     .. math::
 
         \hat{RZ} = \begin{bmatrix}

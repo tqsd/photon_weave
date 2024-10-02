@@ -70,7 +70,6 @@ default_temporal_profile = TemporalProfile.Gaussian.with_params(
 
 
 class Envelope:
-
     __slots__ = (
         "uid",
         "state",
@@ -87,7 +86,7 @@ class Envelope:
         wavelength: float = 1550,
         fock: Optional["Fock"] = None,
         polarization: Optional["Polarization"] = None,
-        temporal_profile: TemporalProfileInstance = default_temporal_profile
+        temporal_profile: TemporalProfileInstance = default_temporal_profile,
     ):
         from photon_weave.state.fock import Fock
         from photon_weave.state.polarization import Polarization
@@ -148,8 +147,7 @@ class Envelope:
                 formatted_row = "⎢ "
                 for num in row:
                     # Format real part
-                    formatted_row += f"{num.real:+.2f} "  
-
+                    formatted_row += f"{num.real:+.2f} "
                     if num.imag >= 0:
                         formatted_row += "+ "
                     else:
@@ -172,10 +170,9 @@ class Envelope:
             formatted_matrix = ""
 
             for row in self.state:
-                formatted_row = "⎢ "  
+                formatted_row = "⎢ "
                 for num in row:
-                    formatted_row += f"{num.real:+.2f} "  
-
+                    formatted_row += f"{num.real:+.2f} "
                     if num.imag >= 0:
                         formatted_row += "+ "
                     else:
@@ -1089,7 +1086,7 @@ class Envelope:
             t_a=delay, omega_a=(C0 / n) / other.wavelength
         )
         integrand = lambda x: np.conj(f1(x)) * f2(x)
-        result, error = quad(integrand, -np.inf, np.inf)
+        result, _ = quad(integrand, -np.inf, np.inf)
 
         return result
 

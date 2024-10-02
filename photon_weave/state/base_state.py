@@ -32,7 +32,6 @@ class BaseState(ABC):
 
     @abstractmethod
     def __init__(self) -> None:
-
         self._uid: Union[str, UUID] = uuid4()
         self._expansion_level: Optional[ExpansionLevel] = None
         self._index: Optional[Union[int, Tuple[int, int]]] = None

@@ -1,15 +1,14 @@
 from typing import List
 
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 
 from photon_weave.operation import CompositeOperationType, FockOperationType, Operation
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.envelope import Envelope
 
 
-def time_bin_encoding(intensity: int, alpha: float, beta: float) -> List[List[int]]:
-    r"""
+def time_bin_encoding(alpha: float, beta: float) -> List[List[int]]:
+    """
     Simulates time bin encoding
 
     Time Bin encoding makes use of four beam splitters
@@ -22,8 +21,6 @@ def time_bin_encoding(intensity: int, alpha: float, beta: float) -> List[List[in
 
     Parameters
     ----------
-    intensity: int
-        Photon number state
     alpha: float
         Phase shift for the first arm
     beta: float
@@ -39,7 +36,7 @@ def time_bin_encoding(intensity: int, alpha: float, beta: float) -> List[List[in
     """
     # Create an envelope with one photon
     env1 = Envelope()
-    env1.fock.state = intensity
+    env1.fock.state = 3
 
     # Create an empty envelope
     env2 = Envelope()
@@ -183,58 +180,4 @@ def time_bin_encoding(intensity: int, alpha: float, beta: float) -> List[List[in
 
 
 if __name__ == "__main__":
-
-    alpha = jnp.pi
-    beta = jnp.pi/2
-    intensity = 3
-    rounds = 50
-
-    outputs = {
-        "t0_0" : [],
-        "t0_1" : [],
-        "t1_0" : [],
-        "t1_1" : [],
-        "t2_0" : [],
-        "t2_1" : [],
-    }
-
-    for i in range(rounds):
-        print(f"ROUND {i}")
-        output = time_bin_encoding(intensity, alpha, beta)
-
-        outputs["t0_0"].append(output[0][0])
-        outputs["t0_1"].append(output[0][1])
-        outputs["t1_0"].append(output[1][0])
-        outputs["t1_1"].append(output[1][1])
-        outputs["t2_0"].append(output[2][0])
-        outputs["t2_1"].append(output[2][1])
-
-    # Get averages
-
-    mean_outputs = {
-        key: jnp.mean(jnp.array(value)) for key, value in outputs.items()
-    }
-
-    # Specify the desired order
-    ordered_keys = ["t2_0", "t2_1", "t1_0", "t1_1", "t0_0", "t0_1"]
-
-    # Prepare data in the specified order
-    ordered_mean_values = [mean_outputs[key] for key in ordered_keys]
-
-    colors = ['skyblue', 'lightgreen']*3
-
-    annotation_text = f"Alpha: {alpha:.2f}, Beta: {beta:.2f}, Intensity: {intensity}"
-
-    plt.bar(ordered_keys, ordered_mean_values, color=colors, edgecolor='black')
-    plt.xlabel('Output bins')
-    plt.ylabel('Mean Value')
-    plt.title('Mean Values of Time Bin Encoding Outputs')
-    plt.xticks(rotation=45)
-    plt.text(0.5, 0.9, annotation_text, fontsize=12, ha='center', va='center', transform=plt.gca().transAxes,
-             bbox=dict(facecolor='white', alpha=0.5, boxstyle='round,pad=0.5'))
-    plt.savefig('./plots/time_bin_encoding.png', dpi=500, bbox_inches='tight')
-    
-
-
-
-
+    print(time_bin_encoding(0, 0))

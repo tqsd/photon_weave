@@ -8,12 +8,3 @@ This example demonstrates the simulation of a Mach-Zehnder Interferometer (MZI),
 The diagram below illustrates the simulated output from the Mach-Zehnder Interferometer:
 
 ![Mach-Zehnder Interferometer](plots/mzi.png)
-
-
-## Time Bin Encoding
-
-[time_bin_encoding.py](./time_bin_encoding.py)
-
-The plot displays average photon count at the outputs 0 and 1 at times t0, t1 and t2.
-
-![Mach-Zehnder Interferometer](plots/time_bin_encoding.png)

@@ -16,12 +16,12 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.12"
-numpy = "^1.21"
-scipy = "^1.7"
-matplotlib = "^3.4"
-jax = "^0.4.33"
-jaxlib = "^0.4.33"
+python = ">= 3.10"
+numpy = "*"
+scipy = "*"
+matplotlib = "*"
+jax = "*"
+jaxlib = "*"
 # Add other dependencies as required
 
 [tool.poetry.dev-dependencies]

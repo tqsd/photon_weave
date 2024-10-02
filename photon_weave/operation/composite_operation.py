@@ -53,7 +53,7 @@ class CompositeOperationType(Enum):
     CZ (CZPolarization)
     -----------------------
     Constructs a controlled-Z opreator operating on two polarization states.
-    First state provided is control and the second is target.    
+    First state provided is control and the second is target.
     .. math::
 
         \hat{CZ} = \begin{bmatrix}1&0&0&0\\0&1&0&0\\0&0&1&0\\0&0&0&-1\end{bmatrix}
