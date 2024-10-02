@@ -8,3 +8,9 @@ This example demonstrates the simulation of a Mach-Zehnder Interferometer (MZI),
 The diagram below illustrates the simulated output from the Mach-Zehnder Interferometer:
 
 ![Mach-Zehnder Interferometer](plots/mzi.png)
+
+
+## Time Bin Encoding
+
+[time_bin_encoding.py](./time_bin_encoding.py)
+![Mach-Zehnder Interferometer](plots/time_bin_encoding.png)
