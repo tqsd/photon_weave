@@ -11,17 +11,13 @@ authors:
     affiliation: 1
   - name: Kareem El-Safty
     orcid: 0000-0001-8740-0637
-    affiliation: 2
+    affiliation: 1
   - name: Janis Nötzel
     orcid: 0000-0003-0091-3072
-    affiliation: 3
-affiliation:
+    affiliation: 1
+affiliations:
   - name: Technical University of Munich, TQSD, Arcißstraße 21
     index: 1
-  - name: Technical University of Munich, TQSD, Arcißstraße 21
-    index: 2
-  - name: Technical University of Munich, TQSD, Arcißstraße 21
-    index: 3
 date: 15.10.2024
 bibliography: paper.bib
 ---
