@@ -1,8 +1,5 @@
 name: Draft PDF
-on:
-  push:
-    branches:
-      - paper
+on: [push]
 
 jobs:
   paper:
@@ -15,6 +12,7 @@ jobs:
         uses: openjournals/openjournals-draft-action@master
         with:
           journal: joss
+          # This should be the path to the paper within your repo.
           paper-path: JOSS2024/paper.md
       - name: Upload
         uses: actions/upload-artifact@v4
