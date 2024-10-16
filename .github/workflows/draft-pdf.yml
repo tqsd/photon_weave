@@ -4,6 +4,8 @@ on:
     paths:
       - JOSS2024/**
       - .github/workflows/draft-pdf.yml
+    paths-ignore:
+      - JOSS2024/paper.pdf
 
 jobs:
   paper:
