@@ -7,14 +7,14 @@ tags:
   
 authors:
  - name: Simon Sekavčnik
-    orcid: 0000-0002-1370-9751
-    affiliation: 1
+   orcid: 0000-0002-1370-9751
+   affiliation: 1
  - name: Kareem El-Safty
-    orcid: 0000-0001-8740-0637
-    affiliation: 1
+   orcid: 0000-0001-8740-0637
+   affiliation: 1
  - name: Janis Nötzel
-    orcid: 0000-0003-0091-3072
-    affiliation: 1
+   orcid: 0000-0003-0091-3072
+   affiliation: 1
 affiliations:
   - name: Technical University of Munich, Theoretical Quantum System Design, Munich, Germany
     index: 1
