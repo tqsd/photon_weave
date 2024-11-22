@@ -10,6 +10,11 @@ from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.envelope import Envelope
 
 
+# Generate beam splitter operators
+bs1 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
+ps = Operation(FockOperationType.PhaseShift, phi=0)
+bs2 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
+
 def mach_zender_single_shot(phase_shift: float) -> list[int]:
     """Return photon count in each port of a Mach-Zehnder Interferometer.
 
@@ -27,15 +32,11 @@ def mach_zender_single_shot(phase_shift: float) -> list[int]:
     env1 = Envelope()
     # Create one photon
     env1.fock.state = 1
-
     # Other port will consume vacuum
     env2 = Envelope()
-
-    # Generate operators
-    bs1 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
-    ps = Operation(FockOperationType.PhaseShift, phi=phase_shift)
-    bs2 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
-
+    # create phase shift operation
+    ps.kwargs["phi"] = phase_shift
+    # Apply operations
     ce = CompositeEnvelope(env1, env2)
     ce.apply_operation(bs1, env1.fock, env2.fock)
     env1.fock.apply_operation(ps)
@@ -57,7 +58,6 @@ if __name__ == "__main__":
     for i, angle in enumerate(angles):
         for j in range(num_shots):
             shot_result = mach_zender_single_shot(angle)
-            # results[float(angle)].append(shot_result)
             results[i, j, :] = shot_result
             pbar.update(1)
     pbar.close()
