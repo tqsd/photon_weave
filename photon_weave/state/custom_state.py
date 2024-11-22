@@ -133,6 +133,7 @@ class CustomState(BaseState):
     def _measured(self) -> bool:
         return False
 
+    # FIXME: Unused argument
     @_measured.setter
     def _measured(self, measured: bool) -> None:
         """
@@ -161,6 +162,7 @@ class CustomState(BaseState):
                 "Either set both parameters (minor, major) or none of them"
             )
 
+    # FIXME: Unused argument
     def measure(
         self, separate_measurement: bool = False, destructive: bool = True
     ) -> Dict[BaseState, int]:
@@ -223,6 +225,7 @@ class CustomState(BaseState):
             "Something went wrong, this exception should not be raised"
         )  # pragma: no cover
 
+    # FIXME: Unused argument
     def measure_POVM(
         self,
         operators: List[Union[np.ndarray, jnp.ndarray]],
@@ -281,6 +284,7 @@ class CustomState(BaseState):
             self.contract()
         return (outcome, {})
 
+    # FIXME: Unused argument
     def apply_kraus(
         self,
         operators: List[Union[np.ndarray, jnp.ndarray]],

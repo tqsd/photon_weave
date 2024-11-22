@@ -173,6 +173,7 @@ class BaseState(ABC):
             return f"{formatted_matrix}"
         return f"{self.uid}"
 
+    # TODO: identity check is unused. If present for compatibility reasons, it should be commented
     def apply_kraus(
         self,
         operators: List[Union[np.ndarray, jnp.ndarray]],

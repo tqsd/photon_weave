@@ -310,10 +310,10 @@ The `measure_POVM()` method will return tuple with the outcome as the first valu
     m = env.measure_POVM(operators, env.polarization)
 
 
-Reproducability
+Reproducibility
 ===============
 
-For Reproducability **Photon Weave** allows the user to set the seed that is used with random processes. The seed is configured though `Config` class. `Config` class is a singleton class and is consulted at every random process.
+For Reproducibility **Photon Weave** allows the user to set the seed that is used with random processes. The seed is configured though `Config` class. `Config` class is a singleton class and is consulted at every random process.
 
 .. code:: python
 
