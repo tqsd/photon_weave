@@ -131,6 +131,7 @@ class ProductState:
         self,
         *states: "BaseState",
         destructive: bool = True,
+        separate_measurement: bool = False,
     ) -> Dict["BaseState", int]:
         """
         Measures this subspace. If the state is measured partially, then the state
