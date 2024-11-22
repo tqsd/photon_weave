@@ -32,7 +32,10 @@ if TYPE_CHECKING:
     from photon_weave.operation import Operation
     from photon_weave.state.composite_envelope import CompositeEnvelope
     from photon_weave.state.polarization import PolarizationLabel
-
+    from photon_weave.operation.fock_operation import FockOperationType
+    from photon_weave.operation.polarization_operation import (
+        PolarizationOperationType,
+    )
     from .base_state import BaseState
 
 logger = logging.getLogger()
@@ -127,6 +130,7 @@ class Envelope:
     def __repr__(self) -> str:
         if self.measured:
             return "Envelope already measured"
+
         if self.state is None:
             fock_repr = self.fock.__repr__().splitlines()
             pol_repr = self.polarization.__repr__().splitlines()
@@ -138,6 +142,7 @@ class Envelope:
             pol_repr.extend([""] * (max_lines - len(pol_repr)))
             zipped_lines = zip(fock_repr, pol_repr)
             return "\n".join(f"{f_line} ⊗ {p_line}" for f_line, p_line in zipped_lines)
+
         elif self.state is not None and self.expansion_level == ExpansionLevel.Vector:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, 1)
@@ -161,8 +166,8 @@ class Envelope:
             formatted_vector[0] = "⎡ " + formatted_vector[0][2:-1] + "⎤"
             formatted_vector[-1] = "⎣ " + formatted_vector[-1][2:-1] + "⎦"
             formatted_vector = "\n".join(formatted_vector)
-
             return f"{formatted_vector}"
+
         elif self.state is not None and self.expansion_level == ExpansionLevel.Matrix:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, self.dimensions)
@@ -191,6 +196,7 @@ class Envelope:
             formatted_matrix = "\n".join(formatted_matrix)
 
             return f"{formatted_matrix}"
+
         return str(self.uid)  # pragme: no cover
 
     def combine(self) -> None:
@@ -198,9 +204,6 @@ class Envelope:
         Combines the fock and polarization into one vector or matrix and
         stores it under self.composite_vector or self.composite_matrix appropriately
         """
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
-
         for s in [self.fock, self.polarization]:
             if s.measured:
                 raise ValueError(
@@ -295,7 +298,7 @@ class Envelope:
         Parameter
         ---------
         *states: Optional[BaseState]
-            Optional, when measuring spaces individualy
+            Optional, when measuring spaces individually
         separate_measurement:bool
             if True given states will be measured separately and the state which is not
             measured will be preserved (False by default)
@@ -323,6 +326,7 @@ class Envelope:
                 out = s.measure()
                 for k, v in out.items():
                     outcomes[k] = v
+
         else:
             assert isinstance(self.fock.index, int)
             assert isinstance(self.polarization.index, int)
@@ -518,6 +522,7 @@ class Envelope:
                         self._set_measured()
                         self.polarization._set_measured()
                         self.fock._set_measured()
+
             if self.expansion_level == ExpansionLevel.Matrix:
                 if separate_measurement and len(states) == 1:
                     if self.fock not in states:
@@ -590,11 +595,11 @@ class Envelope:
         int
             The index of the measurement corresponding to the outcome
         """
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
-
         if self.measured:
             raise ValueError("This envelope was already measured")
+        # FIXME: This logic on the state length is very hard to follow. The length is checked multiple times
+        # and each case is covered several times. Change this to a match statement.
+        # It might be more convenient to define different functions for each case and call them here.
 
         # Check the validity of the given states
         if len(states) == 2:
@@ -605,6 +610,7 @@ class Envelope:
                 raise ValueError("Given states have to be unique")
         elif len(states) > 2:
             raise ValueError("Too many states given")
+
         for s in states:
             if s is not self.polarization and s is not self.fock:
                 raise ValueError(
@@ -695,6 +701,7 @@ class Envelope:
                 self.fock._set_measured()
                 self.polarization._set_measured()
             return (choice, {})
+
         elif len(states) == 1:
             # Check the dimensions of the operators
             for op in operators:
@@ -738,6 +745,7 @@ class Envelope:
                 states[0]._set_measured()
                 self._set_measured()
             return (choice, {})
+
         # Should not come to this
         return (-1, {})  # pragma: no cover
 
@@ -754,9 +762,9 @@ class Envelope:
         states:
             List of states in the same order as the tensoring of operators
         """
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
-
+        # FIXME: Same comment about the different cases as in measure_POVM based on the
+        # length of the states. This could be refactored to a match statement with specialized
+        # functions for each case.
         if len(states) == 2:
             if (isinstance(states[0], Fock) and isinstance(states[1], Fock)) or (
                 isinstance(states[0], Polarization)
@@ -849,9 +857,7 @@ class Envelope:
         *states: BaseState
             new order of states
         """
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
-
+        # FIXME: Match statement for the states length
         states_list = list(states)
         if len(states_list) == 2:
             if (
@@ -872,14 +878,14 @@ class Envelope:
                 )
 
         if self.state is None:
-            logger.info("States not combined noting to do", self.uid)
+            logger.info("States not combined nothing to do", self.uid)
             return
         if len(states_list) == 1:
             if states_list[0] is self.fock:
                 states_list.append(self.polarization)
             elif states_list[0] is self.polarization:
                 states_list.append(self.fock)
-
+        # FIXME: These assertions should rather be a test case
         assert isinstance(self.fock.index, int)
         assert isinstance(self.polarization.index, int)
         assert isinstance(self.fock.dimensions, int)
@@ -894,7 +900,8 @@ class Envelope:
         current_shape = [0, 0]
         current_shape[self.fock.index] = self.fock.dimensions
         current_shape[self.polarization.index] = 2
-
+        # FIXME: This reshaping logic looks frequently used. Packaging it
+        # as a helper could make the code more readable.
         if self.expansion_level == ExpansionLevel.Vector:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, 1)
@@ -920,6 +927,7 @@ class Envelope:
                 self.fock.index,
             )
 
+    # FIXME: Unused variable. Should be documented if intentional.
     def contract(
         self, final: ExpansionLevel = ExpansionLevel.Vector, tol: float = 1e-6
     ) -> None:
@@ -973,8 +981,6 @@ class Envelope:
             The given states will be returned in the given
             order (tensoring order), with the rest traced out
         """
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization, PolarizationLabel
 
         if self.composite_envelope is not None:
             assert isinstance(self.composite_envelope, CompositeEnvelope)
@@ -1067,6 +1073,7 @@ class Envelope:
         # Should not come to this
         return jnp.ndarray([[1]])  # pragma: no cover
 
+    # FIXME: Inconsistent docstring style
     def overlap_integral(self, other: Envelope, delay: float, n: float = 1) -> float:
         r"""
         Given delay in [seconds] this method computes overlap of temporal
@@ -1075,7 +1082,7 @@ class Envelope:
         Args:
         self (Envelope): Self
         other (Envelope): Other envelope to compute overlap with
-        delay (float): Delay of the `other`after self
+        delay (float): Delay of the `other` after self
         Returns:
         float: overlap factor
         """
@@ -1085,14 +1092,17 @@ class Envelope:
         f2 = other.temporal_profile.get_function(
             t_a=delay, omega_a=(C0 / n) / other.wavelength
         )
-        integrand = lambda x: np.conj(f1(x)) * f2(x)
+
+        def integrand(x) -> float | complex:
+            return np.conj(f1(x)) * f2(x)
+
         result, _ = quad(integrand, -np.inf, np.inf)
 
         return result
 
     def resize_fock(self, new_dimensions: int) -> bool:
         """
-        Adjusts the dimension of the fock in the envelope.
+        Adjusts the dimension of the Fock state in the envelope.
 
         Parameters
         ----------
@@ -1109,13 +1119,16 @@ class Envelope:
             return self.fock.resize(new_dimensions)
 
         reshape_shape = [-1, -1]
+        # FIXME: These assertions should rather be test cases
         assert isinstance(self.fock.dimensions, int)
         assert isinstance(self.fock.index, int)
         assert isinstance(self.polarization.dimensions, int)
         assert isinstance(self.polarization.index, int)
         reshape_shape[self.fock.index] = self.fock.dimensions
         reshape_shape[self.polarization.index] = self.polarization.dimensions
-
+        # FIXME: this returns almost always True, it looks like it could be simplified.
+        # Similarly to a lot of places in the code, it branches according to the dimensions / Matrix / Vector.
+        # With specialized helpers it would be more readable.
         if self.expansion_level == ExpansionLevel.Vector:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, 1)
@@ -1129,20 +1142,24 @@ class Envelope:
                 self.state = ps.reshape(-1, 1)
                 self.fock.dimensions = new_dimensions
                 return True
+
             if new_dimensions < self.fock.dimensions:
                 to = self.trace_out(self.fock)
                 assert isinstance(to, jnp.ndarray)
                 num_quanta = num_quanta_vector(to)
                 if num_quanta >= new_dimensions:
-                    # Cannot hrink because amplitues exist beyond new_dimensions
+                    # Cannot shrink because amplitudes exist beyond new_dimensions
                     return False
+
                 slices = [slice(None)] * ps.ndim
                 slices[self.fock.index] = slice(0, new_dimensions)
                 ps = ps[tuple(slices)]
                 self.state = ps.reshape(-1, 1)
                 self.fock.dimensions = new_dimensions
                 return True
+
         if self.expansion_level == ExpansionLevel.Matrix:
+            # FIXME: These assertions should rather be test cases
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, self.dimensions)
             ps = self.state.reshape([*reshape_shape, *reshape_shape]).transpose(
@@ -1159,6 +1176,7 @@ class Envelope:
                 ps = ps.transpose([0, 2, 1, 3])
                 self.state = ps.reshape((self.dimensions, self.dimensions))
                 return True
+
             if new_dimensions <= self.fock.dimensions:
                 to = self.trace_out(self.fock)
                 assert isinstance(to, jnp.ndarray)
@@ -1174,6 +1192,7 @@ class Envelope:
                 self.fock.dimensions = new_dimensions
                 self.state = ps.reshape((self.dimensions, self.dimensions))
                 return True
+
         return False  # pragma: no cover
 
     def apply_operation(
@@ -1189,14 +1208,6 @@ class Envelope:
         state: Union[Fock, Polarization]
             The state to which the operator should be applied to
         """
-
-        from photon_weave.operation.fock_operation import FockOperationType
-        from photon_weave.operation.polarization_operation import (
-            PolarizationOperationType,
-        )
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
-
         # Check that correct operation is applied to the correct system
         if isinstance(operation._operation_type, FockOperationType):
             if not isinstance(states[0], Fock):
