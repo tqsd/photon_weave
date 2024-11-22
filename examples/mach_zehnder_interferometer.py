@@ -35,14 +35,17 @@ def mach_zender_single_shot(phase_shift: float):
 
 
 if __name__ == "__main__":
-    num_shots = 1000
+    from tqdm import tqdm
+    num_shots = 100
     angles = jnp.linspace(0, 2 * jnp.pi, 25)
     results = {float(angle): [] for angle in angles}
+    pbar = tqdm(total=len(angles) * num_shots, desc="Simulating Mach-Zehnder Interferometer")
     for angle in angles:
         for _ in range(num_shots):
             shot_result = mach_zender_single_shot(angle)
             results[float(angle)].append(shot_result)
-
+            pbar.update(1)
+    pbar.close()
     measurements_1 = []
     measurements_2 = []
     for angle, shots in results.items():
