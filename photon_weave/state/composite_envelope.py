@@ -646,7 +646,7 @@ class ProductState:
                     s, op_type.expected_base_state_types[i]  # type: ignore
                 )
             operation.compute_dimensions(
-                [s._num_quanta if isinstance(s, Fock) else 0 for s in states],
+                [s._num_quanta if isinstance(s, Fock) else s.dimensions for s in states],
                 [s.trace_out() for s in states],  # type: ignore
             )
             for i, s in enumerate(states):
