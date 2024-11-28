@@ -1090,7 +1090,7 @@ class Envelope:
 
         return result
 
-    def resize_fock(self, new_dimensions: int) -> bool:
+    def resize_fock(self, new_dimensions: int, state: Optional[Fock]=None) -> bool:
         """
         Adjusts the dimension of the fock in the envelope.
 
@@ -1098,6 +1098,10 @@ class Envelope:
         ----------
         new_dimensions: int
             New dimensions to resize to
+        state: Optional[Fock]
+            Optional Parameter, not needed, because there can only be one
+            Fock state in an Envelope, but needed because of the routing
+            logic
 
         Returns
         -------
@@ -1134,7 +1138,7 @@ class Envelope:
                 assert isinstance(to, jnp.ndarray)
                 num_quanta = num_quanta_vector(to)
                 if num_quanta >= new_dimensions:
-                    # Cannot hrink because amplitues exist beyond new_dimensions
+                    # Cannot shrink because amplitues exist beyond new_dimensions
                     return False
                 slices = [slice(None)] * ps.ndim
                 slices[self.fock.index] = slice(0, new_dimensions)
