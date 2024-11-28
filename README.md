@@ -19,5 +19,18 @@ In case you want to add a feature, you can install the system with:
 ```bash
 git clone git@github.com:tqsd/photon_weave.git
 cd photon_weave
-pip install -e .
+	pip install -e .
 ```
+
+
+#### Testing
+The tests can simply be run with the `pytest` testing suite. Before running the tests, make sure that the `pytest` is installed in your environment.
+```
+pip install pytest
+# In Photon Weave root directory
+pytest
+```
+
+### Contribution Guide
+
+We are gladly accepting contributions of any sort.
