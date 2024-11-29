@@ -21,6 +21,7 @@ from photon_weave.state.composite_envelope import CompositeEnvelope
 from .base_state import BaseState
 from .expansion_levels import ExpansionLevel
 from .utils.measurements import measure_vector, measure_matrix
+from .utils.operations import apply_operation_vector, apply_operation_matrix
 from .utils.routing import route_operation
 
 if TYPE_CHECKING:
@@ -286,6 +287,7 @@ class Fock(BaseState):
         if destructive:
             self._set_measured()
 
+        # Handle the case where Fock is included in the Enveloe
         if self.envelope is not None and not separate_measurement:
             if not self.envelope.polarization.measured:
                 out = self.envelope.polarization.measure(
@@ -404,42 +406,27 @@ class Fock(BaseState):
 
         # Consolidate the dimensions
         to = self.trace_out()
-        assert isinstance(to, jnp.ndarray)
         operation.compute_dimensions(self._num_quanta, to)
         self.resize(operation.dimensions[0])
-                
-            
-
-        if self.expansion_level == ExpansionLevel.Vector:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, 1)
-            self.state = jnp.einsum("ij,jk->ik", operation.operator, self.state)
-            if not jnp.any(jnp.abs(self.state) > 0):
-                raise ValueError(
-                    "The state is entirely composed of zeros, is |0⟩ "
-                    "attempted to be annihilated?"
-                )
-            if operation.renormalize:
-                self.state = self.state / jnp.linalg.norm(self.state)
-        if self.expansion_level == ExpansionLevel.Matrix:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, self.dimensions)
-            self.state = jnp.einsum(
-                "ca,ab,db->cd",
-                operation.operator,
-                self.state,
-                jnp.conj(operation.operator),
+        
+        match self.expansion_level:
+            case ExpansionLevel.Vector:
+                self.state = apply_operation_vector(
+                    [self], [self], self.state, operation.operator
+                    )
+            case ExpansionLevel.Matrix:
+                self.state = apply_operation_matrix(
+                    [self], [self], self.state, operation.operator
+                    )
+     
+        if not jnp.any(jnp.abs(self.state) > 0):
+            raise ValueError(
+                "The state is entirely composed of zeros, is |0⟩"
+                " attempted to be annihilated?"
             )
-            if not jnp.any(jnp.abs(self.state) > 0):
-                raise ValueError(
-                    "The state is entirely composed of zeros, is |0⟩"
-                    " attempted to be annihilated?"
-                )
-            if operation.renormalize:
-                self.state = self.state / jnp.linalg.norm(self.state)
+        if operation.renormalize:
+            self.state = self.state / jnp.linalg.norm(self.state)
 
         C = Config()
         if C.contractions:
             self.contract()
-
-
