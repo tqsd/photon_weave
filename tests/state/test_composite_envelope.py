@@ -982,7 +982,7 @@ class TestKrausApply(unittest.TestCase):
         ce.combine(env1.fock)
         ce.combine(env2.fock)
 
-        op = jnp.array([[0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
+        op = jnp.array([[2, 0, 0, 0], [0, 2, 0, 0], [0, 0, 2, 0], [0, 0, 0, 2]])
         C = Config()
         C.set_contraction(False)
 

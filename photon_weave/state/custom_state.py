@@ -18,6 +18,9 @@ from photon_weave.photon_weave import Config
 from photon_weave.state.base_state import BaseState
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.expansion_levels import ExpansionLevel
+from .utils.measurements import measure_vector, measure_matrix
+from .utils.operations import apply_operation_vector, apply_operation_matrix
+from .utils.routing import route_operation
 
 
 class CustomState(BaseState):
@@ -61,9 +64,18 @@ class CustomState(BaseState):
         assert not isinstance(index, int)
         self._index = index
 
+
+    @route_operation()
     def expand(self) -> None:
         """
         Expands the state from label to vector and from vector to matrix
+        
+        Notes
+        -----
+        Method is decorated with route_operation. If the state is
+        contained in the product state, the corresponding operation
+        will be executed in the state container, which contains this
+        stat.
         """
         if isinstance(self.index, tuple):
             assert isinstance(self.composite_envelope, CompositeEnvelope)
@@ -161,6 +173,7 @@ class CustomState(BaseState):
                 "Either set both parameters (minor, major) or none of them"
             )
 
+    @route_operation()
     def measure(
         self, separate_measurement: bool = False, destructive: bool = True
     ) -> Dict[BaseState, int]:
@@ -180,48 +193,31 @@ class CustomState(BaseState):
         -------
         Dict[BaseState, int]
             Dictionary of outcomes, in this case only one outcome
+
+        Notes
+        -----
+        Method is decorated with route_operation. If the state is
+        contained in the product state, the corresponding operation
+        will be executed in the state container, which contains this
+        stat.
         """
-        if self.index is not None:
-            assert self.composite_envelope is not None
-            return self.composite_envelope.measure(self)
-        elif self.index is None:
-            if self.expansion_level == ExpansionLevel.Label:
+        match self.expansion_level:
+            case ExpansionLevel.Label:
                 assert isinstance(self.state, int)
                 return {self: self.state}
-            elif self.expansion_level == ExpansionLevel.Vector:
-                assert isinstance(self.state, jnp.ndarray)
-                assert self.state.shape == (self.dimensions, 1)
-                C = Config()
-                probabilities = jnp.abs(self.state.flatten()) ** 2
-                probabilities = probabilities.ravel()
-                assert jnp.isclose(sum(probabilities), 1)
-                key = C.random_key
-                out = int(
-                    jax.random.choice(
-                        key, a=jnp.array(len(probabilities)), p=probabilities
-                    )
+            case ExpansionLevel.Vector:
+                outcomes, post_measurement_state = measure_vector(
+                    [self], [self], self.state
                 )
-                self.state = out
-                self.expansion_level = ExpansionLevel.Label
-                return {self: out}
-            elif self.expansion_level == ExpansionLevel.Matrix:
-                assert isinstance(self.state, jnp.ndarray)
-                assert self.state.shape == (self.dimensions, self.dimensions)
-                C = Config()
-                probabilities = jnp.diag(self.state).real
-                probabilities = probabilities / jnp.sum(probabilities)
-                key = C.random_key
-                out = int(
-                    jax.random.choice(
-                        key, a=jnp.array(len(probabilities)), p=probabilities
-                    )
+            case ExpansionLevel.Matrix:
+                outcomes, post_measurement_state = measure_matrix(
+                    [self], [self], self.state
                 )
-                self.state = out
-                self.expansion_level = ExpansionLevel.Label
-                return {self: out}
-        raise ValueError(
-            "Something went wrong, this exception should not be raised"
-        )  # pragma: no cover
+
+        self.state = outcomes[self]
+        self.expansion_level = ExpansionLevel.Label
+
+        return outcomes
 
     def measure_POVM(
         self,
@@ -312,14 +308,16 @@ class CustomState(BaseState):
                     f"expected ({self.dimensions},{self.dimensions})"
                 )
 
-        if not kraus_identity_check(operators):
-            raise ValueError("Kraus operators do not sum to the identity")
+        if kraus_identity_check:
+            if not kraus_identity_check(operators):
+                raise ValueError("Invalid Kraus Channel")
 
         self.state = apply_kraus(self.state, operators)
         C = Config()
         if C.contractions:
             self.contract()
-
+            
+    @route_operation()
     def apply_operation(self, operation: Operation) -> None:
         """
         Applies an operation to the state. If state is in some product
@@ -330,15 +328,17 @@ class CustomState(BaseState):
         ----------
         operation: Operation
             Operation with operation type: FockOperationType
+            
+        Notes
+        -----
+        Method is decorated with route_operation. If the state is
+        contained in the product state, the corresponding operation
+        will be executed in the state container, which contains this
+        stat.
         """
         assert isinstance(operation._operation_type, CustomStateOperationType)
-
-        if isinstance(self.index, tuple):
-            assert isinstance(self.composite_envelope, CompositeEnvelope)
-            self.composite_envelope.apply_operation(operation, self)
-            return
-
         assert isinstance(self.expansion_level, ExpansionLevel)
+
         while self.expansion_level < operation.required_expansion_level:
             self.expand()
 
@@ -349,34 +349,24 @@ class CustomState(BaseState):
 
         assert operation.operator.shape == (self.dimensions, self.dimensions)
 
-        if self.expansion_level == ExpansionLevel.Vector:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, 1)
-            self.state = jnp.einsum("ij,jk->ik", operation.operator, self.state)
-            if not jnp.any(jnp.abs(self.state) > 0):
-                raise ValueError(
-                    "The state is entirely composed of zeros,"
-                    " is |0⟩ attempted to be anniilated?"
-                )
-            # cummulative = 0
-            if operation.renormalize:
-                self.state = self.state / jnp.linalg.norm(self.state)
-        if self.expansion_level == ExpansionLevel.Matrix:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, self.dimensions)
-            self.state = jnp.einsum(
-                "ca,ab,db->cd",
-                operation.operator,
-                self.state,
-                jnp.conj(operation.operator),
+        match self.expansion_level:
+            case ExpansionLevel.Vector:
+                self.state = apply_operation_vector(
+                    [self], [self], self.state, operation.operator
+                    )
+            case ExpansionLevel.Matrix:
+                self.state = apply_operation_matrix(
+                    [self], [self], self.state, operation.operator
+                    )
+
+        if not jnp.any(jnp.abs(self.state) > 0):
+            raise ValueError(
+                "The state is entirely composed of zeros, "
+                "is |0⟩ attempted to be annihilated?"
             )
-            if not jnp.any(jnp.abs(self.state) > 0):
-                raise ValueError(
-                    "The state is entirely composed of zeros, "
-                    "is |0⟩ attempted to be anniilated?"
-                )
-            if operation.renormalize:
-                self.state = self.state / jnp.linalg.norm(self.state)
+
+        if operation.renormalize:
+            self.state = self.state / jnp.linalg.norm(self.state)
 
         C = Config()
         if C.contractions:

@@ -901,7 +901,13 @@ class TestEnvelopeKraus(unittest.TestCase):
 
         # Kraus operators do not sum to one
         with self.assertRaises(ValueError):
-            env.apply_kraus([op1], env.fock, env.polarization)
+            op_fail = jnp.array(
+                [[2,0,0,0],
+                 [0,2,0,0],
+                 [0,0,2,0],
+                 [0,0,0,2]]
+                )
+            env.apply_kraus([op_fail], env.fock, env.polarization)
 
     def test_kraus_apply_combined_partial(self) -> None:
         env = Envelope()
