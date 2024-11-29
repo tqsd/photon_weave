@@ -10,6 +10,10 @@ import numpy as np
 from photon_weave._math.ops import apply_kraus, kraus_identity_check
 from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
+from .utils.measurements import measure_vector, measure_matrix
+from .utils.operations import apply_operation_vector, apply_operation_matrix
+from .utils.routing import route_operation
+
 
 if TYPE_CHECKING:
     from photon_weave.state.composite_envelope import CompositeEnvelope
@@ -232,38 +236,8 @@ class BaseState(ABC):
         tol: float
             Tolerance when comparing matrices
         """
-        if (
-            self.expansion_level is ExpansionLevel.Matrix
-            and final < ExpansionLevel.Matrix
-        ):
-            # Check if the state is pure state
-            assert isinstance(self.state, jnp.ndarray)
-            state_squared = jnp.matmul(self.state, self.state)
-            state_trace = jnp.trace(state_squared)
-            if jnp.abs(state_trace - 1) < tol:
-                # The state is pure
-                eigenvalues, eigenvectors = jnp.linalg.eigh(self.state)
-                pure_state_index = jnp.argmax(jnp.abs(eigenvalues - 1.0) < tol)
-                assert (
-                    pure_state_index is not None
-                ), "pure_state_index should not be None"
-                self.state = eigenvectors[:, pure_state_index].reshape(-1, 1)
-                # Normalizing the phase
-                assert isinstance(self.state, jnp.ndarray)
-                phase = jnp.exp(-1j * jnp.angle(self.state[0]))
-                self.state = self.state * phase
-                self.expansion_level = ExpansionLevel.Vector
-        if (
-            self.expansion_level is ExpansionLevel.Vector
-            and final < ExpansionLevel.Vector
-        ):
-            assert self.state is not None, "self.state should not be None"
-            assert isinstance(self.state, jnp.ndarray)
-            ones = jnp.where(self.state == 1)[0]
-            if ones.size == 1:
-                self.state = int(ones[0])
-                self.expansion_level = ExpansionLevel.Label
 
+    @route_operation()
     def measure_POVM(
         self,
         operators: List[Union[np.ndarray, jnp.ndarray]],
@@ -288,16 +262,23 @@ class BaseState(ABC):
         Tuple[int, Dict[BaseState, int]]
             Returns a tuple, first element is POVM measurement result, second element
             is a dictionary with the other potentional measurement outcomes
+
+        Notes
+        -----
+        Method is decorated with route_operation. If the state is
+        contained in the product state, the corresponding operation
+        will be executed in the state container, which contains this
+        stat.
         """
         from photon_weave.state.envelope import Envelope
         from photon_weave.state.polarization import Polarization
 
-        if isinstance(self.index, int):
-            assert isinstance(self.envelope, Envelope)
-            return self.envelope.measure_POVM(operators, self)
-        if isinstance(self.index, list) or isinstance(self.index, tuple):
-            assert isinstance(self.composite_envelope, CompositeEnvelope)
-            return self.composite_envelope.measure_POVM(operators, self)
+        #if isinstance(self.index, int):
+        #    assert isinstance(self.envelope, Envelope)
+        #    return self.envelope.measure_POVM(operators, self)
+        #if isinstance(self.index, list) or isinstance(self.index, tuple):
+        #    assert isinstance(self.composite_envelope, CompositeEnvelope)
+        #    return self.composite_envelope.measure_POVM(operators, self)
 
         assert isinstance(self.expansion_level, ExpansionLevel)
         while self.expansion_level < ExpansionLevel.Matrix:
@@ -351,12 +332,25 @@ class BaseState(ABC):
 
         return result
 
+    @route_operation()
     def trace_out(self) -> Union[int, "PolarizationLabel", jnp.ndarray]:
         """
         Returns the traced out state of this base state instance.
         If the instance is in envelope it traces out from there.
         If the instance is in composite envelope then it traces it
         out from there
+
+        Returns
+        -------
+        Union[int, PolarizationLabel, jnp.ndarray]
+            Returns traced out state
+
+        Notes
+        -----
+        Method is decorated with route_operation. If the state is
+        contained in the product state, the corresponding operation
+        will be executed in the state container, which contains this
+        stat.
         """
         from photon_weave.state.composite_envelope import CompositeEnvelope
         from photon_weave.state.envelope import Envelope

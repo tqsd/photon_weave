@@ -21,7 +21,7 @@ from photon_weave.state.expansion_levels import ExpansionLevel
 from .utils.measurements import measure_vector, measure_matrix
 from .utils.operations import apply_operation_vector, apply_operation_matrix
 from .utils.routing import route_operation
-
+from .utils.state_transform import state_contract, state_expand
 
 class CustomState(BaseState):
     def __init__(self, dimensions: int):
@@ -77,22 +77,13 @@ class CustomState(BaseState):
         will be executed in the state container, which contains this
         stat.
         """
-        if isinstance(self.index, tuple):
-            assert isinstance(self.composite_envelope, CompositeEnvelope)
-            self.composite_envelope.expand(self)
-        if self.expansion_level == ExpansionLevel.Label:
-            assert isinstance(self.state, int)
-            assert self.state >= 0 and self.state < self.dimensions
-            index_value = self.state
-            self.state = jnp.zeros((self.dimensions, 1))
-            self.state = self.state.at[index_value].set(1.0)
-            self.expansion_level = ExpansionLevel.Vector
-        elif self.expansion_level == ExpansionLevel.Vector:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, 1)
-            self.state = jnp.dot(self.state, self.state.T)
-            self.expansion_level = ExpansionLevel.Matrix
+        self.state, self.expansion_level = state_expand(
+            self.state,
+            self.expansion_level,
+            self.dimensions
+            )
 
+    @route_operation()
     def contract(
         self, final: ExpansionLevel = ExpansionLevel.Label, tol: float = 1e-6
     ) -> None:
@@ -105,41 +96,14 @@ class CustomState(BaseState):
             Expected expansion level after contraction
         tol: float
             Tolerance when comparing matrices
+
         """
-        if (
-            self.expansion_level is ExpansionLevel.Matrix
-            and final < ExpansionLevel.Matrix
-        ):
-            # Check if the state is pure state
-            assert isinstance(self.state, jnp.ndarray), "self.state should be a ndarray"
-            assert self.state.shape == (
-                self.dimensions,
-                self.dimensions,
-            ), "Dimensions do not match"
-            state_squared = jnp.matmul(self.state, self.state)
-            state_trace = jnp.trace(state_squared)
-            if jnp.abs(state_trace - 1) < tol:
-                # The state is pure
-                eigenvalues, eigenvectors = jnp.linalg.eigh(self.state)
-                pure_state_index = jnp.argmax(jnp.abs(eigenvalues - 1.0) < tol)
-                assert (
-                    pure_state_index is not None
-                ), "pure_state_index should not be None"
-                self.state = eigenvectors[:, pure_state_index].reshape(-1, 1)
-                assert isinstance(self.state, jnp.ndarray)
-                phase = jnp.exp(-1j * jnp.angle(self.state[0]))
-                self.state = self.state * phase
-                self.expansion_level = ExpansionLevel.Vector
-        if (
-            self.expansion_level is ExpansionLevel.Vector
-            and final < ExpansionLevel.Vector
-        ):
-            assert isinstance(self.state, jnp.ndarray), "self.state should be a ndarray"
-            assert self.state.shape == (self.dimensions, 1)
-            ones = jnp.where(self.state == 1)[0]
-            if ones.size == 1:
-                self.state = int(ones[0])
-                self.expansion_level = ExpansionLevel.Label
+        success = True
+        while self.expansion_level > final and success:
+            self.state, self.expansion_level, success = state_contract(
+                self.state,
+                self.expansion_level
+                )
 
     @property
     def _measured(self) -> bool:
