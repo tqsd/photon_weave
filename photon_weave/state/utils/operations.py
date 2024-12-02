@@ -55,15 +55,16 @@ def apply_operation_vector(state_objs: List[BaseState], target_states: List[Base
     assert product_state.shape == (dims,1)
     assert operator.shape == (operator_shape, operator_shape)
 
-    product_state.reshape(shape)
-    operator.reshape((*operator_shape, *operator_shape))
+    product_state = product_state.reshape(shape)
+    operator = operator.reshape((*operator_shape, *operator_shape))
 
     einsum_o = ESC.apply_operator_vector(state_objs, target_states)
 
     product_state = jnp.einsum(einsum_o, operator, product_state)
 
-    product_state.reshape((-1,1))
-    operator.reshape((dims, dims))
+    product_state = product_state.reshape((-1,1))
+    #operator = operator.reshape((dims, dims))
+    operator = operator.reshape([jnp.prod(operator_shape)]*2)
 
     return product_state
 
@@ -110,8 +111,8 @@ def apply_operation_matrix(state_objs: List[BaseState], target_states: List[Base
 
     assert product_state.shape == (dims,dims)
 
-    product_state.reshape(shape)
-    operator.reshape((*operator_shape, *operator_shape))
+    product_state = product_state.reshape(shape)
+    operator = operator.reshape((*operator_shape, *operator_shape))
 
     dims = jnp.prod(jnp.array(
         [s.dimensions for s in state_objs]
@@ -119,11 +120,6 @@ def apply_operation_matrix(state_objs: List[BaseState], target_states: List[Base
     shape = [s.dimensions for s in state_objs]*2
     shape.append(1)
     
-    assert product_state.shape == (dims,dims)
-
-    product_state.reshape(shape)
-    operator.reshape((*operator_shape, *operator_shape))
-
     einsum_o = ESC.apply_operator_matrix(state_objs, target_states)
 
     product_state = jnp.einsum(
@@ -132,9 +128,8 @@ def apply_operation_matrix(state_objs: List[BaseState], target_states: List[Base
         product_state,
         jnp.conj(operator))
 
-    product_state.reshape((dims, dims))
-    operator.reshape((*operator_shape,*operator_shape))
-    
+    product_state = product_state.reshape((dims, dims))
+    operator = operator.reshape((*operator_shape,*operator_shape))
     return product_state
 
     

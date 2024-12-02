@@ -33,6 +33,7 @@ from .utils.representation import representation_vector, representation_matrix
 from .utils.measurements import measure_vector, measure_matrix
 from .utils.trace_out import trace_out_vector, trace_out_matrix
 from .utils.state_transform import state_expand, state_contract
+from .utils.operations import apply_operation_vector, apply_operation_matrix
 
 if TYPE_CHECKING:
     from photon_weave.operation import Operation
@@ -708,6 +709,8 @@ class Envelope:
         # Will not attempt to contract past vector
         # final = ExpansionLevel.Vector
         assert isinstance(self.state, jnp.ndarray)
+        if self.expansion_level == ExpansionLevel.Vector:
+            return
         assert self.state.shape == (self.dimensions, self.dimensions)
         if self.expansion_level == ExpansionLevel.Matrix:
             self.state, self.expansion_level, success = state_contract(
@@ -925,7 +928,13 @@ class Envelope:
             states[0].apply_operation(operation)
             return
 
-        self.reorder(*states)
+        if not jnp.any(jnp.abs(self.state) > 0):
+            raise ValueError(
+                "The state is invalid."
+                "The state only consists of 0s."
+            )
+        self.reorder(self.fock, self.polarization)
+
 
         if isinstance(operation._operation_type, FockOperationType) and isinstance(
             states[0], Fock
@@ -948,46 +957,29 @@ class Envelope:
         reshape_shape[self.fock.index] = self.fock.dimensions
         reshape_shape[self.polarization.index] = self.polarization.dimensions
 
-        if self.expansion_level == ExpansionLevel.Vector:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, 1)
-            reshape_shape.append(1)
-
-            ps = self.state.reshape(reshape_shape)
-
-            # state is reordered, so the state operated on is in the first state
-            ps = jnp.einsum("ij,jkl->ikl", operation.operator, ps)
-            if not jnp.any(jnp.abs(ps) > 0):
-                raise ValueError(
-                    "The state is entirely composed of zeros, is |0⟩ attempted "
-                    "to be annihilated?"
+        match self.expansion_level:
+            case ExpansionLevel.Vector:
+                self.state = apply_operation_vector(
+                    [self.fock, self.polarization],
+                    states,
+                    self.state,
+                    operation.operator
                 )
-            if operation.renormalize:
-                ps = ps / jnp.linalg.norm(ps)
-            self.state = ps.reshape((-1, 1))
-            return
-        if self.expansion_level == ExpansionLevel.Matrix:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, self.dimensions)
-            ps = self.state.reshape([*reshape_shape, *reshape_shape]).transpose(
-                [0, 2, 1, 3]
-            )
-
-            ps = jnp.einsum(
-                "ij,jklm,nk->inlm", operation.operator, ps, jnp.conj(operation.operator)
-            )
-
-            ps = ps.transpose([0, 2, 1, 3])
-            ps = ps.reshape(self.dimensions, self.dimensions)
-            if not jnp.any(jnp.abs(ps) > 0):
-                raise ValueError(
-                    "The state is entirely composed of zeros, "
-                    "is |0⟩ attempted to be annihilated?"
+            case ExpansionLevel.Matrix:
+                self.state = apply_operation_matrix(
+                    [self.fock, self.polarization],
+                    states,
+                    self.state,
+                    operation.operator
                 )
-            if operation.renormalize:
-                ps = ps / jnp.linalg.norm(ps)
-            self.state = ps.reshape((self.dimensions, self.dimensions))
 
-            C = Config()
-            if C.contractions:
-                self.contract()
+        if not jnp.any(jnp.abs(self.state) > 0):
+            raise ValueError(
+                "The state is entirely composed of zeros, "
+                "is |0⟩ attempted to be annihilated?"
+            )
+        C = Config()
+        if C.contractions:
+            self.contract()
+        if operation.renormalize:
+            self.state = self.state / jnp.linalg.norm(self.state)

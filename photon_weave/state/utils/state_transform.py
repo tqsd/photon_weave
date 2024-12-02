@@ -114,7 +114,6 @@ def state_contract(state:Union[int, jnp.ndarray],
                 new_state = eigenvectors[:, pure_state_index].reshape(-1,1)
                 # Removing the global phase
                 phase = jnp.exp(-1j * jnp.angle(new_state[0]))
-                print(new_state)
                 new_state = new_state * phase
                 new_expansion_level = ExpansionLevel.Vector
                 success = True
