@@ -30,6 +30,8 @@ from photon_weave.state.polarization import Polarization
 
 from .utils.state_transform import state_contract, state_expand
 from .utils.representation import representation_vector, representation_matrix
+from .utils.measurements import measure_vector, measure_matrix
+from .utils.trace_out import trace_out_vector, trace_out_matrix
 
 if TYPE_CHECKING:
     from photon_weave.operation import Operation
@@ -274,251 +276,58 @@ class Envelope:
         # Check if given states are part of this envelope
         for s in states:
             assert s in [self.fock, self.polarization]
+        if len(states) == 0:
+            states = (self.fock, self.polarization)
 
         outcomes = {}
-        reshape_shape = []
         if self.state is None:
             for s in [self.polarization, self.fock]:
                 out = s.measure()
                 for k, v in out.items():
                     outcomes[k] = v
         else:
-            assert isinstance(self.fock.index, int)
-            assert isinstance(self.polarization.index, int)
+            self.reorder(self.fock, self.polarization)
+            if not separate_measurement and len(states) == 1:
+                states = [self.fock, self.polarization]
+            if len(states) == 2:
+                separate_measurement = True
 
-            reshape_shape = [-1, -1]
-            reshape_shape[self.fock.index] = self.fock.dimensions
-            reshape_shape[self.polarization.index] = self.polarization.dimensions
+            assert all(isinstance(s.index, int) for s in states)
 
-            C = Config()
+            match self.expansion_level:
+                case ExpansionLevel.Vector:
+                    outcomes, self.state = measure_vector(
+                        [self.fock, self.polarization],
+                        states,
+                        self.state)
+                case ExpansionLevel.Matrix:
+                    outcomes, self.state = measure_matrix(
+                        [self.fock, self.polarization],
+                        states,
+                        self.state)
 
-            if self.expansion_level == ExpansionLevel.Vector:
-                assert isinstance(self.state, jnp.ndarray)
-                assert self.state.shape == (self.dimensions, 1)
-                reshape_shape.append(1)
-                ps = self.state.reshape(reshape_shape)
-
-                # 1. Measure Fock Part
-                if (
-                    (separate_measurement and self.fock in states)
-                    or len(states) == 0
-                    or len(states) == 2
-                ):
-                    probabilities = (
-                        jnp.abs(jnp.sum(ps, axis=self.polarization.index)).flatten()
-                        ** 2
-                    )
-                    key = C.random_key
-                    choice = int(
-                        jax.random.choice(
-                            key, a=jnp.arange(len(probabilities)), p=probabilities
-                        )
-                    )
-                    outcomes[self.fock] = choice
-
-                    # Construct post measurement state
-                    post_measurement = jnp.take(ps, choice, self.polarization.index)
-                    ps = jnp.take(ps, choice, axis=self.fock.index)
-
-                    einsum = "ij,kj->ikj"
-                    if self.fock.index == 0:
-                        ps = jnp.einsum(einsum, post_measurement, ps)
-                    elif self.fock.index == 1:
-                        ps = jnp.einsum(einsum, ps, post_measurement)
-
-                if (
-                    (separate_measurement and self.polarization in states)
-                    or len(states) == 0
-                    or len(states) == 2
-                ):
-                    probabilities = (
-                        jnp.abs(jnp.sum(ps, axis=self.fock.index)).flatten() ** 2
-                    )
-                    key = C.random_key
-                    choice = int(
-                        jax.random.choice(
-                            key, a=jnp.arange(len(probabilities)), p=probabilities
-                        )
-                    )
-                    outcomes[self.polarization] = choice
-
-                    # Construct post measurement state
-                    post_measurement = jnp.take(ps, choice, self.polarization.index)
-                    ps = jnp.take(ps, choice, axis=self.polarization.index)
-                    einsum = "ij,kj->ikj"
-                    if self.fock.index == 0:
-                        ps = jnp.einsum(einsum, ps, post_measurement)
-                    else:
-                        ps = jnp.einsum(einsum, post_measurement, ps)
-
-            if self.expansion_level == ExpansionLevel.Matrix:
-                assert isinstance(self.state, jnp.ndarray)
-                assert self.state.shape == (self.dimensions, self.dimensions)
-                reshape_shape = [*reshape_shape, *reshape_shape]
-                transpose_pattern = [0, 2, 1, 3]
-                ps = self.state.reshape(reshape_shape).transpose(transpose_pattern)
-
-                # 1. Measure Fock Part
-                if (
-                    (separate_measurement and self.fock in states)
-                    or len(states) == 0
-                    or len(states) == 2
-                ):
-                    if self.fock.index == 0:
-                        subspace = jnp.einsum("bcaa->bc", ps)
-                    else:
-                        subspace = jnp.einsum("aabc->bc", ps)
-                    probabilities = jnp.diag(subspace).real
-                    probabilities /= jnp.sum(probabilities)
-                    key = C.random_key
-                    choice = int(
-                        jax.random.choice(
-                            key, a=jnp.arange(len(probabilities)), p=probabilities
-                        )
-                    )
-                    outcomes[self.fock] = choice
-
-                    # Reconstruct post measurement state
-                    indices: List[Union[slice, int]] = [slice(None)] * len(ps.shape)
-                    indices[self.fock.index] = outcomes[self.fock]
-                    indices[self.fock.index + 1] = outcomes[self.fock]
-                    ps = ps[tuple(indices)]
-
-                    post_measurement = jnp.zeros(
-                        (self.fock.dimensions, self.fock.dimensions)
-                    )
-                    post_measurement = post_measurement.at[choice, choice].set(1)
-                    if self.fock.index == 0:
-                        ps = jnp.einsum("ab,cd->abcd", post_measurement, ps)
-                    else:
-                        ps = jnp.einsum("ab,cd->abcd", ps, post_measurement)
-
-                # 2. Measure Polarization Part
-                if (
-                    (separate_measurement and self.polarization in states)
-                    or len(states) == 0
-                    or len(states) == 2
-                ):
-                    if self.polarization.index == 1:
-                        subspace = jnp.einsum("aabc->bc", ps)
-                    else:
-                        subspace = jnp.einsum("bcaa->bc", ps)
-                    probabilities = jnp.diag(subspace).real
-                    probabilities /= jnp.sum(probabilities)
-                    key = C.random_key
-                    choice = int(
-                        jax.random.choice(
-                            key, a=jnp.arange(len(probabilities)), p=probabilities
-                        )
-                    )
-                    outcomes[self.polarization] = choice
-
-                    # Reconstruct post measurement state
-                    indices = [slice(None)] * len(ps.shape)
-                    indices[self.polarization.index] = outcomes[self.polarization]
-                    indices[self.polarization.index + 1] = outcomes[self.polarization]
-                    ps = ps[tuple(indices)]
-
-                    post_measurement = jnp.zeros(
-                        (self.polarization.dimensions, self.polarization.dimensions)
-                    )
-                    post_measurement = post_measurement.at[choice, choice].set(1)
-
-                    if self.polarization.index == 0:
-                        ps = jnp.einsum("ab,cd->abcd", post_measurement, ps)
-                    else:
-                        ps = jnp.einsum("ab,cd->abcd", ps, post_measurement)
-
-            # Handle post measurement processes
-            ps = self.state.reshape(reshape_shape)
-            if self.expansion_level == ExpansionLevel.Vector:
-                if separate_measurement and len(states) == 1:
-                    if self.fock not in states:
-                        self.fock.state = jnp.take(
-                            ps, outcomes[self.polarization], self.polarization.index
-                        )
-                        self.fock.expansion_level = ExpansionLevel.Vector
-                        self.fock.index = None
-                        if destructive:
-                            self.polarization._set_measured()
-                        else:
-                            self.polarization.state = jnp.zeros((2, 1))
-                            self.polarization.state.at[
-                                1, outcomes[self.polarization]
-                            ].set(1)
-                            self.polarization.index = None
-                    if self.polarization not in states:
-                        self.polarization.state = jnp.take(
-                            ps, outcomes[self.fock], self.fock.index
-                        )
-                        self.polarization.expansion_level = ExpansionLevel.Vector
-                        self.polarization.index = None
-                        if destructive:
-                            self.fock._set_measured()
-                        else:
-                            self.fock.state = outcomes[self.fock]
-                            self.fock.expansion_level = ExpansionLevel.Label
-                            self.fock.index = None
+            # Post Measurement process
+            for s in [self.fock, self.polarization]:
+                if separate_measurement and s not in states:
+                    s.state = self.state
+                    s.index = None
+                    s.expansion_level = self.expansion_level
+                    # Try to contract the state twice
+                    s.contract()
+                    s.contract()
                 else:
-                    if self.fock.index == 0:
-                        self.fock.state = jnp.einsum("ijk->ik", ps)
-                    else:
-                        self.fock.state = jnp.einsum("ijk->jk", ps)
-                    self.fock.expansion_level = ExpansionLevel.Vector
-                    self.fock.index = None
-
-                    if self.polarization.index == 0:
-                        self.polarization.state = jnp.einsum("ijk->ik", ps)
-                    else:
-                        self.polarization.state = jnp.einsum("ijk->jk", ps)
-                    self.polarization.expansion_level = ExpansionLevel.Vector
-                    self.polarization.index = None
+                    s.state = jnp.zeros((s.dimensions, 1))
+                    s.state = s.state.at[outcomes[s],0].set(1)
+                    s.expansion_level = ExpansionLevel.Vector
+                    s.index = None
                     if destructive:
-                        self._set_measured()
-                        self.polarization._set_measured()
-                        self.fock._set_measured()
-            if self.expansion_level == ExpansionLevel.Matrix:
-                if separate_measurement and len(states) == 1:
-                    if self.fock not in states:
-                        if self.fock.index == 0:
-                            self.fock.state = jnp.einsum("abcb->ac", ps)
-                        elif self.fock.index == 1:
-                            self.fock.state = jnp.einsum("abac->bc", ps)
-                        self.fock.expansion_level = ExpansionLevel.Matrix
-                        self.fock.index = None
-                        if destructive:
-                            self.polarization._set_measured()
-                    if self.polarization not in states:
-                        if self.polarization.index == 0:
-                            self.polarization.state = jnp.einsum("abcb->ac", ps)
-                        elif self.polarization.index == 1:
-                            self.polarization.state = jnp.einsum("abac->bc", ps)
-                        self.polarization.expansion_level = ExpansionLevel.Matrix
-                        self.polarization.index = None
-                        if destructive:
-                            self.fock._set_measured()
-                else:
-                    if self.fock.index == 0:
-                        self.fock.state = jnp.einsum("ikjk->ij", ps)
+                        s._set_measured()
                     else:
-                        self.fock.state = jnp.einsum("kikj->ij", ps)
-                    self.fock.expansion_level = ExpansionLevel.Matrix
-                    self.fock.index = None
-                    if self.polarization.index == 0:
-                        self.polarization.state = jnp.einsum("ikjk->ij", ps)
-                    else:
-                        self.polarization.state = jnp.einsum("kikj->ij", ps)
-                    self.polarization.expansion_level = ExpansionLevel.Matrix
-                    self.polarization.index = None
-                    if destructive:
-                        self._set_measured()
-                        self.fock._set_measured()
-                        self.polarization._set_measured()
-            self.polarization.contract()
-            self.fock.contract()
-
+                        while s.expansion_level > ExpansionLevel.Label:
+                            s.contract()
         if destructive:
             self._set_measured()
+
         return outcomes
 
     def measure_POVM(
