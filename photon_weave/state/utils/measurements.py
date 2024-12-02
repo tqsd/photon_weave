@@ -136,3 +136,102 @@ def measure_matrix(state_objs: List[BaseState], target_states: List[BaseState],
         product_state = product_state.reshape((new_dims, new_dims))
 
     return outcomes, product_state
+
+def measure_POVM_matrix(
+    state_objs: List[BaseState],
+    target_states: List[BaseState],
+    operators: List[jnp.ndarray],
+    product_state: jnp.ndarray
+    ) -> Tuple[int, jnp.ndarray]:
+    """
+    Peform POVM measurement on the given product state.
+
+    Parameters
+    ----------
+    state_objs: List[BaseState]
+        List of BaseState objects included in the product stats
+    target_states: List[BaseState]
+        List of the stater in the product state, which will
+        be measured with given operators
+    operators: List[jnp.ndarray]
+        list of the POVM operators, which desctibe the POVM measurement.
+        The operators need to have correct dimensionality.
+    product_state: jnp.ndarray
+        The product state on which the measurement will be performed
+
+    Returns
+    -------
+    Tuple[int, jnp.ndarray]
+        Returns tuple with the index of the measurement outcome, where
+        index refers to the index of the operator given in the operators
+        list and the post measurement state
+
+    Notes
+    -----
+    The states need to be tensored in the correct order. This is handled
+    by the Photon Weave by default. In case of using this function
+    specifically, make sure to have the states correctly ordered.
+    """
+
+    # Pransform the operators to tensors
+    op_shape = [s.dimensions for s in target_states]*2
+    operators = [op.reshape(op.shape) for op in operators]
+
+    product_state = product_state.reshape(
+        [s.dimensions for s in state_objs]*2
+        )
+    target_dims = jnp.prod(
+        jnp.array(
+            [s.dimensions for s in target_states]
+            )
+        )
+
+    einsum_op = ESC.apply_operator_matrix(state_objs, target_states)
+    einsum_to = ESC.trace_out_matrix(state_objs, target_states)
+    prob_list: List[float] = []
+
+    # Get the dimensions
+    for operator in operators:
+        projected_state = jnp.einsum(
+            einsum_op,
+            operator,
+            product_state,
+            jnp.conj(operator)
+            )
+
+        traced_out_projected_state = jnp.einsum(
+            einsum_to,
+            projected_state
+            ).reshape((target_dims,target_dims))
+
+        prob_list.append(float(jnp.trace(traced_out_projected_state).real))
+
+    probabilities = jnp.array(prob_list)
+    probabilities /= jnp.sum(probabilities)
+
+    C = Config()
+    key = C.random_key
+    outcome = int(
+        jax.random.choice(
+            key,
+            a=jnp.arange(len(operators)),
+            p=probabilities
+            )
+        )
+    product_state = jnp.einsum(
+        einsum_op,
+        product_state,
+        operators[outcome],
+        product_state,
+        jnp.conj(operators[outcome])
+        )
+
+    product_state /= jnp.linalg.norm(product_state)
+
+    state_dims = jnp.prod(
+        jnp.array(
+            [s.dimensions for s in state_objs]
+            )
+        )
+    product_state = product_state.reshape((state_dims, state_dims))
+    return outcome, product_state

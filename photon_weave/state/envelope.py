@@ -27,10 +27,17 @@ from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.state.fock import Fock
 from photon_weave.state.polarization import Polarization
+from photon_weave.operation import (
+    FockOperationType,
+    PolarizationOperationType,
+    Operation
+    )
 
 from .utils.state_transform import state_contract, state_expand
 from .utils.representation import representation_vector, representation_matrix
-from .utils.measurements import measure_vector, measure_matrix
+from .utils.measurements import (
+    measure_vector, measure_matrix, measure_POVM_matrix
+)
 from .utils.trace_out import trace_out_vector, trace_out_matrix
 from .utils.state_transform import state_expand, state_contract
 from .utils.operations import apply_operation_vector, apply_operation_matrix
@@ -622,9 +629,6 @@ class Envelope:
         *states: BaseState
             new order of states
         """
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
-
         states_list = list(states)
         if len(states_list) == 2:
             if (
@@ -645,8 +649,10 @@ class Envelope:
                 )
 
         if self.state is None:
-            logger.info("States not combined noting to do", self.uid)
+            logger.info("States are not in a product state in envelope, noting to do", self.uid)
             return
+
+        # Creating the new order in the product space
         if len(states_list) == 1:
             if states_list[0] is self.fock:
                 states_list.append(self.polarization)
@@ -903,13 +909,6 @@ class Envelope:
             The state to which the operator should be applied to
         """
 
-        from photon_weave.operation.fock_operation import FockOperationType
-        from photon_weave.operation.polarization_operation import (
-            PolarizationOperationType,
-        )
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
-
         # Check that correct operation is applied to the correct system
         if isinstance(operation._operation_type, FockOperationType):
             if not isinstance(states[0], Fock):
@@ -924,6 +923,8 @@ class Envelope:
                     f"{type(states[0])}"
                 )
 
+        # If the system is held in a different state container,
+        # then apply it there
         if self.state is None:
             states[0].apply_operation(operation)
             return
@@ -933,41 +934,38 @@ class Envelope:
                 "The state is invalid."
                 "The state only consists of 0s."
             )
-        self.reorder(self.fock, self.polarization)
 
-
-        if isinstance(operation._operation_type, FockOperationType) and isinstance(
-            states[0], Fock
-        ):
+        # Compute the operator
+        if (isinstance(operation._operation_type, FockOperationType) and
+            isinstance(states[0], Fock)):
             to = self.fock.trace_out()
             assert isinstance(to, jnp.ndarray)
             operation.compute_dimensions(states[0]._num_quanta, to)
             states[0].resize(operation.dimensions[0])
-        elif isinstance(
-            operation._operation_type, PolarizationOperationType
-        ) and isinstance(states[0], Polarization):
+        elif (isinstance(operation._operation_type,
+                         PolarizationOperationType) and
+              isinstance(states[0], Polarization)):
             # Given arguments 0,0 don't have an effect
             operation.compute_dimensions([0], jnp.array([0]))
 
-        reshape_shape = [-1, -1]
         assert isinstance(self.fock.index, int)
         assert isinstance(self.fock.dimensions, int)
         assert isinstance(self.polarization.index, int)
         assert isinstance(self.polarization.dimensions, int)
-        reshape_shape[self.fock.index] = self.fock.dimensions
-        reshape_shape[self.polarization.index] = self.polarization.dimensions
-
+        current_order: List[Optional[Any]] = [None, None]
+        current_order[self.fock.index] = self.fock
+        current_order[self.polarization.index] = self.polarization
         match self.expansion_level:
             case ExpansionLevel.Vector:
                 self.state = apply_operation_vector(
-                    [self.fock, self.polarization],
+                    current_order,
                     states,
                     self.state,
                     operation.operator
                 )
             case ExpansionLevel.Matrix:
                 self.state = apply_operation_matrix(
-                    [self.fock, self.polarization],
+                    current_order,
                     states,
                     self.state,
                     operation.operator
