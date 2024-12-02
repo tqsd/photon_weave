@@ -32,6 +32,7 @@ from .utils.state_transform import state_contract, state_expand
 from .utils.representation import representation_vector, representation_matrix
 from .utils.measurements import measure_vector, measure_matrix
 from .utils.trace_out import trace_out_vector, trace_out_matrix
+from .utils.state_transform import state_expand, state_contract
 
 if TYPE_CHECKING:
     from photon_weave.operation import Operation
@@ -307,14 +308,16 @@ class Envelope:
                         self.state)
 
             # Post Measurement process
+            C = Config()
             for s in [self.fock, self.polarization]:
                 if separate_measurement and s not in states:
                     s.state = self.state
                     s.index = None
                     s.expansion_level = self.expansion_level
                     # Try to contract the state twice
-                    s.contract()
-                    s.contract()
+                    if C.contractions:
+                        s.contract()
+                        s.contract()
                 else:
                     s.state = jnp.zeros((s.dimensions, 1))
                     s.state = s.state.at[outcomes[s],0].set(1)
@@ -323,7 +326,8 @@ class Envelope:
                     if destructive:
                         s._set_measured()
                     else:
-                        while s.expansion_level > ExpansionLevel.Label:
+                        while ((s.expansion_level > ExpansionLevel.Label)
+                               and C.contractions):
                             s.contract()
         if destructive:
             self._set_measured()
@@ -705,20 +709,9 @@ class Envelope:
         # final = ExpansionLevel.Vector
         assert isinstance(self.state, jnp.ndarray)
         assert self.state.shape == (self.dimensions, self.dimensions)
-        state_squared = jnp.matmul(self.state, self.state)
-        state_trace = jnp.trace(state_squared)
-        if jnp.abs(state_trace - 1) < tol:
-            # The state is pure
-            eigenvalues, eigenvectors = jnp.linalg.eigh(self.state)
-            # close_to_one = jnp.isclose(eigenvalues, 1.0, atol=tol)
-            pure_state_index = jnp.argmax(jnp.abs(eigenvalues - 1.0) < tol)
-            assert pure_state_index is not None, "pure_state_index should not be None"
-            self.state = eigenvectors[:, pure_state_index].reshape(-1, 1)
-            # Normalizing the phase
-            assert self.state is not None, "self.state should not be None"
-            phase = jnp.exp(-1j * jnp.angle(self.state[0]))
-            self.state = self.state * phase
-            self.expansion_level = ExpansionLevel.Vector
+        if self.expansion_level == ExpansionLevel.Matrix:
+            self.state, self.expansion_level, success = state_contract(
+                self.state, self.expansion_level)
 
     def _set_measured(self, remove_composite: bool = True) -> None:
         if self.composite_envelope is not None and remove_composite:
@@ -760,79 +753,24 @@ class Envelope:
 
         self.reorder(*states)
 
+        self.reorder(self.fock, self.polarization)
+
         assert isinstance(self.fock.index, int)
         assert isinstance(self.polarization.index, int)
 
-        reshape_shape = [-1, -1]
-        reshape_shape[self.fock.index] = self.fock.dimensions
-        reshape_shape[self.polarization.index] = self.polarization.dimensions
-        state_order: List[Optional[Any]] = [None, None]
-        state_order[self.fock.index] = self.fock
-        state_order[self.polarization.index] = self.polarization
-
-        if self.expansion_level == ExpansionLevel.Vector:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, 1)
-            reshape_shape.append(1)
-            ps = self.state.reshape(reshape_shape)
-
-            # Construct Einsum string
-            c1 = itertools.count(start=0)
-            einsum_list_list: List[List[int]] = [[], []]
-            einsum_to = next(c1)
-
-            for s in state_order:
-                if s not in states:
-                    c = einsum_to
-                else:
-                    c = next(c1)
-                einsum_list_list[0].append(c)
-                if s in states:
-                    einsum_list_list[1].append(c)
-            c = next(c1)
-            einsum_list_list[0].append(c)
-            einsum_list_list[1].append(c)
-            einsum_list_str = [
-                "".join([chr(97 + x) for x in s]) for s in einsum_list_list
-            ]
-            einsum = f"{einsum_list_str[0]}->{einsum_list_str[1]}"
-            ps = jnp.einsum(einsum, ps)
-
-            dim = int(jnp.prod(jnp.array([s.dimensions for s in states])))
-            return ps.reshape(dim, 1)
-
-        if self.expansion_level == ExpansionLevel.Matrix:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, self.dimensions)
-
-            ps = self.state.reshape([*reshape_shape, *reshape_shape]).transpose(
-                [0, 2, 1, 3]
-            )
-
-            # Construct einsum str
-            c1 = itertools.count(start=0)
-            einsum_list_list = [[], []]
-            einsum_to = next(c1)
-            for s in state_order:
-                for i in range(2):
-                    if s not in states:
-                        c = einsum_to
-                    else:
-                        c = next(c1)
-                    einsum_list_list[0].append(c)
-                    if s in states:
-                        einsum_list_list[1].append(c)
-            einsum_list_str = [
-                "".join([chr(97 + x) for x in s]) for s in einsum_list_list
-            ]
-            einsum = f"{einsum_list_str[0]}->{einsum_list_str[1]}"
-
-            ps = jnp.einsum(einsum, ps)
-            dim = int(jnp.prod(jnp.array([s.dimensions for s in states])))
-            if len(states) == 2:
-                ps = ps.transpose([0, 2, 1, 3])
-            return ps.reshape((dim, dim))
-        # Should not come to this
+        match self.expansion_level:
+            case ExpansionLevel.Vector:
+                return trace_out_vector(
+                    [self.fock, self.polarization],
+                    states,
+                    self.state
+                )
+            case ExpansionLevel.Matrix:
+                return trace_out_matrix(
+                    [self.fock, self.polarization],
+                    states,
+                    self.state
+                )
         return jnp.ndarray([[1]])  # pragma: no cover
 
     def overlap_integral(self, other: Envelope, delay: float, n: float = 1) -> float:

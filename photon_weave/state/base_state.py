@@ -296,24 +296,10 @@ class BaseState(ABC):
         Method is decorated with route_operation. If the state is
         contained in the product state, the corresponding operation
         will be executed in the state container, which contains this
-        stat.
+        state.
         """
-        from photon_weave.state.composite_envelope import CompositeEnvelope
-        from photon_weave.state.envelope import Envelope
-
-        if self.index is None:
-            assert self.state is not None
-            return self.state
-        elif isinstance(self.index, int):
-            assert hasattr(self, "envelope")
-            env: Envelope = getattr(self, "envelope")
-            assert isinstance(env, Envelope)
-            return env.trace_out(self)
-        elif isinstance(self.index, tuple) or isinstance(self.index, list):
-            assert hasattr(self, "composite_envelope")
-            ce: CompositeEnvelope = getattr(self, "composite_envelope")
-            assert isinstance(ce, CompositeEnvelope)
-            return ce.trace_out(self)
+        assert self.state is not None
+        return self.state
 
     @abstractmethod
     def measure(

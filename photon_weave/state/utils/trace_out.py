@@ -94,11 +94,11 @@ def trace_out_matrix(state_objs: List[BaseState], target_states: List[BaseState]
             [s.dimensions for s in target_states]
             ))]*2
 
-    assert product_state.shape == (total_dimensions, 1)
+    assert product_state.shape == (total_dimensions, total_dimensions)
 
     product_state = product_state.reshape(shape_dimensions)
 
-    einsum = ESC.trace_out_vector(state_objs, target_states)
+    einsum = ESC.trace_out_matrix(state_objs, target_states)
 
     trace_out_state = jnp.einsum(einsum, product_state)
 

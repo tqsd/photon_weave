@@ -978,9 +978,9 @@ class TestTraceOut(unittest.TestCase):
             jnp.allclose(env.trace_out(env.polarization), jnp.array([[1], [0]]))
         )
 
-        # State should not be changed, but it is reordered
+        # State should not be changd
         self.assertTrue(
-            jnp.allclose(env.state, jnp.array([[0], [0], [1], [0], [0], [0]]))
+            jnp.allclose(env.state, jnp.array([[0], [0], [0], [0], [1], [0]]))
         )
 
         self.assertTrue(
