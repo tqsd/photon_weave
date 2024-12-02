@@ -927,8 +927,7 @@ class CompositeEnvelope:
                 assert isinstance(obj.expansion_level, ExpansionLevel)
                 while obj.expansion_level < minimum_expansion_level:
                     assert isinstance(obj.envelope, Envelope)
-                    obj.envelope.expand()
-
+                    obj.expand()
         """
         Assemble all of the density matrices,
         and compile the indices in order
@@ -984,7 +983,6 @@ class CompositeEnvelope:
                     state_vector_or_matrix = jnp.kron(state_vector_or_matrix, so.state)
                 so.state = None
                 state_order.append(so)
-
         """
         Create a new product state object and append it to the states
         """
@@ -1247,7 +1245,6 @@ class CompositeEnvelope:
         if identity_check:
             if not kraus_identity_check(operators):
                 raise ValueError("Kraus operators do not sum to the identity")
-
         # Get product states
         product_states = [
             p for p in self.states if any(so in p.state_objs for so in states)
@@ -1277,7 +1274,6 @@ class CompositeEnvelope:
             ps = [p for p in self.states if any(so in p.state_objs for so in states)][0]
         else:
             ps = product_states[0]
-
         # Make sure the order of the states in tensoring is correct
         self.reorder(*states)
 

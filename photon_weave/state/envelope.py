@@ -28,6 +28,9 @@ from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.state.fock import Fock
 from photon_weave.state.polarization import Polarization
 
+from .utils.state_transform import state_contract, state_expand
+from .utils.representation import representation_vector, representation_matrix
+
 if TYPE_CHECKING:
     from photon_weave.operation import Operation
     from photon_weave.state.composite_envelope import CompositeEnvelope
@@ -121,8 +124,8 @@ class Envelope:
     @property
     def dimensions(self) -> int:
         fock_dims = self.fock.dimensions
-        pol_dims = self.fock.dimensions
-        return fock_dims + pol_dims
+        pol_dims = self.polarization.dimensions
+        return fock_dims * pol_dims
 
     def __repr__(self) -> str:
         if self.measured:
@@ -139,58 +142,9 @@ class Envelope:
             zipped_lines = zip(fock_repr, pol_repr)
             return "\n".join(f"{f_line} ⊗ {p_line}" for f_line, p_line in zipped_lines)
         elif self.state is not None and self.expansion_level == ExpansionLevel.Vector:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, 1)
-            formatted_vector: Union[str, List[str]]
-            formatted_vector = ""
-            for row in self.state:
-                formatted_row = "⎢ "
-                for num in row:
-                    # Format real part
-                    formatted_row += f"{num.real:+.2f} "
-                    if num.imag >= 0:
-                        formatted_row += "+ "
-                    else:
-                        formatted_row += "- "
-
-                    formatted_row += f"{abs(num.imag):.2f}j "
-
-                formatted_row = formatted_row.strip() + " ⎥\n"
-                formatted_vector += formatted_row
-            formatted_vector = formatted_vector.strip().split("\n")
-            formatted_vector[0] = "⎡ " + formatted_vector[0][2:-1] + "⎤"
-            formatted_vector[-1] = "⎣ " + formatted_vector[-1][2:-1] + "⎦"
-            formatted_vector = "\n".join(formatted_vector)
-
-            return f"{formatted_vector}"
+            return representation_vector(self.state)
         elif self.state is not None and self.expansion_level == ExpansionLevel.Matrix:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, self.dimensions)
-            formatted_matrix: Union[str, List[str]]
-            formatted_matrix = ""
-
-            for row in self.state:
-                formatted_row = "⎢ "
-                for num in row:
-                    formatted_row += f"{num.real:+.2f} "
-                    if num.imag >= 0:
-                        formatted_row += "+ "
-                    else:
-                        formatted_row += "- "
-
-                    # Format the imaginary part and add "j"
-                    formatted_row += f"{abs(num.imag):.2f}j   "
-
-                formatted_row = formatted_row.strip() + " ⎥\n"
-                formatted_matrix += formatted_row
-
-            # Add top and bottom brackets
-            formatted_matrix = formatted_matrix.strip().split("\n")
-            formatted_matrix[0] = "⎡" + formatted_matrix[0][1:-1] + "⎤"
-            formatted_matrix[-1] = "⎣" + formatted_matrix[-1][1:-1] + "⎦"
-            formatted_matrix = "\n".join(formatted_matrix)
-
-            return f"{formatted_matrix}"
+            return representation_matrix(self.state)
         return str(self.uid)  # pragme: no cover
 
     def combine(self) -> None:
@@ -263,23 +217,28 @@ class Envelope:
     def set_composite_envelope_id(self, uid: uuid.UUID) -> None:
         self.composite_envelope_id = uid
 
-    def expand(self) -> None:
+    def expand(self,*args,**kwargs) -> None:
         """
         Expands the state.
         If state is in the Fock and Polarization instances
         it expands those
+
+        Parameters
+        ----------
+        *args:  Tuple
+            Unused argument for compatibility, with routing functionality
+        **kwargs: Dict
+            Unused argument for compatibility, with routing functionality
+
         """
         if self.state is None:
             self.fock.expand()
             self.polarization.expand()
-            return
-        if self.composite_envelope is not None:
-            self.composite_envelope.expand(self.fock, self.polarization)
-        if self.expansion_level == ExpansionLevel.Vector:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, 1)
-            self.state = jnp.dot(self.state, jnp.conj(self.state.T))
-            self.expansion_level = ExpansionLevel.Matrix
+        else:
+            self.state, self.expansion_level = state_expand(
+                self.state, self.expansion_level, self.dimensions
+            )
+                
 
     def measure(
         self,

@@ -13,6 +13,7 @@ from photon_weave.state.expansion_levels import ExpansionLevel
 from .utils.measurements import measure_vector, measure_matrix
 from .utils.operations import apply_operation_vector, apply_operation_matrix
 from .utils.routing import route_operation
+from .utils.representation import representation_matrix, representation_vector
 
 
 if TYPE_CHECKING:
@@ -115,66 +116,11 @@ class BaseState(ABC):
 
         if self.index is not None or self.measured:
             return str(self.uid)
-
         elif self.expansion_level == ExpansionLevel.Vector:
             # Handle cases where the vector has only one element
-            assert isinstance(self.state, jnp.ndarray)
-            formatted_vector: Union[str, List[str]]
-
-            formatted_vector = ""
-            for row in self.state:
-                formatted_row = "⎢ "  # Start each row with the ⎢ symbol
-                for num in row:
-                    # Format real part
-                    formatted_row += (
-                        f"{num.real:+.2f} "  # Include a space after the real part
-                    )
-
-                    # Add either "+" or "-" for the imaginary part based on the sign
-                    if num.imag >= 0:
-                        formatted_row += "+ "
-                    else:
-                        formatted_row += "- "
-
-                    # Format the imaginary part and add "j"
-                    formatted_row += f"{abs(num.imag):.2f}j "
-
-                formatted_row = formatted_row.strip() + " ⎥\n"
-                formatted_vector += formatted_row
-            formatted_vector = formatted_vector.strip().split("\n")
-            formatted_vector[0] = "⎡ " + formatted_vector[0][2:-1] + "⎤"
-            formatted_vector[-1] = "⎣ " + formatted_vector[-1][2:-1] + "⎦"
-            formatted_vector = "\n".join(formatted_vector)
-
-            return f"{formatted_vector}"
+            return representation_vector(self.state)
         elif self.expansion_level == ExpansionLevel.Matrix:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, self.dimensions)
-
-            formatted_matrix: Union[str, List[str]]
-            formatted_matrix = ""
-
-            for row in self.state:
-                formatted_row = "⎢ "
-                for num in row:
-                    formatted_row += f"{num.real:+.2f} "
-
-                    if num.imag >= 0:
-                        formatted_row += "+ "
-                    else:
-                        formatted_row += "- "
-
-                    formatted_row += f"{abs(num.imag):.2f}j   "
-
-                formatted_row = formatted_row.strip() + " ⎥\n"
-                formatted_matrix += formatted_row
-
-            formatted_matrix = formatted_matrix.strip().split("\n")
-            formatted_matrix[0] = "⎡" + formatted_matrix[0][1:-1] + "⎤"
-            formatted_matrix[-1] = "⎣" + formatted_matrix[-1][1:-1] + "⎦"
-            formatted_matrix = "\n".join(formatted_matrix)
-
-            return f"{formatted_matrix}"
+            return representation_matrix(self.state)
         return f"{self.uid}"
 
     def apply_kraus(

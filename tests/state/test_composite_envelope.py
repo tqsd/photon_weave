@@ -317,7 +317,6 @@ class TestStateCombining(unittest.TestCase):
         ce1 = CompositeEnvelope(env1, env2, env3)
         ce1.combine(env1.polarization, env2.polarization)
         ce1.product_states[0].expand()
-
         ce1.combine(env1.polarization, env3.fock)
 
         self.assertEqual(env1.polarization.index, (0, 0))
