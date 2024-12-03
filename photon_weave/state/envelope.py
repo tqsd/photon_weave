@@ -7,7 +7,6 @@ Envelope
 from __future__ import annotations
 
 import itertools
-import logging
 import uuid
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
@@ -49,7 +48,6 @@ if TYPE_CHECKING:
 
     from .base_state import BaseState
 
-logger = logging.getLogger()
 
 
 class TemporalProfile(Enum):
@@ -106,7 +104,6 @@ class Envelope:
         from photon_weave.state.polarization import Polarization
 
         self.uid: uuid.UUID = uuid.uuid4()
-        logger.info("Creating Envelope with uid %s", self.uid)
         self.fock = Fock() if fock is None else fock
         self.fock.envelope = self
         self.polarization = Polarization() if polarization is None else polarization
@@ -578,7 +575,6 @@ class Envelope:
                 )
 
         if self.state is None:
-            logger.info("States are not in a product state in envelope, noting to do", self.uid)
             return
 
         # Creating the new order in the product space
@@ -596,7 +592,6 @@ class Envelope:
         current_order[self.polarization.index] = self.polarization
 
         if current_order[0] is states_list[0] and current_order[1] is states_list[1]:
-            logger.info("States already in correct order", self.uid)
             return
 
         current_shape = [0, 0]
