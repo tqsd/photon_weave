@@ -1,4 +1,3 @@
-
 def route_operation():
     """
     A decorator, which dynamically calls the
@@ -41,5 +40,23 @@ def route_operation():
                     return delegate_method(*args, self, **kwargs)
                 else:
                     return delegate_method(self, **kwargs)
+        return wrapper
+    return decorator
+
+def route_operation_envelope():
+    """
+    A decorator, which dynamically calls the method of the
+    same name of the object (state container), in which
+    she state of the caller resider
+    """
+
+    def decorator(method):
+        def wrapper(self, *args, **kwargs):
+            mn = method.__name__
+
+            # State is in the object
+            if self.state is not None:
+                return method(self,*args,**kwargs)
+
         return wrapper
     return decorator

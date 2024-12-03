@@ -175,8 +175,9 @@ def measure_POVM_matrix(
 
     # Pransform the operators to tensors
     op_shape = [s.dimensions for s in target_states]*2
-    operators = [op.reshape(op.shape) for op in operators]
-
+    print(operators[0].shape)
+    operators = [op.reshape(op_shape) for op in operators]
+    print(operators[0].shape)
     product_state = product_state.reshape(
         [s.dimensions for s in state_objs]*2
         )
@@ -192,6 +193,9 @@ def measure_POVM_matrix(
 
     # Get the dimensions
     for operator in operators:
+        print(operator.shape)
+        print(product_state.shape)
+        print(einsum_op)
         projected_state = jnp.einsum(
             einsum_op,
             operator,
@@ -220,7 +224,6 @@ def measure_POVM_matrix(
         )
     product_state = jnp.einsum(
         einsum_op,
-        product_state,
         operators[outcome],
         product_state,
         jnp.conj(operators[outcome])

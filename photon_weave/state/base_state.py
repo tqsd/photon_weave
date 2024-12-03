@@ -10,7 +10,7 @@ import numpy as np
 from photon_weave._math.ops import apply_kraus, kraus_identity_check
 from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
-from .utils.measurements import measure_vector, measure_matrix
+from .utils.measurements import measure_vector, measure_matrix, measure_POVM_matrix
 from .utils.operations import apply_operation_vector, apply_operation_matrix
 from .utils.routing import route_operation
 from .utils.representation import representation_matrix, representation_vector
@@ -219,13 +219,6 @@ class BaseState(ABC):
         from photon_weave.state.envelope import Envelope
         from photon_weave.state.polarization import Polarization
 
-        #if isinstance(self.index, int):
-        #    assert isinstance(self.envelope, Envelope)
-        #    return self.envelope.measure_POVM(operators, self)
-        #if isinstance(self.index, list) or isinstance(self.index, tuple):
-        #    assert isinstance(self.composite_envelope, CompositeEnvelope)
-        #    return self.composite_envelope.measure_POVM(operators, self)
-
         assert isinstance(self.expansion_level, ExpansionLevel)
         while self.expansion_level < ExpansionLevel.Matrix:
             self.expand()
@@ -233,34 +226,40 @@ class BaseState(ABC):
         assert isinstance(self.state, jnp.ndarray)
         assert self.state.shape == (self.dimensions, self.dimensions)
 
-        # Compute probabilities p(i) = Tr(E_i * rho) for each POVM operator E_i
-        probabilities = jnp.array(
-            [jnp.trace(jnp.matmul(op, self.state)).real for op in operators]
-        )
+        outcome, self.state = measure_POVM_matrix(
+            [self],
+            [self],
+            operators,
+            self.state)
 
-        # Normalize probabilities (handle numerical issues)
-        probabilities = probabilities / jnp.sum(probabilities)
+        ## Compute probabilities p(i) = Tr(E_i * rho) for each POVM operator E_i
+        #probabilities = jnp.array(
+        #[jnp.trace(jnp.matmul(op, self.state)).real for op in operators]
+        #)
 
-        # Generate a random key
-        C = Config()
-        key = C.random_key
+        ## Normalize probabilities (handle numerical issues)
+        #probabilities = probabilities / jnp.sum(probabilities)
 
-        # Sample the measurement outcome
-        outcome = int(
-            jax.random.choice(key, a=jnp.arange(len(operators)), p=probabilities)
-        )
+        ## Generate a random key
+        #C = Config()
+        #key = C.random_key
+
+        ## Sample the measurement outcome
+        #outcome = int(
+        #jax.random.choice(key, a=jnp.arange(len(operators)), p=probabilities)
+        #)
 
         result: Tuple[int, Dict["BaseState", int]] = (outcome, {})
         if destructive:
             self._set_measured()
-        else:
-            self.state = jnp.matmul(
-                operators[outcome],
-                jnp.matmul(self.state, jnp.conj(operators[outcome].T)),
-            )
+        #else:
+        #    self.state = jnp.matmul(
+        #        operators[outcome],
+        #        jnp.matmul(self.state, jnp.conj(operators[outcome].T)),
+        #    )
 
-            self.state = self.state / jnp.trace(self.state)
-            self.expansion_level = ExpansionLevel.Matrix
+        #    self.state = self.state / jnp.trace(self.state)
+        #    self.expansion_level = ExpansionLevel.Matrix
 
         if not partial:
             if isinstance(self.envelope, Envelope):
@@ -273,6 +272,7 @@ class BaseState(ABC):
                 for k, v in out.items():
                     result[1][k] = v
 
+        C = Config()
         if C.contractions and not destructive:
             self.contract()
 

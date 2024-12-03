@@ -337,6 +337,7 @@ class Envelope:
                         while ((s.expansion_level > ExpansionLevel.Label)
                                and C.contractions):
                             s.contract()
+
         if destructive:
             self._set_measured()
 
@@ -412,114 +413,42 @@ class Envelope:
         while self.expansion_level < ExpansionLevel.Matrix:
             self.expand()
 
-        self.reorder(*states)
-        C = Config()
-
         if len(states) == 2 and self.state is None:
             self.combine()
 
-        reshape_shape = [-1, -1]
         assert isinstance(self.fock.index, int) and isinstance(
             self.polarization.index, int
         )
-        reshape_shape[self.fock.index] = self.fock.dimensions
-        reshape_shape[self.polarization.index] = self.polarization.dimensions
-
         assert isinstance(self.state, jnp.ndarray)
-        ps = self.state.reshape([*reshape_shape, *reshape_shape]).transpose(
-            [0, 2, 1, 3]
+        self.reorder(self.fock, self.polarization)
+        outcome, self.state = measure_POVM_matrix(
+            [self.fock, self.polarization],
+            states,
+            operators,
+            self.state
         )
-
-        # Handle POVM measurement when both spaces are measured
         if len(states) == 2:
-            # Check if the dimensions match
-            for op in operators:
-                assert op.shape == (self.dimensions, self.dimensions)
-
-            # Produce einsum str
-            einsum = "eacf,abcd,gbhd->egfh"
-            # Compute probabilities
-            probabilities = []
-            for op in operators:
-                op = op.reshape([*reshape_shape, *reshape_shape]).transpose(
-                    [0, 2, 1, 3]
-                )
-                prob_state = (
-                    jnp.einsum(einsum, op, ps, jnp.conj(op))
-                    .transpose([0, 2, 1, 3])
-                    .reshape(self.dimensions, self.dimensions)
-                )
-                probabilities.append(jnp.trace(prob_state).real)
-
-            probs = jnp.array(probabilities) / jnp.sum(jnp.array(probabilities))
-            key = C.random_key
-
-            choice = int(
-                jax.random.choice(key, a=jnp.arange(len(operators)), p=jnp.array(probs))
-            )
-
-            # Constructing post measurement state
-            op = (
-                operators[choice]
-                .reshape([*reshape_shape, *reshape_shape])
-                .transpose([0, 2, 1, 3])
-            )
-            self.state = (
-                jnp.einsum(einsum, op, ps, np.conj(op))
-                .transpose([0, 2, 1, 3])
-                .reshape((self.dimensions, self.dimensions))
-            )
-            self.state = self.state / jnp.trace(self.state)
             if destructive:
                 self._set_measured()
                 self.fock._set_measured()
                 self.polarization._set_measured()
-            return (choice, {})
-        elif len(states) == 1:
-            # Check the dimensions of the operators
-            for op in operators:
-                assert op.shape == (states[0].dimensions, states[0].dimensions)
-
-            einsum = "ea,abcd,fb->efcd"
-            einsum_trace = "abcc->ab"
-
-            # Compute probabilities
-            probabilities = []
-            for op in operators:
-                prob_state = jnp.einsum(einsum, op, ps, jnp.conj(op))
-                subspace = jnp.einsum(einsum_trace, prob_state)
-                probabilities.append(jnp.trace(subspace).real)
-            probs = jnp.array(probabilities) / jnp.sum(jnp.array(probabilities))
-            key = C.random_key
-            choice = int(jax.random.choice(key, a=jnp.arange(len(operators)), p=probs))
-            # Constructing post measurement state
-            op = operators[choice]
-            self.state = (
-                jnp.einsum(einsum, op, ps, jnp.conj(op))
-                .transpose([0, 2, 1, 3])
-                .reshape(self.dimensions, self.dimensions)
-            )
-            self.state = self.state / jnp.trace(self.state)
-
+            return (outcome, {})
+        else:
             if destructive:
                 other_state = (
                     self.fock if states[0] is self.polarization else self.polarization
                 )
-                ps = self.state.reshape([*reshape_shape, *reshape_shape]).transpose(
-                    [0, 2, 1, 3]
-                )
-                assert isinstance(other_state, Fock) or isinstance(
-                    other_state, Polarization
-                )
-                other_state.state = jnp.einsum("aabc->bc", ps)
+                other_state.state = trace_out_matrix(
+                    [self.fock, self.polarization],
+                    [other_state],
+                    self.state
+                    )
                 other_state.index = None
                 other_state.expansion_level = ExpansionLevel.Matrix
                 other_state.contract()
                 states[0]._set_measured()
                 self._set_measured()
-            return (choice, {})
-        # Should not come to this
-        return (-1, {})  # pragma: no cover
+                return (outcome, {})
 
     def apply_kraus(
         self, operators: List[Union[np.ndarray, jnp.ndarray]], *states: "BaseState"
