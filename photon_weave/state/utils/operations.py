@@ -8,7 +8,6 @@ import photon_weave.extra.einsum_constructor as ESC
 if TYPE_CHECKING:
     from photon_weave.state.base_state import BaseState
 
-
 def apply_operation_vector(state_objs: List[BaseState], target_states: List[BaseState],
                     product_state: jnp.ndarray, operator: jnp.ndarray) -> jnp.ndarray:
     """
@@ -132,4 +131,154 @@ def apply_operation_matrix(state_objs: List[BaseState], target_states: List[Base
     operator = operator.reshape((*operator_shape,*operator_shape))
     return product_state
 
+
+def apply_kraus_vector(state_objs: List[BaseState], target_states: List[BaseState],
+                    product_state: jnp.ndarray, operators: List[jnp.ndarray]) -> jnp.ndarray:
+    """
+    Applies the channel described with Kraus operators to the state vector
+
+    Parameters
+    ----------
+    state_objs: List[BaseState]
+        List of all base state objects which are in the product state
+    states: List[BaseState]
+        List of the base states on which we want to operate
+    product_state: jnp.ndarray
+        Product stats (state vector)
+    operators: jnp.ndarray
+        List of Operator matrix
+
+    Returns
+    -------
+    jnp.ndarray
+        Modified state vector according to the operator
+
+    Notes
+    -----
+    Given product state needs to be reordered, so that the target states
+    are grouped toghether and their index in the tensor (product state)
+    reflects their index in the target states reflects their index in the
+    operator. Photon Weave handles this automatically when called from
+    within the State Comtainer methods.
+    """
+    assert isinstance(product_state, jnp.ndarray)
+
+    operator_shape = jnp.array(
+        [s.dimensions for s in target_states]
+        )
+    dims = jnp.prod(
+        jnp.array(
+            [s.dimensions for s in state_objs]
+        ))
+
+    shape = [s.dimensions for s in state_objs]
+    shape.append(1)
     
+    assert product_state.shape == (dims,1)
+    assert all(operator.shape == (operator_shape, operator_shape) for
+               operator in operators)
+
+    product_state = product_state.reshape(shape)
+    #operators = [o.reshape((*operator_shape, *operator_shape)) for o in operators]
+
+
+    einsum_o = ESC.apply_operator_vector(state_objs, target_states)
+
+    resulting_state = jnp.zeros_like(product_state)
+
+    # Create padding elements
+    pre_pad = 1
+    post_pad = 1
+    padding_condition = True
+    for state in state_objs:
+        if state not in target_states:
+            if states.index(state) < states.index(target_states[0]):
+                pre_pad = jnp.kron(pre_pad, jnp.eye(current_element.dimensions))
+            elif states.index(state) > states.index(target_states[-1]):
+                post_pad = jnp.kron(post_pad, jnp.eye(current_element.dimensions))
+            
+    
+
+    for operator in operators:
+        operator = jnp.kron(pre_pad, jnp.kron(operator, post_pad))
+        # We need to expand the operator to affect the whole space
+        operator = operator.reshape((*operator_shape, *operator_shape))
+        resulting_state += jnp.einsum(einsum_o, operator, product_state)
+
+    resulting_state = resulting_state.reshape((-1,1))
+    return resulting_state
+
+
+def apply_kraus_matrix(state_objs: List[BaseState], target_states: List[BaseState],
+                    product_state: jnp.ndarray, operators: List[jnp.ndarray]) -> jnp.ndarray:
+    """
+    Applies the channel described with Kraus operators to the density matrix
+
+    Parameters
+    ----------
+    state_objs: List[BaseState]
+        List of all base state objects which are in the product state
+    states: List[BaseState]
+        List of the base states on which we want to operate
+    product_state: jnp.ndarray
+        Product stats (state vector)
+    operators: jnp.ndarray
+        List of Operator matrix
+
+    Returns
+    -------
+    jnp.ndarray
+        Modified state vector according to the operator
+
+    Notes
+    -----
+    Given product state needs to be reordered, so that the target states
+    are grouped toghether and their index in the tensor (product state)
+    reflects their index in the target states reflects their index in the
+    operator. Photon Weave handles this automatically when called from
+    within the State Comtainer methods.
+    """
+    assert isinstance(product_state, jnp.ndarray)
+
+    operator_shape = jnp.array(
+        [s.dimensions for s in target_states]
+        )
+    dims = jnp.prod(
+        jnp.array(
+            [s.dimensions for s in state_objs]
+        ))
+
+    shape = [s.dimensions for s in state_objs]
+    shape.append(1)
+    
+    assert product_state.shape == (dims,dims)
+    assert all(operator.shape == (operator_shape, operator_shape) for
+               operator in operators)
+
+    product_state = product_state.reshape(shape)
+
+    einsum_o = ESC.apply_operator_matrix(state_objs, target_states)
+
+    resulting_state = jnp.zeros_like(product_state)
+
+    # Create padding elements
+    pre_pad = 1
+    post_pad = 1
+    padding_condition = True
+    for state in state_objs:
+        if state not in target_states:
+            if states.index(state) < states.index(target_states[0]):
+                pre_pad = jnp.kron(pre_pad, jnp.eye(current_element.dimensions))
+            elif states.index(state) > states.index(target_states[-1]):
+                post_pad = jnp.kron(post_pad, jnp.eye(current_element.dimensions))
+            
+    
+    for operator in operators:
+        operator = jnp.kron(pre_pad, jnp.kron(operator, post_pad))
+        # We need to expand the operator to affect the whole space
+        operator = operator.reshape((*operator_shape, *operator_shape))
+        resulting_state += jnp.einsum(einsum_o, operator, product_state, jnp.conj(operator))
+
+    resulting_state = resulting_state.reshape((dims, dims))
+
+    return resulting_state

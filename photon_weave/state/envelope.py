@@ -463,20 +463,26 @@ class Envelope:
         from photon_weave.state.fock import Fock
         from photon_weave.state.polarization import Polarization
 
-        if len(states) == 2:
-            if (isinstance(states[0], Fock) and isinstance(states[1], Fock)) or (
-                isinstance(states[0], Polarization)
-                and isinstance(states[1], Polarization)
-            ):
-                raise ValueError("Given states have to be unique")
+        if ((len(states) == 2) and
+            ((self.fock not in states) or
+            (self.polarization not in states))):
+            raise ValueError(
+                "Both given states must belong to the Envelope"
+                )
+        #if len(states) == 2:
+        #    if (isinstance(states[0], Fock) and isinstance(states[1], Fock)) or (
+        #        isinstance(states[0], Polarization)
+        #        and isinstance(states[1], Polarization)
+        #    ):
+        #        raise ValueError("Given states have to be unique")
         elif len(states) > 2:
             raise ValueError("Too many states given")
-        for s in states:
-            if s is not self.polarization and s is not self.fock:
-                raise ValueError(
-                    "Given states have to be members of the envelope, "
-                    "use env.fock and env.polarization"
-                )
+        # for s in states:
+        #     if s is not self.polarization and s is not self.fock:
+        #         raise ValueError(
+        #             "Given states have to be members of the envelope, "
+        #             "use env.fock and env.polarization"
+        #         )
 
         # If any of the states is in bigger product state apply the kraus there
         if self.state is None and any(isinstance(s.index, tuple) for s in states):
@@ -514,6 +520,10 @@ class Envelope:
             raise ValueError(
                 "Kraus operators do not sum to the identity sum K^dagg K != I"
             )
+
+        state_objs = [None, None]
+        state_objs[self.fock.index] = self.fock
+        state_objs[self.polarization.index] = self.polarization
 
         if len(states) == 2:
             # Apply the operator fully

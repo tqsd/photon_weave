@@ -11,7 +11,9 @@ from photon_weave._math.ops import apply_kraus, kraus_identity_check
 from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
 from .utils.measurements import measure_vector, measure_matrix, measure_POVM_matrix
-from .utils.operations import apply_operation_vector, apply_operation_matrix
+from .utils.operations import (
+    apply_operation_vector, apply_operation_matrix,
+    apply_kraus_matrix, apply_kraus_vector)
 from .utils.routing import route_operation
 from .utils.representation import representation_matrix, representation_vector
 
@@ -142,17 +144,35 @@ class BaseState(ABC):
         """
 
         assert isinstance(self.expansion_level, ExpansionLevel)
-        while self.expansion_level < ExpansionLevel.Matrix:
+
+        print("KRAUS")
+
+        if identity_check:
+            if not kraus_identity_check(operators):
+                raise ValueError(
+                    "Invalid Kraus Channel"
+                    )
+        if self.expansion_level == ExpansionLevel.Label:
             self.expand()
 
-        for op in operators:
-            if not op.shape == (self.dimensions, self.dimensions):
-                raise ValueError("Operator dimensions do not match state dimensions")
-
-        if not kraus_identity_check(operators):
-            raise ValueError("Kraus operators do not sum to the identity")
-
-        self.state = apply_kraus(self.state, operators)
+        match self.expansion_level:
+            case ExpansionLevel.Vector:
+                print("VECTOR")
+                self.state = apply_kraus_vector(
+                    [self],
+                    [self],
+                    self.state,
+                    operators
+                    )
+            case ExpansionLevel.Matrix:
+                print("MATRIX")
+                self.state = apply_kraus_matrix(
+                    [self],
+                    [self],
+                    self.state,
+                    operators
+                    )
+        
         C = Config()
         if C.contractions:
             self.contract()
@@ -232,34 +252,9 @@ class BaseState(ABC):
             operators,
             self.state)
 
-        ## Compute probabilities p(i) = Tr(E_i * rho) for each POVM operator E_i
-        #probabilities = jnp.array(
-        #[jnp.trace(jnp.matmul(op, self.state)).real for op in operators]
-        #)
-
-        ## Normalize probabilities (handle numerical issues)
-        #probabilities = probabilities / jnp.sum(probabilities)
-
-        ## Generate a random key
-        #C = Config()
-        #key = C.random_key
-
-        ## Sample the measurement outcome
-        #outcome = int(
-        #jax.random.choice(key, a=jnp.arange(len(operators)), p=probabilities)
-        #)
-
         result: Tuple[int, Dict["BaseState", int]] = (outcome, {})
         if destructive:
             self._set_measured()
-        #else:
-        #    self.state = jnp.matmul(
-        #        operators[outcome],
-        #        jnp.matmul(self.state, jnp.conj(operators[outcome].T)),
-        #    )
-
-        #    self.state = self.state / jnp.trace(self.state)
-        #    self.expansion_level = ExpansionLevel.Matrix
 
         if not partial:
             if isinstance(self.envelope, Envelope):
