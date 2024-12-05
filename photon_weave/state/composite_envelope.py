@@ -22,6 +22,10 @@ from photon_weave.operation import (
 from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
 
+from .utils.state_transform import state_contract, state_expand
+from .utils.measurements import measure_vector, measure_matrix, measure_POVM_matrix
+from .utils.trace_out import trace_out_vector, trace_out_matrix
+                
 # For static type checks
 if TYPE_CHECKING:
     from photon_weave.state.base_state import BaseState  # pragma: no cover
@@ -50,8 +54,15 @@ class ProductState:
         Expands the state from vector to matrix
         """
         if self.expansion_level < ExpansionLevel.Matrix:
-            self.state = jnp.outer(self.state.flatten(), jnp.conj(self.state.flatten()))
-            self.expansion_level = ExpansionLevel.Matrix
+            dims = int(jnp.prod(jnp.array(
+                [s.dimensions for s in self.state_objs]
+                )))
+            self.state, self.expansion_level = state_expand(
+                self.state,
+                self.expansion_level,
+                dims)
+            #self.state = jnp.outer(self.state.flatten(), jnp.conj(self.state.flatten()))
+            #self.expansion_level = ExpansionLevel.Matrix
             for state in self.state_objs:
                 state.expansion_level = ExpansionLevel.Matrix
 
@@ -65,17 +76,11 @@ class ProductState:
             tolerance when comparing trace
         """
         if self.expansion_level is ExpansionLevel.Matrix:
-            # If the state is mixed, return
-            if jnp.abs(jnp.trace(jnp.matmul(self.state, self.state)) - 1) >= tol:
-                return
-
-            eigenvalues, eigenvectors = jnp.linalg.eigh(self.state)
-            pure_state_index = jnp.argmax(jnp.abs(eigenvalues - 1.0) < tol)
-            assert pure_state_index is not None, "Pure state indx should not be None"
-            self.state = eigenvectors[:, pure_state_index].reshape(-1, 1)
-            for state in self.state_objs:
-                state.expansion_level = ExpansionLevel.Vector
-            self.expansion_level = ExpansionLevel.Vector
+            self.state, self.expansion_level, success = state_contract(
+                self.state, self.expansion_level)
+            if success:
+                for state in self.state_objs:
+                    state.expansion_level = ExpansionLevel.Vector
 
     def reorder(self, *ordered_states: "BaseState") -> None:
         """

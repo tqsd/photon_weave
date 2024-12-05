@@ -249,7 +249,6 @@ class Envelope:
             self.state, self.expansion_level = state_expand(
                 self.state, self.expansion_level, self.dimensions
             )
-                
 
     def measure(
         self,
@@ -665,8 +664,6 @@ class Envelope:
             elif len(states) == 2:
                 self.combine()
 
-        self.reorder(*states)
-
         self.reorder(self.fock, self.polarization)
 
         assert isinstance(self.fock.index, int)
@@ -712,7 +709,8 @@ class Envelope:
 
     def resize_fock(self, new_dimensions: int, state: Optional[Fock]=None) -> bool:
         """
-        Adjusts the dimension of the fock in the envelope.
+        Adjusts the dimension of the fock in the envelope. The dimensions are adjusted
+        also when the fock space is in the product state.
 
         Parameters
         ----------
@@ -731,6 +729,7 @@ class Envelope:
 
         if self.state is None:
             return self.fock.resize(new_dimensions)
+        
 
         reshape_shape = [-1, -1]
         assert isinstance(self.fock.dimensions, int)

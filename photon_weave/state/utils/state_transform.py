@@ -30,7 +30,7 @@ def state_expand(state: Union[jnp.ndarray, int],
 
     Notes
     -----
-    In the case of Polarization, it can expand from State Vector onwards
+    In the case of Polarization, it can expand from State Vector onward
     """
     assert isinstance(dimensions, int)
     assert isinstance(current_expansion_level, ExpansionLevel)
@@ -70,7 +70,7 @@ def state_expand(state: Union[jnp.ndarray, int],
     
 def state_contract(state:Union[int, jnp.ndarray],
                    current_expansion_level: ExpansionLevel,
-                   tol: float = 1e6
+                   tol: float = 1e-6
                    ) -> Tuple[jnp.ndarray, ExpansionLevel, bool]:
     """
     Returns contracted state representation if possible
