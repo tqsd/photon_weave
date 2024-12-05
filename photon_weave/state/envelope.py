@@ -880,8 +880,8 @@ class Envelope:
                 "The state is entirely composed of zeros, "
                 "is |0⟩ attempted to be annihilated?"
             )
+        if operation.renormalize:
+            self.state = self.state / jnp.linalg.norm(self.state)
         C = Config()
         if C.contractions:
             self.contract()
-        if operation.renormalize:
-            self.state = self.state / jnp.linalg.norm(self.state)

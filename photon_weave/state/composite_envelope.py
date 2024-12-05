@@ -61,8 +61,6 @@ class ProductState:
                 self.state,
                 self.expansion_level,
                 dims)
-            #self.state = jnp.outer(self.state.flatten(), jnp.conj(self.state.flatten()))
-            #self.expansion_level = ExpansionLevel.Matrix
             for state in self.state_objs:
                 state.expansion_level = ExpansionLevel.Matrix
 
@@ -473,36 +471,17 @@ class ProductState:
             Traced out system including only the requested states in tesored
             in the order in which the states are given
         """
-        if self.expansion_level == ExpansionLevel.Vector:
-            # Reshape the vector into tensor
-            shape = [s.dimensions for s in self.state_objs] + [1]
-            ps = self.state.reshape(shape)
-
-            # Compute einsum string
-            einsum = ESC.trace_out_vector(self.state_objs, list(states))
-
-            # Perform the tracing
-            traced_out_state = jnp.einsum(einsum, ps)
-
-            # Reshape and return
-            return traced_out_state.reshape((-1, 1))
-        elif self.expansion_level == ExpansionLevel.Matrix:
-            # Reshape the matrix into tensor
-            ps = self.state.reshape([s.dimensions for s in self.state_objs] * 2)
-
-            # Generate einsum string
-            einsum = ESC.trace_out_matrix(self.state_objs, list(states))
-
-            # Perform the tracing
-            traced_out_state = jnp.einsum(einsum, ps)
-
-            # Compute the new dimensions
-            new_dims = jnp.prod(jnp.array([s.dimensions for s in states]))
-
-            # Reshape and Return
-            return traced_out_state.reshape((new_dims, new_dims))
-        else:
-            raise ValueError("Something went wrong")  # pragma: no cover
+        match self.expansion_level:
+            case ExpansionLevel.Vector:
+                return trace_out_vector(
+                    self.state_objs,
+                    list(states),
+                    self.state)
+            case ExpansionLevel.Matrix:
+                return trace_out_matrix(
+                    self.state_objs,
+                    list(states),
+                    self.state)
 
     @property
     def is_empty(self) -> bool:
