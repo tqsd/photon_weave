@@ -883,7 +883,7 @@ class TestEnvelopeKraus(unittest.TestCase):
         self.assertEqual(env.polarization.index, 1)
 
         # Kraus operator dimensions missmatch
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AssertionError):
             env.apply_kraus(
                 [
                     jnp.array(

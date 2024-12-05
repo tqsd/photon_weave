@@ -39,7 +39,10 @@ from .utils.measurements import (
 )
 from .utils.trace_out import trace_out_vector, trace_out_matrix
 from .utils.state_transform import state_expand, state_contract
-from .utils.operations import apply_operation_vector, apply_operation_matrix
+from .utils.operations import (
+    apply_operation_vector, apply_operation_matrix,
+    apply_kraus_vector, apply_kraus_matrix
+    )
 
 if TYPE_CHECKING:
     from photon_weave.operation import Operation
@@ -463,26 +466,15 @@ class Envelope:
         from photon_weave.state.fock import Fock
         from photon_weave.state.polarization import Polarization
 
+        s_uids = [s.uid for s in states]
         if ((len(states) == 2) and
-            ((self.fock not in states) or
-            (self.polarization not in states))):
+            ((self.fock.uid not in s_uids) or
+            (self.polarization.uid not in s_uids))):
             raise ValueError(
                 "Both given states must belong to the Envelope"
                 )
-        #if len(states) == 2:
-        #    if (isinstance(states[0], Fock) and isinstance(states[1], Fock)) or (
-        #        isinstance(states[0], Polarization)
-        #        and isinstance(states[1], Polarization)
-        #    ):
-        #        raise ValueError("Given states have to be unique")
         elif len(states) > 2:
             raise ValueError("Too many states given")
-        # for s in states:
-        #     if s is not self.polarization and s is not self.fock:
-        #         raise ValueError(
-        #             "Given states have to be members of the envelope, "
-        #             "use env.fock and env.polarization"
-        #         )
 
         # If any of the states is in bigger product state apply the kraus there
         if self.state is None and any(isinstance(s.index, tuple) for s in states):
@@ -503,58 +495,37 @@ class Envelope:
         if self.state is None:
             self.combine()
 
+        if kraus_identity_check:
+            if not kraus_identity_check(operators):
+                raise ValueError(
+                    "Kraus operators do not sum to the identity sum K^dagg K != I"
+                )
+
         # Reorder
         self.reorder(*states)
-
-        # Kraus operators are only applied to the density matrices
-        assert isinstance(self.expansion_level, ExpansionLevel)
-        while self.expansion_level < ExpansionLevel.Matrix:
-            self.expand()
-
-        dim = int(jnp.prod(jnp.array([s.dimensions for s in states])))
-        for op in operators:
-            if op.shape != (dim, dim):
-                raise ValueError("Kraus operator has incorrect dimension")
-
-        if not kraus_identity_check(operators):
-            raise ValueError(
-                "Kraus operators do not sum to the identity sum K^dagg K != I"
-            )
 
         state_objs = [None, None]
         state_objs[self.fock.index] = self.fock
         state_objs[self.polarization.index] = self.polarization
 
-        if len(states) == 2:
-            # Apply the operator fully
-            assert isinstance(self.state, jnp.ndarray)
-            resulting_state = jnp.zeros_like(self.state)
-            for op in operators:
-                resulting_state += jnp.einsum(
-                    "ab,bc,dc->ad", op, self.state, np.conj(op)
-                )
-            self.state = resulting_state
+        # Kraus operators are only applied to the density matrices
+        match self.expansion_level:
+            case ExpansionLevel.Vector:
+                self.state = apply_kraus_vector(
+                    state_objs,
+                    states,
+                    self.state,
+                    operators)
+            case ExpansionLevel.Matrix:
+                self.state = apply_kraus_matrix(
+                    state_objs,
+                    states,
+                    self.state,
+                    operators)
 
-        if len(states) == 1:
-            assert isinstance(self.fock.index, int)
-            assert isinstance(self.polarization.index, int)
-            assert isinstance(self.state, jnp.ndarray)
-            reshape_shape = [-1, -1]
-            reshape_shape[self.fock.index] = self.fock.dimensions
-            reshape_shape[self.polarization.index] = self.polarization.dimensions
-
-            ps = self.state.reshape([*reshape_shape, *reshape_shape]).transpose(
-                [0, 2, 1, 3]
-            )
-            resulting_state = jnp.zeros_like(ps)
-            for op in operators:
-                resulting_state += jnp.einsum("ea,abcd,fb->efcd", op, ps, np.conj(op))
-
-            self.state = resulting_state.transpose([0, 2, 1, 3]).reshape(
-                self.dimensions, self.dimensions
-            )
-
-        self.contract()
+        C = Config()
+        if C.contractions:
+            self.contract()
 
     def reorder(self, *states: "BaseState") -> None:
         """
