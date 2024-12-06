@@ -1,3 +1,4 @@
+from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union, cast
@@ -41,10 +42,12 @@ class ProductState:
     """
 
     expansion_level: ExpansionLevel
-    container: "CompositeEnvelopeContainer"
+    container: CompositeEnvelopeContainer
+    #container: "CompositeEnvelopeContainer"
     uid: uuid.UUID = field(default_factory=uuid.uuid4)
     state: jnp.ndarray = field(default_factory=lambda: jnp.array([[1]]))
-    state_objs: List["BaseState"] = field(default_factory=list)
+    state_objs: List[BaseState] = field(default_factory=list)
+    #state_objs: List["BaseState"] = field(default_factory=list)
 
     def __hash__(self) -> int:
         return hash(self.uid)
@@ -162,131 +165,38 @@ class ProductState:
         assert all(
             so in self.state_objs for so in states
         ), "All state objects need to be in product state"
-        outcomes = {}
+        
+        match self.expansion_level:
+            case ExpansionLevel.Vector:
+                outcomes, self.state = measure_vector(
+                    self.state_objs,
+                    states,
+                    self.state
+                    )
+            case ExpansionLevel.Matrix:
+                outcomes, self.state = measure_matrix(
+                    self.state_objs,
+                    states,
+                    self.state
+                    )
+        # Handle post measurement processes
+        for state in states:
+            if destructive:
+                state._set_measured()
+            else:
+                if isinstance(state, Polarization):
+                    if outcomes[state] == 0:
+                        state.state = PolarizationLabel.H
+                    else:
+                        state.state = PolarizationLabel.V
+                else:
+                    state.state = outcomes[state]
+                state.expansion_level = ExpansionLevel.Label
+                state.index = None
+
+        self.state_objs = [ s for s in self.state_objs if s not in states]
         C = Config()
-
-        remaining_states = [s for s in self.state_objs]
-
-        if self.expansion_level == ExpansionLevel.Vector:
-            # Get the state and reshape it into tensor
-            shape = [so.dimensions for so in self.state_objs]
-            shape.append(1)
-            ps = self.state.reshape(shape)
-            for idx, state in enumerate(states):
-                # Constructing the einsum str
-                einsum = ESC.measure_vector(remaining_states, [state])
-
-                # Project the state with einsum string
-                projected_state = jnp.einsum(einsum, ps)
-
-                # Outcome Probabilities
-                probabilities = jnp.abs(projected_state.flatten()) ** 2
-                probabilities /= jnp.sum(probabilities)
-
-                # Decide on output
-                key = C.random_key
-                outcomes[state] = int(
-                    jax.random.choice(
-                        key, a=jnp.array(list(range(state.dimensions))), p=probabilities
-                    )
-                )
-
-                # Construct the post measurement state
-                # Even if the state is measured non_destructively
-                # the state is removed and placed back into original
-                # Base state as a label form
-                indices: List[Union[slice, int]] = [slice(None)] * len(ps.shape)
-                indices[remaining_states.index(state)] = outcomes[state]
-                ps = ps[tuple(indices)]
-
-                # Remove the measured state form the product state
-                remaining_states.remove(state)
-
-                # Handle post measurement processes
-                if destructive:
-                    state._set_measured()
-                else:
-                    if isinstance(state, Polarization):
-                        if outcomes[state] == 0:
-                            state.state = PolarizationLabel.H
-                        else:
-                            state.state = PolarizationLabel.V
-                    else:
-                        state.state = outcomes[state]
-                    state.index = None
-                    state.expansion_level = ExpansionLevel.Label
-                self.state_objs.remove(state)
-            if len(self.state_objs) > 0:
-                # Handle reshaping and storing the post measurement product state
-                self.state = ps.reshape(-1, 1)
-                self.state /= jnp.linalg.norm(self.state)
-            else:
-                # Product state will be deleted
-                self.state = jnp.array([[1]])
-        elif self.expansion_level == ExpansionLevel.Matrix:
-            shape = [so.dimensions for so in self.state_objs] * 2
-            ps = self.state.reshape(shape)
-            for idx, state in enumerate(states):
-                # Generate einsum string
-                einsum = ESC.measure_matrix(remaining_states, [state])
-
-                # Project the state with einsum
-                projected_state = jnp.einsum(einsum, ps)
-
-                # Outcome Probabilities
-                probabilities = jnp.abs(jnp.diag(projected_state))
-                probabilities /= sum(probabilities)
-
-                # Decide on outcome
-                key = C.random_key
-                outcomes[state] = int(
-                    jax.random.choice(
-                        key, a=jnp.array(list(range(state.dimensions))), p=probabilities
-                    )
-                )
-
-                # Construct post measurement state
-                # Even if state is measured in non_destructive manner
-                # It is removed from the product state and placed back
-                # into the BaseState
-                state_index = remaining_states.index(state)
-                row_idx = state_index
-                col_idx = state_index + len(remaining_states)
-                indices = [slice(None)] * len(ps.shape)
-                indices[row_idx] = outcomes[state]
-                indices[col_idx] = outcomes[state]
-                ps = ps[tuple(indices)]
-
-                # Remove the mesaured state from the remaining states
-                remaining_states.remove(state)
-                if destructive:
-                    state._set_measured()
-                else:
-                    if isinstance(state, Polarization):
-                        if outcomes[state] == 0:
-                            state.state = PolarizationLabel.H
-                        else:
-                            state.state = PolarizationLabel.V
-                    else:
-                        state.state = outcomes[state]
-                    state.index = None
-                    state.expansion_level = ExpansionLevel.Label
-
-                # Remove the mesaured state from the product state
-                self.state_objs.remove(state)
-
-            # Reconstruct the post measurement product state
-            if len(self.state_objs) > 0:
-                ps = ps.flatten()
-                num_elements = ps.size
-                sqrt = int(jnp.ceil(jnp.sqrt(num_elements)))
-                self.state = ps.reshape((sqrt, sqrt))
-                self.state /= jnp.linalg.norm(self.state)
-            else:
-                self.state = jnp.array([[1]])
-
-        # Attempt to contract to Vector if set so
-        if C.contractions:
+        if C.contractions and len(self.state_objs) > 0:
             self.contract()
         return outcomes
 
