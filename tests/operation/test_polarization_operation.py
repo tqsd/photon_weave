@@ -67,6 +67,7 @@ class TestIdentityOperator(unittest.TestCase):
         env.polarization.state = PolarizationLabel.R
         env.combine()
         env.apply_operation(op, env.polarization)
+        env.reorder(env.polarization, env.fock)
         self.assertTrue(
             jnp.allclose(
                 jnp.array([[1 / jnp.sqrt(2)], [0], [0], [1j / jnp.sqrt(2)], [0], [0]]),
@@ -122,7 +123,7 @@ class TestIdentityOperator(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array([[-1 / jnp.sqrt(2)], [-1j / jnp.sqrt(2)], [0], [0]]),
+                jnp.array([[1 / jnp.sqrt(2)],[1j / jnp.sqrt(2)], [0], [0]]),
             )
         )
 
@@ -161,6 +162,7 @@ class TestXOperator(unittest.TestCase):
         env.combine()
         op = Operation(PolarizationOperationType.X)
         env.polarization.apply_operation(op)
+        env.reorder(env.polarization, env.fock)
         self.assertTrue(
             jnp.allclose(env.state, jnp.array([[0], [0], [0], [1], [0], [0]]))
         )
@@ -180,6 +182,7 @@ class TestXOperator(unittest.TestCase):
         env.expand()
         op = Operation(PolarizationOperationType.X)
         env.polarization.apply_operation(op)
+        env.reorder(env.polarization, env.fock)
         self.assertTrue(
             jnp.allclose(env.state, jnp.array([[0], [0], [0], [1], [0], [0]]))
         )

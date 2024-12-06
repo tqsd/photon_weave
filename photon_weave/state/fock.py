@@ -20,6 +20,10 @@ from photon_weave.state.composite_envelope import CompositeEnvelope
 
 from .base_state import BaseState
 from .expansion_levels import ExpansionLevel
+from .utils.measurements import measure_vector, measure_matrix
+from .utils.operations import apply_operation_vector, apply_operation_matrix
+from .utils.routing import route_operation
+from .utils.state_transform import state_expand, state_contract
 
 if TYPE_CHECKING:
     from .envelope import Envelope
@@ -60,9 +64,8 @@ class Fock(BaseState):
     __slots__ = (
         "uid",
         "index",
-        "label",
+        "state",
         "dimensions",
-        "state_vector",
         "density_matrix",
         "envelope",
         "expansions",
@@ -106,6 +109,7 @@ class Fock(BaseState):
                     return True
         return False
 
+    @route_operation()
     def expand(self) -> None:
         """
         Expands the representation. If the state is stored in
@@ -113,33 +117,18 @@ class Fock(BaseState):
         state is in state_vector, then the state is expanded
         to the state_matrix
         """
-        if isinstance(self.index, int):
-            assert isinstance(self.envelope, Envelope)
-            self.envelope.expand()
-        if isinstance(self.index, tuple) or isinstance(self.index, list):
-            assert isinstance(self.composite_envelope, CompositeEnvelope)
-            self.composite_envelope.expand(self)
+        assert self.dimensions is not None, "self.dimensions shoul not be None"
 
         if self.dimensions < 0:
-            assert self.dimensions is not None, "self.dimensions shoul not be None"
             if isinstance(self.state, int):
                 self.dimensions = self.state + 3
 
-        if self.expansion_level is ExpansionLevel.Label:
-            assert isinstance(self.state, int)
-            state_vector = jnp.zeros(int(self.dimensions))
-            state_vector = state_vector.at[self.state].set(1)
-            new_state_vector = state_vector[:, jnp.newaxis]
-            self.state = new_state_vector
-            self.expansion_level = ExpansionLevel.Vector
-        elif self.expansion_level is ExpansionLevel.Vector:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, 1)
-            new_density_matrix = jnp.outer(
-                self.state.flatten(), jnp.conj(self.state.flatten())
+
+        self.state, self.expansion_level = state_expand(
+            self.state,
+            self.expansion_level,
+            self.dimensions
             )
-            self.state = new_density_matrix
-            self.expansion_level = ExpansionLevel.Matrix
 
     def contract(
         self, final: ExpansionLevel = ExpansionLevel.Label, tol: float = 1e-6
@@ -157,38 +146,13 @@ class Fock(BaseState):
         # If state was measured, then do nothing
         if self.measured:
             return
-        if (
-            self.expansion_level is ExpansionLevel.Matrix
-            and final < ExpansionLevel.Matrix
-        ):
-            # Check if the state is pure state
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, self.dimensions)
-            state_squared = jnp.matmul(self.state, self.state)
-            state_trace = jnp.trace(state_squared)
-            if jnp.abs(state_trace - 1) < tol:
-                # The state is pure
-                eigenvalues, eigenvectors = jnp.linalg.eigh(self.state)
-                pure_state_index = jnp.argmax(jnp.abs(eigenvalues - 1.0) < tol)
-                assert (
-                    pure_state_index is not None
-                ), "pure_state_index should not be None"
-                self.state = eigenvectors[:, pure_state_index].reshape(-1, 1)
-                # Normalizing the phase
-                assert isinstance(self.state, jnp.ndarray)
-                phase = jnp.exp(-1j * jnp.angle(self.state[0]))
-                self.state = self.state * phase
-                self.expansion_level = ExpansionLevel.Vector
-        if (
-            self.expansion_level is ExpansionLevel.Vector
-            and final < ExpansionLevel.Vector
-        ):
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, 1)
-            ones = jnp.where(self.state == 1)[0]
-            if ones.size == 1:
-                self.state = int(ones[0])
-                self.expansion_level = ExpansionLevel.Label
+
+        success = True
+        while self.expansion_level > final and success:
+            self.state, self.expansion_level, success = state_contract(
+                self.state,
+                self.expansion_level
+                )
 
     def extract(self, index: Union[int, Tuple[int, int]]) -> None:
         """
@@ -245,6 +209,7 @@ class Fock(BaseState):
         else:
             self.index = minor
 
+    @route_operation()
     def measure(
         self, separate_measurement: bool = False, destructive: bool = True
     ) -> Dict[BaseState, int]:
@@ -266,54 +231,30 @@ class Fock(BaseState):
         Dict[BaseState, int]
             Dictionary of outcomes
         """
-        if isinstance(self.index, int):
-            assert isinstance(self.envelope, Envelope)
-            return self.envelope.measure(
-                self, separate_measurement=separate_measurement, destructive=destructive
-            )
-        if isinstance(self.index, tuple) or isinstance(self.index, list):
-            assert isinstance(self.composite_envelope, CompositeEnvelope)
-            return self.composite_envelope.measure(self)
-
-        if self.index is not None:
-            assert self.envelope is not None, "Envelope should not be None"
-            return self.envelope.measure()
-        C = Config()
         match self.expansion_level:
             case ExpansionLevel.Label:
                 assert isinstance(self.state, int)
-                result = self.state
+                outcomes = {self:self.state}
             case ExpansionLevel.Vector:
-                assert isinstance(self.state, jnp.ndarray)
-                assert self.state.shape == (self.dimensions, 1)
-                probs = jnp.abs(self.state.flatten()) ** 2
-                probs = probs.ravel()
-                assert jnp.isclose(sum(probs), 1)
-                key = C.random_key
-                result = int(jax.random.choice(key, a=jnp.arange(len(probs)), p=probs))
+                outcomes, post_measurement_state = measure_vector(
+                    [self], [self], self.state)
             case ExpansionLevel.Matrix:
-                assert isinstance(self.state, jnp.ndarray)
-                assert self.state.shape == (self.dimensions, self.dimensions)
-                probs = jnp.diag(self.state).real
-                probs = probs / jnp.sum(probs)
-                key = C.random_key
-                result = int(jax.random.choice(key, a=jnp.arange(len(probs)), p=probs))
-        self.state = result
+                outcomes, post_measurement_state = measure_matrix(
+                    [self],[self], self.state)
+
+        self.state = outcomes[self]
         self.expansion_level = ExpansionLevel.Label
-        outcomes: Dict[BaseState, int] = {}
-        outcomes[self] = int(result)
+
         if destructive:
             self._set_measured()
 
+        # Handle the case where Fock is included in the Envelope
         if self.envelope is not None and not separate_measurement:
             if not self.envelope.polarization.measured:
                 out = self.envelope.polarization.measure(
                     separate_measurement=separate_measurement, destructive=destructive
                 )
-                assert isinstance(out, dict)
                 for m_key, m_value in out.items():
-                    assert isinstance(m_key, BaseState)
-                    assert isinstance(m_value, int)
                     outcomes[m_key] = m_value
         return outcomes
 
@@ -326,6 +267,7 @@ class Fock(BaseState):
         self.index = None
         self.expansion_level = None
 
+    @route_operation()
     def resize(self, new_dimensions: int) -> bool:
         """
         Resizes the space to the new dimensions.
@@ -393,20 +335,21 @@ class Fock(BaseState):
                     self.state = self.state[:new_dimensions, :new_dimensions]
                     self.dimensions = new_dimensions
                     return True
-                return False
-        elif isinstance(self.index, int):
-            assert isinstance(self.envelope, Envelope)
-            return self.envelope.resize_fock(new_dimensions)
-        elif isinstance(self.index, tuple):
-            assert isinstance(self.composite_envelope, CompositeEnvelope)
-            return self.composite_envelope.resize_fock(new_dimensions, self)
         return False
 
+    @route_operation()
     def apply_operation(self, operation: Operation) -> None:
         """
         Applies an operation to the state. If state is in some product
         state, the operator is correctly routed to the specific
         state
+
+        Decorator:
+        ----------
+        This method is decorated with `route_operation`, which can based on
+        `self.index` execute a method with the same name belonging to
+        either `Envelope` or `CompositeEnvelope`. It routes the operation
+        to the state container which holds state of this container.
 
         Parameters
         ----------
@@ -416,54 +359,34 @@ class Fock(BaseState):
         from photon_weave.state.envelope import Envelope
 
         assert isinstance(operation._operation_type, FockOperationType)
-
-        if isinstance(self.index, int):
-            assert isinstance(self.envelope, Envelope)
-            self.envelope.apply_operation(operation, self)
-            return
-        elif isinstance(self.index, tuple):
-            assert isinstance(self.composite_envelope, CompositeEnvelope)
-            self.composite_envelope.apply_operation(operation, self)
-            return
-
         assert isinstance(self.expansion_level, ExpansionLevel)
         assert isinstance(operation.required_expansion_level, ExpansionLevel)
+
         while self.expansion_level < operation.required_expansion_level:
             self.expand()
 
         # Consolidate the dimensions
         to = self.trace_out()
-        assert isinstance(to, jnp.ndarray)
         operation.compute_dimensions(self._num_quanta, to)
         self.resize(operation.dimensions[0])
-
-        if self.expansion_level == ExpansionLevel.Vector:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, 1)
-            self.state = jnp.einsum("ij,jk->ik", operation.operator, self.state)
-            if not jnp.any(jnp.abs(self.state) > 0):
-                raise ValueError(
-                    "The state is entirely composed of zeros, is |0⟩ "
-                    "attempted to be annihilated?"
-                )
-            if operation.renormalize:
-                self.state = self.state / jnp.linalg.norm(self.state)
-        if self.expansion_level == ExpansionLevel.Matrix:
-            assert isinstance(self.state, jnp.ndarray)
-            assert self.state.shape == (self.dimensions, self.dimensions)
-            self.state = jnp.einsum(
-                "ca,ab,db->cd",
-                operation.operator,
-                self.state,
-                jnp.conj(operation.operator),
+        
+        match self.expansion_level:
+            case ExpansionLevel.Vector:
+                self.state = apply_operation_vector(
+                    [self], [self], self.state, operation.operator
+                    )
+            case ExpansionLevel.Matrix:
+                self.state = apply_operation_matrix(
+                    [self], [self], self.state, operation.operator
+                    )
+     
+        if not jnp.any(jnp.abs(self.state) > 0):
+            raise ValueError(
+                "The state is entirely composed of zeros, is |0⟩"
+                " attempted to be annihilated?"
             )
-            if not jnp.any(jnp.abs(self.state) > 0):
-                raise ValueError(
-                    "The state is entirely composed of zeros, is |0⟩"
-                    " attempted to be anniilated?"
-                )
-            if operation.renormalize:
-                self.state = self.state / jnp.linalg.norm(self.state)
+        if operation.renormalize:
+            self.state = self.state / jnp.linalg.norm(self.state)
 
         C = Config()
         if C.contractions:

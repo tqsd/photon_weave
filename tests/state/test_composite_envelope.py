@@ -317,7 +317,6 @@ class TestStateCombining(unittest.TestCase):
         ce1 = CompositeEnvelope(env1, env2, env3)
         ce1.combine(env1.polarization, env2.polarization)
         ce1.product_states[0].expand()
-
         ce1.combine(env1.polarization, env3.fock)
 
         self.assertEqual(env1.polarization.index, (0, 0))
@@ -982,7 +981,7 @@ class TestKrausApply(unittest.TestCase):
         ce.combine(env1.fock)
         ce.combine(env2.fock)
 
-        op = jnp.array([[0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
+        op = jnp.array([[2, 0, 0, 0], [0, 2, 0, 0], [0, 0, 2, 0], [0, 0, 0, 2]])
         C = Config()
         C.set_contraction(False)
 

@@ -238,6 +238,7 @@ class Operation:
             self._dimensions = self._operation_type.compute_dimensions(
                 num_quanta, state, **self.kwargs
             )
+        
 
     @property
     def required_expansion_level(self) -> ExpansionLevel:

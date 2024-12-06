@@ -87,6 +87,7 @@ class TestFockOperationCreation(unittest.TestCase):
             expected_state = expected_state.at[(i + 1) * 2, 0].set(1)
             self.assertTrue(jnp.allclose(env.state, expected_state))
 
+
     def test_creation_operation_envelope_matrix(self) -> None:
         C = Config()
         C.set_contraction(True)

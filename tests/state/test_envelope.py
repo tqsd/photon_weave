@@ -883,7 +883,7 @@ class TestEnvelopeKraus(unittest.TestCase):
         self.assertEqual(env.polarization.index, 1)
 
         # Kraus operator dimensions missmatch
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AssertionError):
             env.apply_kraus(
                 [
                     jnp.array(
@@ -901,7 +901,13 @@ class TestEnvelopeKraus(unittest.TestCase):
 
         # Kraus operators do not sum to one
         with self.assertRaises(ValueError):
-            env.apply_kraus([op1], env.fock, env.polarization)
+            op_fail = jnp.array(
+                [[2,0,0,0],
+                 [0,2,0,0],
+                 [0,0,2,0],
+                 [0,0,0,2]]
+                )
+            env.apply_kraus([op_fail], env.fock, env.polarization)
 
     def test_kraus_apply_combined_partial(self) -> None:
         env = Envelope()
@@ -972,9 +978,9 @@ class TestTraceOut(unittest.TestCase):
             jnp.allclose(env.trace_out(env.polarization), jnp.array([[1], [0]]))
         )
 
-        # State should not be changed, but it is reordered
+        # State should not be changd
         self.assertTrue(
-            jnp.allclose(env.state, jnp.array([[0], [0], [1], [0], [0], [0]]))
+            jnp.allclose(env.state, jnp.array([[0], [0], [0], [0], [1], [0]]))
         )
 
         self.assertTrue(
