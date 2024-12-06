@@ -43,11 +43,9 @@ class ProductState:
 
     expansion_level: ExpansionLevel
     container: CompositeEnvelopeContainer
-    #container: "CompositeEnvelopeContainer"
     uid: uuid.UUID = field(default_factory=uuid.uuid4)
     state: jnp.ndarray = field(default_factory=lambda: jnp.array([[1]]))
     state_objs: List[BaseState] = field(default_factory=list)
-    #state_objs: List["BaseState"] = field(default_factory=list)
 
     def __hash__(self) -> int:
         return hash(self.uid)
@@ -230,65 +228,36 @@ class ProductState:
             POVM operator measurements.
         """
 
+        from photon_weave.state.custom_state import CustomState
+
         # Expand to matrix form if not already in matrix form
         if self.expansion_level == ExpansionLevel.Vector:
             self.expand()
 
-        # Transform the operators to the tensors
-        op_shape = [s.dimensions for s in states] * 2
+        outcome, self.state = measure_POVM_matrix(
+            self.state_objs,
+            states,
+            operators,
+            self.state)
+        print("STATE AFTER POVM")
+        print(self.state)
 
-        # Reshape operators
-        operators = [op.reshape(op_shape) for op in operators]
-
-        # Get and reshape the state
-        ps = self.state.reshape([s.dimensions for s in self.state_objs] * 2)
-
-        # Generate the operators for application of operators
-        einsum = ESC.apply_operator_matrix(self.state_objs, list(states))
-
-        # Get the probabilities
-        prob_list: List[float] = []
-
-        # Get the dimensions of the measured states
-        to_dims = jnp.prod(jnp.array([so.dimensions for so in states]))
-
-        for op in operators:
-            # Apply each operator
-            prob_state = jnp.einsum(einsum, op, ps, jnp.conj(op))
-
-            # Trace out the state to get the probabilities
-            einsum_to = ESC.trace_out_matrix(self.state_objs, list(states))
-            prob_state_to = jnp.einsum(einsum_to, prob_state).reshape(
-                (to_dims, to_dims)
-            )
-
-            # Compute the outcome probability
-            prob_list.append(float(jnp.trace(prob_state_to).real))
-
-        # Normalize the probabilities
-        probabilities = jnp.array(prob_list)
-        probabilities /= jnp.sum(probabilities)
-
-        # Decide on the outcomes
-        C = Config()
-        key = C.random_key
-        outcome = int(
-            jax.random.choice(
-                key,
-                a=jnp.array(list(range(len(operators)))),
-                p=jnp.array(probabilities),
-            )
-        )
-
-        # Construct Post Measurement state
-        new_dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
-        ps = jnp.einsum(
-            einsum, operators[outcome], ps, jnp.conj(operators[outcome])
-        ).reshape((new_dims, new_dims))
-        self.state = ps / jnp.trace(ps)
         other_outcomes = {}
         if destructive:
-            # Get correct Composite Envelope
+            # Custom State cannot be destroyed
+            for s in states:
+                if isinstance(s, CustomState):
+                    s.state = trace_out_matrix(
+                        self.state_objs,
+                        [s],
+                        self.state
+                        )
+                    s.expansion_level = ExpansionLevel.Matrix
+                    s.index = None
+                    
+            remaining_states = [
+                s for s in self.state_objs if s not in states
+                ]
             if isinstance(
                 CompositeEnvelope._instances[self.container.composite_uid], list
             ):
@@ -297,7 +266,10 @@ class ProductState:
                 ][0].measure(*states)
                 for s in states:
                     del other_outcomes[s]
-        if C.contractions:
+            self.state_objs = remaining_states
+
+        C = Config()
+        if C.contractions and len(self.state_objs)>0:
             self.contract()
         return (outcome, other_outcomes)
 

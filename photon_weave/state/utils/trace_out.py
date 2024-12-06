@@ -100,6 +100,6 @@ def trace_out_matrix(state_objs: List[BaseState], target_states: List[BaseState]
 
     einsum = ESC.trace_out_matrix(state_objs, target_states)
 
-    trace_out_state = jnp.einsum(einsum, product_state)
+    traced_out_state = jnp.einsum(einsum, product_state)
 
-    return trace_out_state.reshape(new_dimensions)
+    return traced_out_state.reshape(new_dimensions)
