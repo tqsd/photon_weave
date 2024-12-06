@@ -323,8 +323,6 @@ class CompositeOperationType(Enum):
                 dims = []
                 for i,s in enumerate(self.expected_base_state_types):
                     if s is Fock:
-                        print(f"Fock state, {num_quanta[i]}")
-                        print(states[i])
                         dims.append(num_quanta[i]+2)
                     else:
                         dims.append(num_quanta[i])

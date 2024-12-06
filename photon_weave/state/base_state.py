@@ -145,8 +145,6 @@ class BaseState(ABC):
 
         assert isinstance(self.expansion_level, ExpansionLevel)
 
-        print("KRAUS")
-
         if identity_check:
             if not kraus_identity_check(operators):
                 raise ValueError(
@@ -157,7 +155,6 @@ class BaseState(ABC):
 
         match self.expansion_level:
             case ExpansionLevel.Vector:
-                print("VECTOR")
                 self.state = apply_kraus_vector(
                     [self],
                     [self],
@@ -165,7 +162,6 @@ class BaseState(ABC):
                     operators
                     )
             case ExpansionLevel.Matrix:
-                print("MATRIX")
                 self.state = apply_kraus_matrix(
                     [self],
                     [self],

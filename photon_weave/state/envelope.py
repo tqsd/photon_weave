@@ -228,7 +228,7 @@ class Envelope:
     def set_composite_envelope_id(self, uid: uuid.UUID) -> None:
         self.composite_envelope_id = uid
 
-    def expand(self,*args,**kwargs) -> None:
+    def expand(self,*args:Any,**kwargs:Any) -> None:
         """
         Expands the state.
         If state is in the Fock and Polarization instances
@@ -246,13 +246,14 @@ class Envelope:
             self.fock.expand()
             self.polarization.expand()
         else:
+            assert isinstance(self.expansion_level, ExpansionLevel)
             self.state, self.expansion_level = state_expand(
                 self.state, self.expansion_level, self.dimensions
             )
 
     def measure(
         self,
-        *states: Optional["BaseState"],
+        *states: "BaseState",
         separate_measurement: bool = False,
         destructive: bool = True,
     ) -> Dict["BaseState", int]:
@@ -296,7 +297,7 @@ class Envelope:
         else:
             self.reorder(self.fock, self.polarization)
             if not separate_measurement and len(states) == 1:
-                states = [self.fock, self.polarization]
+                states = (self.fock, self.polarization)
             if len(states) == 2:
                 separate_measurement = True
 
@@ -306,12 +307,12 @@ class Envelope:
                 case ExpansionLevel.Vector:
                     outcomes, self.state = measure_vector(
                         [self.fock, self.polarization],
-                        states,
+                        list(states),
                         self.state)
                 case ExpansionLevel.Matrix:
                     outcomes, self.state = measure_matrix(
                         [self.fock, self.polarization],
-                        states,
+                        list(states),
                         self.state)
 
             # Post Measurement process
@@ -422,7 +423,7 @@ class Envelope:
         self.reorder(self.fock, self.polarization)
         outcome, self.state = measure_POVM_matrix(
             [self.fock, self.polarization],
-            states,
+            list(states),
             operators,
             self.state
         )
@@ -447,10 +448,11 @@ class Envelope:
                 other_state.contract()
                 states[0]._set_measured()
                 self._set_measured()
-                return (outcome, {})
+        return (outcome, {})
 
     def apply_kraus(
-        self, operators: List[Union[np.ndarray, jnp.ndarray]], *states: "BaseState"
+        self, operators: List[jnp.ndarray], *states: BaseState,
+        validity_check: bool = True
     ) -> None:
         """
         Apply Kraus operator to the envelope.
@@ -461,9 +463,16 @@ class Envelope:
             List of Kraus operators
         states:
             List of states in the same order as the tensoring of operators
+        validity_check: bool
+            Checks if given channel is valid, True by default
         """
         from photon_weave.state.fock import Fock
         from photon_weave.state.polarization import Polarization
+
+        if len(states) == 0:
+            raise ValueError(
+                "At least one state must be defined"
+                )
 
         s_uids = [s.uid for s in states]
         if ((len(states) == 2) and
@@ -493,8 +502,9 @@ class Envelope:
         # Combine the states if Kraus operators are applied to both states
         if self.state is None:
             self.combine()
+        assert isinstance(self.state, jnp.ndarray)
 
-        if kraus_identity_check:
+        if validity_check:
             if not kraus_identity_check(operators):
                 raise ValueError(
                     "Kraus operators do not sum to the identity sum K^dagg K != I"
@@ -503,21 +513,21 @@ class Envelope:
         # Reorder
         self.reorder(*states)
 
-        state_objs = [None, None]
-        state_objs[self.fock.index] = self.fock
-        state_objs[self.polarization.index] = self.polarization
+        state_objs: List[Optional[BaseState]] = [None, None] 
+        state_objs[self.fock.index] = self.fock # type: ignore
+        state_objs[self.polarization.index] = self.polarization # type: ignore
 
         # Kraus operators are only applied to the density matrices
         match self.expansion_level:
             case ExpansionLevel.Vector:
                 self.state = apply_kraus_vector(
-                    state_objs,
+                    state_objs, # type: ignore
                     states,
                     self.state,
                     operators)
             case ExpansionLevel.Matrix:
                 self.state = apply_kraus_matrix(
-                    state_objs,
+                    state_objs, # type: ignore
                     states,
                     self.state,
                     operators)
@@ -623,7 +633,7 @@ class Envelope:
             return
         assert self.state.shape == (self.dimensions, self.dimensions)
         if self.expansion_level == ExpansionLevel.Matrix:
-            self.state, self.expansion_level, success = state_contract(
+            self.state, self.expansion_level, success = state_contract( # type: ignore
                 self.state, self.expansion_level)
 
     def _set_measured(self, remove_composite: bool = True) -> None:
@@ -634,7 +644,7 @@ class Envelope:
         self.state = None
 
     def trace_out(
-        self, *states: "BaseState"
+        self, *states: BaseState
     ) -> Union[jnp.ndarray, int, "PolarizationLabel"]:
         """
         Traces out the system, returning only the given states,
@@ -668,6 +678,7 @@ class Envelope:
 
         assert isinstance(self.fock.index, int)
         assert isinstance(self.polarization.index, int)
+        assert self.state is not None
 
         match self.expansion_level:
             case ExpansionLevel.Vector:
@@ -856,21 +867,25 @@ class Envelope:
         assert isinstance(self.fock.dimensions, int)
         assert isinstance(self.polarization.index, int)
         assert isinstance(self.polarization.dimensions, int)
-        current_order: List[Optional[Any]] = [None, None]
-        current_order[self.fock.index] = self.fock
-        current_order[self.polarization.index] = self.polarization
+        current_order_dict:Dict[int,BaseState] = {}
+        current_order_dict[self.fock.index] = self.fock
+        current_order_dict[self.polarization.index] = self.polarization
+        current_order = [current_order_dict[i] for i in sorted(current_order_dict)]
+        #current_order: List[Optional[BaseState]] = [None, None]
+        #current_order[self.fock.index] = self.fock
+        #current_order[self.polarization.index] = self.polarization
         match self.expansion_level:
             case ExpansionLevel.Vector:
                 self.state = apply_operation_vector(
                     current_order,
-                    states,
+                    list(states),
                     self.state,
                     operation.operator
                 )
             case ExpansionLevel.Matrix:
                 self.state = apply_operation_matrix(
                     current_order,
-                    states,
+                    list(states),
                     self.state,
                     operation.operator
                 )

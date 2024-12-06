@@ -1,7 +1,7 @@
 from __future__ import annotations
 import jax
 import jax.numpy as jnp
-from typing import TYPE_CHECKING, List, Dict
+from typing import TYPE_CHECKING, List, Dict, Union, Tuple
 
 import photon_weave.extra.einsum_constructor as ESC
 from photon_weave.photon_weave import Config
@@ -9,17 +9,19 @@ from photon_weave.photon_weave import Config
 if TYPE_CHECKING:
     from photon_weave.state.base_state import BaseState
 
-def measure_vector(state_objs: List[BaseState], target_states: List[BaseState],
-                   product_state: jnp.ndarray) -> Tuple[Dict[BaseState,int], jnp.ndarray]:
+def measure_vector(
+    state_objs: Union[List[BaseState],Tuple[BaseState, ...]],
+    target_states: Union[List[BaseState],Tuple[BaseState, ...]],
+    product_state: jnp.ndarray) -> Tuple[Dict[BaseState,int], jnp.ndarray]:
     """
     Measures state vector and returns the outcome with the
     post measurement state.
 
     Parameters
     ----------
-    state_objs: List[BaseState]
+    state_objs:Union[List[BaseState],Tuple[BaseState, ...]]
         List of all state objects which are in the probuct state
-    states: List[BaseState]
+    states: Union[List[BaseState],Tuple[BaseState, ...]]
         List of the states, which should be measured
 
     Returns
@@ -30,6 +32,7 @@ def measure_vector(state_objs: List[BaseState], target_states: List[BaseState],
         - A jax array representing the post measuremen state of the rest of the
           product state
     """
+    state_objs = list(state_objs)
     assert isinstance(product_state, jnp.ndarray)
     expected_dims = jnp.prod(jnp.array([s.dimensions for s in state_objs]))
     assert product_state.shape == (expected_dims,1)
@@ -43,7 +46,7 @@ def measure_vector(state_objs: List[BaseState], target_states: List[BaseState],
     outcomes = {}
     for idx, state in enumerate(target_states):
         # Using einsum string we compute the outcome probabilities
-        einsum_m = ESC.measure_vector(state_objs, [state])
+        einsum_m = ESC.measure_vector(list(state_objs), [state])
         projected_state = jnp.einsum(einsum_m, product_state)
         probabilities = jnp.abs(projected_state.flatten())**2
         probabilities /= jnp.sum(probabilities)
@@ -70,8 +73,10 @@ def measure_vector(state_objs: List[BaseState], target_states: List[BaseState],
     return outcomes, product_state
         
     
-def measure_matrix(state_objs: List[BaseState], target_states: List[BaseState],
-                   product_state: jnp.ndarray) -> Tuple[Dict[BaseState,int], jnp.ndarray]:
+def measure_matrix(
+    state_objs: Union[List[BaseState],Tuple[BaseState, ...]],
+    target_states: Union[List[BaseState],Tuple[BaseState, ...]],
+    product_state: jnp.ndarray) -> Tuple[Dict[BaseState,int], jnp.ndarray]:
     """
     Measures Density Matrix and returns the outcome with the
     post measurement state of the product states, which were not measured.
@@ -93,6 +98,7 @@ def measure_matrix(state_objs: List[BaseState], target_states: List[BaseState],
           product state
     """
     assert isinstance(product_state, jnp.ndarray)
+    state_objs = list(state_objs)
     expected_dims = jnp.prod(jnp.array([s.dimensions for s in state_objs]))
     assert product_state.shape == (expected_dims, expected_dims)
 
@@ -126,8 +132,8 @@ def measure_matrix(state_objs: List[BaseState], target_states: List[BaseState],
         row_idx = state_index
         col_idx = state_index + len(state_objs)
         indices = [slice(None)] * len(product_state.shape)
-        indices[row_idx] = outcomes[state]
-        indices[col_idx] = outcomes[state]
+        indices[row_idx] = outcomes[state] # type: ignore
+        indices[col_idx] = outcomes[state] # type: ignore
         product_state = product_state[tuple(indices)]
 
         state_objs.remove(state)
@@ -139,9 +145,9 @@ def measure_matrix(state_objs: List[BaseState], target_states: List[BaseState],
     return outcomes, product_state
 
 def measure_POVM_matrix(
-    state_objs: List[BaseState],
-    target_states: List[BaseState],
-    operators: List[jnp.ndarray],
+    state_objs: Union[List[BaseState],Tuple[BaseState, ...]],
+    target_states: Union[List[BaseState],Tuple[BaseState, ...]],
+    operators: Union[List[jnp.ndarray],Tuple[jnp.ndarray]],
     product_state: jnp.ndarray
     ) -> Tuple[int, jnp.ndarray]:
     """
@@ -174,11 +180,11 @@ def measure_POVM_matrix(
     specifically, make sure to have the states correctly ordered.
     """
 
+    state_objs = list(state_objs)
+    target_states = list(target_states)
     # Pransform the operators to tensors
     op_shape = [s.dimensions for s in target_states]*2
-    print(operators[0].shape)
     operators = [op.reshape(op_shape) for op in operators]
-    print(operators[0].shape)
     product_state = product_state.reshape(
         [s.dimensions for s in state_objs]*2
         )
@@ -194,9 +200,6 @@ def measure_POVM_matrix(
 
     # Get the dimensions
     for operator in operators:
-        print(operator.shape)
-        print(product_state.shape)
-        print(einsum_op)
         projected_state = jnp.einsum(
             einsum_op,
             operator,

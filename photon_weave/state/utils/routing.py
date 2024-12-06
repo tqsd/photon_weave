@@ -1,21 +1,23 @@
-def route_operation():
+from __future__ import annotations
+from typing import Callable, Any, TYPE_CHECKING
+if TYPE_CHECKING:
+    from photon_weave.stats.base_state import BaseState
+
+def route_operation() -> Callable:
     """
     A decorator, which dynamically calls the
     method of the same name of the object, in
     which the state of the caller resides
     """
-    def decorator(method):
-        def wrapper(self, *args, **kwargs):
+    def decorator(method: Callable) -> Callable:
+        def wrapper(self: BaseState, *args: Any, **kwargs: Any) -> Callable:
             mn = method.__name__
 
             # Special cases
             if mn == "resize":
                 mn = "resize_fock"
-            if self.index is None:
-                # State is in the object
-                return method(self, *args, **kwargs)
 
-            elif isinstance(self.index, int):
+            if isinstance(self.index, int):
                 if not hasattr(self.envelope, mn):
                     raise AttributeError(
                         f"Envelope has no method {mn}"
@@ -40,23 +42,8 @@ def route_operation():
                     return delegate_method(*args, self, **kwargs)
                 else:
                     return delegate_method(self, **kwargs)
-        return wrapper
-    return decorator
-
-def route_operation_envelope():
-    """
-    A decorator, which dynamically calls the method of the
-    same name of the object (state container), in which
-    she state of the caller resider
-    """
-
-    def decorator(method):
-        def wrapper(self, *args, **kwargs):
-            mn = method.__name__
 
             # State is in the object
-            if self.state is not None:
-                return method(self,*args,**kwargs)
-
+            return method(self, *args, **kwargs)
         return wrapper
     return decorator

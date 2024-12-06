@@ -1,23 +1,25 @@
 from __future__ import annotations
 import jax
 import jax.numpy as jnp
-from typing import TYPE_CHECKING, List, Dict
+from typing import TYPE_CHECKING, List, Dict, Union, Tuple
 
 import photon_weave.extra.einsum_constructor as ESC
 
 if TYPE_CHECKING:
     from photon_weave.state.base_state import BaseState
 
-def apply_operation_vector(state_objs: List[BaseState], target_states: List[BaseState],
-                    product_state: jnp.ndarray, operator: jnp.ndarray) -> jnp.ndarray:
+def apply_operation_vector(
+    state_objs: Union[List[BaseState],Tuple[BaseState,...]],
+    target_states: Union[List[BaseState],Tuple[BaseState,...]],
+    product_state: jnp.ndarray, operator: jnp.ndarray) -> jnp.ndarray:
     """
     Applies the operation to the state vector
 
     Parameters
     ----------
-    state_objs: List[BaseState]
+    state_objs: Union[List[BaseState],Tuple[BaseState,...]]
         List of all base state objects which are in the product state
-    states: List[BaseState]
+    states: Union[List[BaseState],Tuple[BaseState,...]]
         List of the base states on which we want to operate
     product_state: jnp.ndarray
         Product stats (state vector)
@@ -39,6 +41,8 @@ def apply_operation_vector(state_objs: List[BaseState], target_states: List[Base
     """
     assert isinstance(product_state, jnp.ndarray)
     assert isinstance(operator, jnp.ndarray)
+    state_objs = list(state_objs)
+    target_states = list(target_states)
 
     operator_shape = jnp.array(
         [s.dimensions for s in target_states]
@@ -63,21 +67,24 @@ def apply_operation_vector(state_objs: List[BaseState], target_states: List[Base
 
     product_state = product_state.reshape((-1,1))
     #operator = operator.reshape((dims, dims))
+
     operator = operator.reshape([jnp.prod(operator_shape)]*2)
 
     return product_state
 
     
-def apply_operation_matrix(state_objs: List[BaseState], target_states: List[BaseState],
-                    product_state: jnp.ndarray, operator: jnp.ndarray) -> jnp.ndarray:
+def apply_operation_matrix(
+    state_objs: Union[List[BaseState],Tuple[BaseState,...]],
+    target_states: Union[List[BaseState],Tuple[BaseState,...]],
+    product_state: jnp.ndarray, operator: jnp.ndarray) -> jnp.ndarray:
     """
     Applies the operation to the density matrix
 
     Parameters
     ----------
-    state_objs: List[BaseState]
+    state_objs: Union[List[BaseState],Tuple[BaseState,...]]
         List of all base state objects which are in the product state
-    states: List[BaseState]
+    states: Union[List[BaseState],Tuple[BaseState,...]]
         List of the base states on which we want to operate
     product_state: jnp.ndarray
         Product stats (state vector)
@@ -99,7 +106,11 @@ def apply_operation_matrix(state_objs: List[BaseState], target_states: List[Base
     """
     assert isinstance(product_state, jnp.ndarray)
     assert isinstance(operator, jnp.ndarray)
+    state_objs = list(state_objs)
+    target_states = list(target_states)
 
+    state_objs = list(state_objs)
+    target_states = list(target_states)
     operator_shape = jnp.array(
         [s.dimensions for s in target_states]
         )
@@ -134,16 +145,19 @@ def apply_operation_matrix(state_objs: List[BaseState], target_states: List[Base
     return product_state
 
 
-def apply_kraus_vector(state_objs: List[BaseState], target_states: List[BaseState],
-                    product_state: jnp.ndarray, operators: List[jnp.ndarray]) -> jnp.ndarray:
+def apply_kraus_vector(
+    state_objs: Union[List[BaseState],Tuple[BaseState,...]],
+    target_states: Union[List[BaseState],Tuple[BaseState,...]],
+    product_state: jnp.ndarray,
+    operators: Union[List[jnp.ndarray],Tuple[jnp.ndarray,...]]) -> jnp.ndarray:
     """
     Applies the channel described with Kraus operators to the state vector
 
     Parameters
     ----------
-    state_objs: List[BaseState]
+    state_objs: Union[List[BaseState],Tuple[BaseState,...]]
         List of all base state objects which are in the product state
-    states: List[BaseState]
+    states: Union[List[BaseState],Tuple[BaseState,...]]
         List of the base states on which we want to operate
     product_state: jnp.ndarray
         Product stats (state vector)
@@ -164,6 +178,8 @@ def apply_kraus_vector(state_objs: List[BaseState], target_states: List[BaseStat
     within the State Comtainer methods.
     """
     assert isinstance(product_state, jnp.ndarray)
+    state_objs = list(state_objs)
+    target_states = list(target_states)
 
     operator_shape = jnp.array(
         [s.dimensions for s in target_states]
@@ -189,8 +205,8 @@ def apply_kraus_vector(state_objs: List[BaseState], target_states: List[BaseStat
     resulting_state = jnp.zeros_like(product_state)
 
     # Create padding elements
-    pre_pad = 1
-    post_pad = 1
+    pre_pad = jnp.array([[1]])
+    post_pad = jnp.array([[1]])
     padding_condition = True
     for state in state_objs:
         if state not in target_states:
@@ -211,20 +227,23 @@ def apply_kraus_vector(state_objs: List[BaseState], target_states: List[BaseStat
     return resulting_state
 
 
-def apply_kraus_matrix(state_objs: List[BaseState], target_states: List[BaseState],
-                    product_state: jnp.ndarray, operators: List[jnp.ndarray]) -> jnp.ndarray:
+def apply_kraus_matrix(
+    state_objs: Union[List[BaseState],Tuple[BaseState,...]],
+    target_states: Union[List[BaseState],Tuple[BaseState,...]],
+    product_state: jnp.ndarray,
+    operators: Union[List[jnp.ndarray],Tuple[jnp.ndarray,...]]) -> jnp.ndarray:
     """
     Applies the channel described with Kraus operators to the density matrix
 
     Parameters
     ----------
-    state_objs: List[BaseState]
+    state_objs: Union[List[BaseState],Tuple[BaseState,...]]
         List of all base state objects which are in the product state
-    states: List[BaseState]
+    states: Union[List[BaseState],Tuple[BaseState,...]]
         List of the base states on which we want to operate
     product_state: jnp.ndarray
         Product stats (state vector)
-    operators: jnp.ndarray
+    operators: Union[List[jnp.ndarray],Tuple[jnp.ndarray,...]]
         List of Operator matrix
 
     Returns
@@ -241,6 +260,8 @@ def apply_kraus_matrix(state_objs: List[BaseState], target_states: List[BaseStat
     within the State Comtainer methods.
     """
     assert isinstance(product_state, jnp.ndarray)
+    state_objs = list(state_objs)
+    target_states = list(target_states)
 
     operator_shape = jnp.array(
         [s.dimensions for s in target_states]
@@ -264,8 +285,8 @@ def apply_kraus_matrix(state_objs: List[BaseState], target_states: List[BaseStat
     resulting_state = jnp.zeros_like(product_state)
 
     # Create padding elements
-    pre_pad = 1
-    post_pad = 1
+    pre_pad = jnp.array([[1]])
+    post_pad = jnp.array([[1]])
     padding_condition = True
     for state in state_objs:
         if state not in target_states:

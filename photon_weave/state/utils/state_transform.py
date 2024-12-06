@@ -38,6 +38,7 @@ def state_expand(state: Union[jnp.ndarray, int],
         raise ValueError(
             "Dimensions must be larger than 0"
             )
+    new_state: Union[jnp.ndarray]
     match current_expansion_level:
         case ExpansionLevel.Label:
             if not isinstance(state, int):
@@ -60,6 +61,7 @@ def state_expand(state: Union[jnp.ndarray, int],
                 )
             new_expansion_level = ExpansionLevel.Matrix
         case ExpansionLevel.Matrix:
+            assert isinstance(state,jnp.ndarray)
             new_state = state
             new_expansion_level = current_expansion_level
         case _:
@@ -71,7 +73,7 @@ def state_expand(state: Union[jnp.ndarray, int],
 def state_contract(state:Union[int, jnp.ndarray],
                    current_expansion_level: ExpansionLevel,
                    tol: float = 1e-6
-                   ) -> Tuple[jnp.ndarray, ExpansionLevel, bool]:
+                   ) -> Tuple[Union[int, jnp.ndarray], ExpansionLevel, bool]:
     """
     Returns contracted state representation if possible
 
@@ -86,7 +88,7 @@ def state_contract(state:Union[int, jnp.ndarray],
 
     Returns
     -------
-    Tuple[jnp.ndarray, ExpansionLevel, bool]
+    Tuple[Union[jnp.ndarray,int], ExpansionLevel, bool]
         Returns a tuple of the new state, new representation expantion level
         and success flag. Is process was succesfull, then the success is True
         
@@ -113,6 +115,7 @@ def state_contract(state:Union[int, jnp.ndarray],
                 pure_state_index = jnp.argmax(eigenvalues)
                 new_state = eigenvectors[:, pure_state_index].reshape(-1,1)
                 # Removing the global phase
+                assert isinstance(new_state, jnp.ndarray)
                 phase = jnp.exp(-1j * jnp.angle(new_state[0]))
                 new_state = new_state * phase
                 new_expansion_level = ExpansionLevel.Vector

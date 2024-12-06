@@ -1,23 +1,25 @@
 from __future__ import annotations
 import jax
 import jax.numpy as jnp
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Tuple, Union
 
 import photon_weave.extra.einsum_constructor as ESC
 
 if TYPE_CHECKING:
     from photon_weave.state.base_state import BaseState
 
-def trace_out_vector(state_objs: List[BaseState], target_states: List[BaseState],
-              product_state: jnp.ndarray) -> jnp.ndarray:
+def trace_out_vector(
+    state_objs: Union[List[BaseState],Tuple[BaseState, ...]],
+    target_states: Union[List[BaseState],Tuple[BaseState, ...]],
+    product_state: jnp.ndarray) -> jnp.ndarray:
     """
     Traces out the system, returning only the space of given target states
 
     Parameters
     ----------
-    state_objs: List[BaseState]
+    state_objs: Union[List[BaseState],Tuple[BaseState, ...]]
         List of the state objects in the product space
-    target_states: List[BaseState]
+    target_states: Union[List[BaseState],Tuple[BaseState, ...]]
         List of the target states, which should be included
         in the resulting subspace
     product_state: jnp.ndarray
@@ -36,6 +38,8 @@ def trace_out_vector(state_objs: List[BaseState], target_states: List[BaseState]
         Tensoring order in the product space must reflect the order
         of the states given in the state_objs argument.
     """
+    state_objs = list(state_objs)
+    target_states = list(target_states)
 
     total_dimensions = jnp.prod(
         jnp.array(
@@ -55,16 +59,18 @@ def trace_out_vector(state_objs: List[BaseState], target_states: List[BaseState]
     return trace_out_state.reshape((-1,1))
 
 
-def trace_out_matrix(state_objs: List[BaseState], target_states: List[BaseState],
-              product_state: jnp.ndarray) -> jnp.ndarray:
+def trace_out_matrix(
+    state_objs: Union[List[BaseState],Tuple[BaseState, ...]],
+    target_states: Union[List[BaseState],Tuple[BaseState, ...]],
+    product_state: jnp.ndarray) -> jnp.ndarray:
     """
     Traces out the system, returning only the space of given target states
 
     Parameters
     ----------
-    state_objs: List[BaseState]
+    state_objs: Union[List[BaseState],Tuple[BaseState, ...]]
         List of the state objects in the product space
-    target_states: List[BaseState]
+    target_states: Union[List[BaseState],Tuple[BaseState, ...]]
         List of the target states, which should be included
         in the resulting subspace
     product_state: jnp.ndarray
@@ -83,6 +89,9 @@ def trace_out_matrix(state_objs: List[BaseState], target_states: List[BaseState]
         Tensoring order in the product space must reflect the order
         of the states given in the state_objs argument.
     """
+
+    state_objs = list(state_objs)
+    target_states = list(target_states)
 
     total_dimensions = jnp.prod(
         jnp.array(

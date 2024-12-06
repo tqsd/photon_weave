@@ -369,7 +369,7 @@ def apply_kraus(
 
 
 def kraus_identity_check(
-    operators: List[Union[np.ndarray, jnp.ndarray]], tol: float = 1e-6
+    operators: List[jnp.ndarray], tol: float = 1e-6
 ) -> bool:
     """
     Check if Kraus operator sum is less or equal to identity,
@@ -390,10 +390,9 @@ def kraus_identity_check(
     dim = operators[0].shape[0]
     identity_matrix = jnp.eye(dim)
     kraus_sum = sum(jnp.matmul(jnp.conjugate(K.T), K) for K in operators)
-    identity = jnp.eye(kraus_sum.shape[0])
+    identity = jnp.eye(kraus_sum.shape[0]) # type: ignore
     is_valid = jnp.all(jnp.real(jnp.linalg.eigvals(identity-kraus_sum)) >= 0)
-    #return jnp.allclose(sum_kraus, identity_matrix, atol=tol).item()
-    return is_valid
+    return bool(is_valid)
 
 
 @jit
