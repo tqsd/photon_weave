@@ -26,6 +26,9 @@ from photon_weave.state.expansion_levels import ExpansionLevel
 from .utils.state_transform import state_contract, state_expand
 from .utils.measurements import measure_vector, measure_matrix, measure_POVM_matrix
 from .utils.trace_out import trace_out_vector, trace_out_matrix
+from .utils.operations import (
+    apply_kraus_matrix, apply_kraus_vector,
+    apply_operation_matrix, apply_operation_vector)
                 
 # For static type checks
 if TYPE_CHECKING:
@@ -288,54 +291,25 @@ class ProductState:
             List of states to apply the operators to, the tensoring order in operators
             must follow the order of the states in this list
         """
-        if self.expansion_level == ExpansionLevel.Vector:
-            # Get the state and reshape it
-            shape = [s.dimensions for s in self.state_objs]
-            shape.append(1)
-            ps = self.state.reshape(shape)
-
-            # Reshape the operators
-            op_shape = [s.dimensions for s in states] * 2
-            operators = [op.reshape(op_shape) for op in operators]
-
-            # Generate einsum
-            einsum = ESC.apply_operator_vector(self.state_objs, list(states))
-
-            # Apply all operators
-            resulting_state = jnp.zeros_like(ps)
-
-            for op in operators:
-                resulting_state += jnp.einsum(einsum, op, ps)
-
-            # Reshape the resulting state back into vector and store it
-            self.state = resulting_state.reshape(-1, 1)
-
-        elif self.expansion_level == ExpansionLevel.Matrix:
-            # Get the state and reshape it
-            ps = self.state.reshape([s.dimensions for s in self.state_objs] * 2)
-
-            # Reshape the operators
-            op_shape = [s.dimensions for s in states] * 2
-            operators = [op.reshape(op_shape) for op in operators]
-
-            # Genetate einsum
-            einsum = ESC.apply_operator_matrix(self.state_objs, list(states))
-
-            # Generate a new state to sum into
-            resulting_state = jnp.zeros_like(ps)
-
-            # Apply all operators
-            for op in operators:
-                resulting_state += jnp.einsum(einsum, op, ps, jnp.conj(op))
-
-            # Compute matrix dimensions
-            dims = jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
-
-            # Change the state back to the matrix form
-            self.state = resulting_state.reshape(dims, dims)
-            C = Config()
-            if C.contractions:
-                self.contract()
+        match self.expansion_level:
+            case ExpansionLevel.Vector:
+                self.state = apply_kraus_vector(
+                    self.state_objs,
+                    states,
+                    self.state,
+                    operators
+                    )
+            case ExpansionLevel.Matrix:
+                self.state = apply_kraus_matrix(
+                    self.state_objs,
+                    states,
+                    self.state,
+                    operators
+                    )
+                C = Config()
+                if C.contractions:
+                    self.contract()
+        return
 
     def trace_out(self, *states: "BaseState") -> jnp.ndarray:
         """

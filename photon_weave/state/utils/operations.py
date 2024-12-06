@@ -249,16 +249,15 @@ def apply_kraus_matrix(state_objs: List[BaseState], target_states: List[BaseStat
         ))
 
     shape = [s.dimensions for s in state_objs]
-    shape.append(1)
     
     assert product_state.shape == (dims,dims)
     expected_operator_dims = int(jnp.prod(operator_shape))
     assert all(operator.shape == (expected_operator_dims, expected_operator_dims) for
                operator in operators)
 
-    product_state = product_state.reshape(shape)
+    product_state = product_state.reshape((*shape, *shape))
 
-    einsum_o = ESC.apply_operator_matrix(state_objs, target_states)
+    einsum_o = ESC.apply_operator_matrix(state_objs, state_objs)
 
     resulting_state = jnp.zeros_like(product_state)
 
@@ -273,11 +272,10 @@ def apply_kraus_matrix(state_objs: List[BaseState], target_states: List[BaseStat
             elif state_objs.index(state) > state_objs.index(target_states[-1]):
                 post_pad = jnp.kron(post_pad, jnp.eye(state.dimensions))
             
-    
     for operator in operators:
         operator = jnp.kron(pre_pad, jnp.kron(operator, post_pad))
         # We need to expand the operator to affect the whole space
-        operator = operator.reshape((*operator_shape, *operator_shape))
+        operator = operator.reshape((*shape, *shape))
         resulting_state += jnp.einsum(einsum_o, operator, product_state, jnp.conj(operator))
 
     resulting_state = resulting_state.reshape((dims, dims))
