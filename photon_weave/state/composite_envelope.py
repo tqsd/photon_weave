@@ -309,7 +309,6 @@ class ProductState:
                 C = Config()
                 if C.contractions:
                     self.contract()
-        return
 
     def trace_out(self, *states: "BaseState") -> jnp.ndarray:
         """
@@ -458,6 +457,12 @@ class ProductState:
         from photon_weave.state.fock import Fock
         from photon_weave.state.polarization import Polarization
 
+        if not jnp.any(jnp.abs(self.state) > 0):
+            raise ValueError(
+                "The state is invalid"
+                "State 0"
+            )
+
         if isinstance(operation._operation_type, FockOperationType):
             assert isinstance(states[0], Fock)
             assert len(states) == 1
@@ -493,64 +498,31 @@ class ProductState:
                 if isinstance(s, Fock):
                     s.resize(operation._dimensions[i])
 
-        shape = [so.dimensions for so in self.state_objs]
-        if self.expansion_level == ExpansionLevel.Vector:
-            assert isinstance(self.state, jnp.ndarray)
-            dims = jnp.prod(jnp.array([so.dimensions for so in self.state_objs]))
-            assert self.state.shape == (dims, 1)
-
-            # Get the Reshaped state
-            shape.append(1)
-            ps = self.state.reshape(shape)
-
-            # Get the operator and Reshape it
-            operator = operation.operator.reshape([s.dimensions for s in states] * 2)
-
-            # Generate the Einstein sum string
-            einsum = ESC.apply_operator_vector(self.state_objs, list(states))
-
-            # Constructing einsum string
-            ps = jnp.einsum(einsum, operator, ps)
-
-            if not jnp.any(jnp.abs(ps) > 0):
-                raise ValueError(
-                    "The state is entirely composed of zeros, "
-                    "is |0⟩ attempted to be annihilated?"
-                )
-            if operation.renormalize:
-                ps = ps / jnp.linalg.norm(ps)
-            self.state = ps.reshape((-1, 1))
-        elif self.expansion_level == ExpansionLevel.Matrix:
-            assert isinstance(self.state, jnp.ndarray)
-            dims = jnp.prod(jnp.array([so.dimensions for so in self.state_objs]))
-            assert self.state.shape == (dims, dims)
-
-            # Get the State and Reshape it
-            ps = self.state.reshape([*shape, *shape])
-
-            # Get the operator and Reshape it
-            operator = operation.operator.reshape([s.dimensions for s in states] * 2)
-
-            # Generate Einstein sum string
-            einsum = ESC.apply_operator_matrix(self.state_objs, list(states))
-
-            # Apply the Einstein Summation
-            ps = jnp.einsum(einsum, operator, ps, jnp.conj(operator))
-
-            if not jnp.any(jnp.abs(ps) > 0):
-                raise ValueError(
-                    "The state is entirely composed of zeros,"
-                    "is |0⟩ attempted to be annihilated?"
-                )
-            if operation.renormalize:
-                ps = ps / jnp.linalg.norm(ps)
-
-            # Reshape back into 2d Matrix
-            dims = jnp.prod(jnp.array([so.dimensions for so in self.state_objs]))
-            self.state = ps.reshape((dims, dims))
-            C = Config()
-            if C.contractions:
-                self.contract()
+        match self.expansion_level:
+            case ExpansionLevel.Vector:
+                self.state = apply_operation_vector(
+                    self.state_objs,
+                    states,
+                    self.state,
+                    operation.operator
+                    )
+            case ExpansionLevel.Matrix:
+                self.state = apply_operation_matrix(
+                    self.state_objs,
+                    states,
+                    self.state,
+                    operation.operator
+                    )
+        if not jnp.any(jnp.abs(self.state) > 0):
+            raise ValueError(
+                "The state is entirely composed of zeros, "
+                "is |0⟩ attempted to be annihilated?"
+            )
+        if operation.renormalize:
+            self.state = self.state / jnp.linalg.norm(self.state)
+        C = Config()
+        if C.contractions:
+            self.contract()
 
 
 @dataclass(slots=True)

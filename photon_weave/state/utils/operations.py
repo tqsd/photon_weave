@@ -52,7 +52,7 @@ def apply_operation_vector(state_objs: List[BaseState], target_states: List[Base
     shape.append(1)
     
     assert product_state.shape == (dims,1)
-    assert operator.shape == (operator_shape, operator_shape)
+    assert operator.shape == (jnp.prod(operator_shape), jnp.prod(operator_shape))
 
     product_state = product_state.reshape(shape)
     operator = operator.reshape((*operator_shape, *operator_shape))
@@ -109,6 +109,8 @@ def apply_operation_matrix(state_objs: List[BaseState], target_states: List[Base
     shape = [s.dimensions for s in state_objs]*2
 
     assert product_state.shape == (dims,dims)
+
+    assert operator.shape == (jnp.prod(operator_shape), jnp.prod(operator_shape))
 
     product_state = product_state.reshape(shape)
     operator = operator.reshape((*operator_shape, *operator_shape))
