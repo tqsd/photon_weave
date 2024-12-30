@@ -112,4 +112,4 @@ def interpreter(
     else:
         # Grab literal value
         return expr
-    raise ValueError("Something went wrong in the expression interpreter!")
+    raise ValueError("Something went wrong in the expression interpreter!", expr)

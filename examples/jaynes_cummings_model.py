@@ -127,21 +127,23 @@ jc_interraction = Operation(
         Fock, CustomState
     ]
 )
-
+C = Config()
+C.set_contraction(False)
 qubit_excited_populations = []
 for i, step in enumerate(interractions):
     ce.apply_operation(jc_interraction, env.fock, qubit)
     combined_state = ce.states[0].state
     qubit_reduced = qubit.trace_out()
     qubit_reduced = qubit_reduced/jnp.linalg.norm(qubit_reduced)
+    print(qubit_reduced)
     qubit_excited_populations.append(jnp.abs(qubit_reduced[1][0])**2)
 
-plt.figure(figsize=(6, 3.375))
-plt.plot(interractions, qubit_excited_populations, label="Qubit Excited State Population")
-plt.xlabel("Time (s)")
-plt.ylabel("Population")
-plt.title("Rabi Oscillations")
-plt.legend()
-plt.grid()
-#plt.show()
-plt.savefig("plots/jc.png", dpi=1000, bbox_inches="tight")  # Save as a high-quality PNG
+# plt.figure(figsize=(6, 3.375))
+# plt.plot(interractions, qubit_excited_populations, label="Qubit Excited State Population")
+# plt.xlabel("Time (s)")
+# plt.ylabel("Population")
+# plt.title("Rabi Oscillations")
+# plt.legend()
+# plt.grid()
+# #plt.show()
+# plt.savefig("plots/jc.png", dpi=1000, bbox_inches="tight")  # Save as a high-quality PNG
