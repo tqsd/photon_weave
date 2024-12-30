@@ -30,7 +30,3 @@ pip install pytest
 # In Photon Weave root directory
 pytest
 ```
-
-### Contribution Guide
-
-We are gladly accepting contributions of any sort.

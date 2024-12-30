@@ -17,7 +17,7 @@ The **Photon Weave** framework is built around the representation and manipulati
 Fock Space
 -----------
 
-The **Fock space** :math:`\mathcal{F}` is a Hilbert space that describes quantum state with discrete photon numbers. Each state in the Fock space is represented by a photon number basis :math:`|n\rangle`, where :math:`n=0,1,2,\ldots` denotes the number of photons. The Fock states are orthonormal and satifsy the following relation ship:
+The **Fock space** :math:`\mathcal{F}` is a Hilbert space that describes quantum state with discrete photon numbers. Each state in the Fock space is represented by a photon number basis :math:`|n\rangle`, where :math:`n=0,1,2,\ldots` denotes the number of photons. The Fock states are orthonormal and satisfy the following relation ship:
 
 .. math::
    \langle n | m \rangle = \delta_{nm}
@@ -88,11 +88,17 @@ Applying Operations
 Defining and applying operators is as straight forward as defining an operator and applying it to a space:
 
 .. code:: python
-    
+
+    from photon_weave.state.fock import Fock
+    from photon_weave.state.polarization import Polarization
+    from photon_weave.state.envelope import Envelope
+    from photon_weave.state.composite_envelope import CompositeEnvelope
+    from photon_weave.state.custom_state import CustomState
+
     from photon_weave.operation import (
         Operation, FockOperationType,
         PolarizationOperationType,
-        CustomStateOperaitonType,
+        CustomStateOperationType,
         CompositeOperationType
     )
 
@@ -150,7 +156,7 @@ Defining and applying operators is as straight forward as defining an operator a
     # Additionally Composite operations can be applied only in
     # Composite envelope
     bs = Operation(
-        CompositeOperaiton.NonPolarizingBeamSplitter,
+        CompositeOperation.NonPolarizingBeamSplitter,
 	theta=jnp.pi/4
     )
 
@@ -294,15 +300,15 @@ Measuring with POVM Operators
 
 Mathematically, a POVM is a set of positive semi-definite operators :math:\{E_i\} that sum up to the identity operator, i.e.,
 
-.. math:: \sum_i E_i = \mathbb{1}.
+.. math:: \sum_i E_i^\dagger E_i = \mathbb{1}.
 
 When measuring a quantum state :math:\rho with a POVM :math:\{E_i\}, the probability of obtaining the outcome :math:i is given by:
 
-.. math:: p(i) = \mathrm{Tr}(E_i \rho).
+.. math:: p(i) = \mathrm{Tr}(E_i \rho E_i^\dagger).
 
 The state after measurement, conditioned on the outcome :math:i, becomes:
 
-.. math:: \rho_i = \frac{E_i \rho E_i^\dagger}{\mathrm{Tr}(E_i \rho)}.
+.. math:: \rho_i = \frac{E_i \rho E_i^\dagger}{\mathrm{Tr}(E_i \rho E_i^\dagger)}.
 
 The `measure_POVM()` method will return tuple with the outcome as the first value and outcomes dictionary as the second value. If for example you measure part of an envelope with POVM operators, you will receive measurement outcome for the other part in a dictionary. You can choose to measure non-destructively with `destructive=False` keyword argument, where all of the measurements will be performed non-destructively.
 
@@ -344,8 +350,8 @@ For Reproducability **Photon Weave** allows the user to set the seed that is use
 ..  LocalWords:  CompositeEnvelope CompostieEnvelope ce bs env2 py 1j
 ..  LocalWords:  FockOperationType PolarizationOperationType expr str
 ..  LocalWords:  CustomStateOperationType CompositeOperationType expm
-..  LocalWords:  CustomStateOperaitonType CustomStateOperation mult
-..  LocalWords:  CompositeOperaiton NonPolarizingBeamSplitter ndarray
+..  LocalWords:  CustomStateOperationType CustomStateOperation mult
+..  LocalWords:  CompositeOperation NonPolarizingBeamSplitter ndarray
 ..  LocalWords:  tensoring Expresion Kraus CPTP infty ast leq env1
 ..  LocalWords:  POVM mathrm Reproducability Config maxdepth faq
 
