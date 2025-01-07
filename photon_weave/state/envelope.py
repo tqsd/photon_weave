@@ -207,6 +207,9 @@ class Envelope:
         ):
             assert isinstance(self.fock.state, jnp.ndarray)
             assert isinstance(self.polarization.state, jnp.ndarray)
+            #fock_broadcast = self.fock.state[:,:,None,None]
+            #polarization_broadcast = self.polarization.state[None,None,:,:]
+            #self.state = fock_broadcast * polarization_broadcast
             self.state = jnp.kron(self.fock.state, self.polarization.state)
             self.fock.extract(0)
             self.polarization.extract(1)

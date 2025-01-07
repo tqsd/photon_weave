@@ -182,7 +182,7 @@ def measure_POVM_matrix(
 
     state_objs = list(state_objs)
     target_states = list(target_states)
-    # Pransform the operators to tensors
+    # Transform the operators to tensors
     op_shape = [s.dimensions for s in target_states]*2
     operators = [op.reshape(op_shape) for op in operators]
     product_state = product_state.reshape(

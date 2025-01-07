@@ -1,8 +1,11 @@
 from __future__ import annotations
 import uuid
+import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union, cast
+from functools import reduce
 
+import inspect
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -14,7 +17,7 @@ from photon_weave._math.ops import (
     num_quanta_matrix,
     num_quanta_vector,
 )
-from photon_weave.operation import (
+from photon_weave.operation import(
     CustomStateOperationType,
     FockOperationType,
     Operation,
@@ -37,6 +40,18 @@ if TYPE_CHECKING:
     from photon_weave.state.envelope import Envelope  # pragma: no cover
     from photon_weave.state.fock import Fock  # pragma: no cover
 
+@jax.jit
+def kron_reduce(arrays):
+    return reduce(lambda a, b: jnp.kron(a, b), arrays, jnp.array([[1]]))
+
+def timing_decorator(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.perf_counter()  # Start timer
+        result = func(*args, **kwargs)   # Execute the wrapped function
+        end_time = time.perf_counter()   # End timer
+        duration = end_time - start_time
+        return result
+    return wrapper
 
 @dataclass(slots=True)
 class ProductState:
@@ -83,6 +98,17 @@ class ProductState:
             if success:
                 for state in self.state_objs:
                     state.expansion_level = ExpansionLevel.Vector
+    @property
+    def size(self) -> int:
+        """
+        Returns the size of the product state
+
+        Returns
+        -------
+        int
+            The size of the product state in bytes
+        """
+        return self.state.nbytes
 
     def reorder(self, *ordered_states: "BaseState") -> None:
         """
@@ -519,6 +545,16 @@ class ProductState:
             )
         if operation.renormalize:
             self.state = self.state / jnp.linalg.norm(self.state)
+
+        # Reduce unneeded dimensionality of Fock spaces
+        for so in self.state_objs:
+            if isinstance(so, Fock):
+                match so.expansion_level:
+                    case ExpansionLevel.Vector:
+                        num_quanta = num_quanta_vector(so.trace_out())
+                    case ExpansionLevel.Vector:
+                        num_quanta = num_quanta_matrix(so.trace_out())
+                so.resize(num_quanta + 1)
         C = Config()
         if C.contractions:
             self.contract()
@@ -677,6 +713,7 @@ class CompositeEnvelope:
     def contract(self, *state_objs: "BaseState") -> None:
         pass
 
+    #@timing_decorator
     def combine(self, *state_objs: "BaseState") -> None:
         """
         Combines given states into a product state.
@@ -686,17 +723,19 @@ class CompositeEnvelope:
         state_objs: BaseState
            Accepts many state_objs
         """
-        from photon_weave.state.base_state import BaseState
         from photon_weave.state.envelope import Envelope
+        stack = inspect.stack()
+        caller_frame = stack[1]
+        caller_function = caller_frame.function
+        caller_filename = caller_frame.filename
+        caller_line_number = caller_frame.lineno
+        #print(f"Called by function: {caller_function}, in file: {caller_filename}, at line: {caller_line_number}")
 
-        # Check for the types
-        for so in state_objs:
-            assert isinstance(so, BaseState), f"got {type(so)}, expected BaseState"
 
-        # Check if the states are already in the same product space
+        state_objs_set = set(state_objs)
         for ps in self.states:
-            if all(s in ps.state_objs for s in state_objs):
-                return
+            if state_objs_set.issubset(ps.state_objs):
+                return  # Early exit on first match
 
         # Check if all states are included in composite envelope
         assert all(s in self.state_objs for s in state_objs)
@@ -743,57 +782,35 @@ class CompositeEnvelope:
         Assemble all of the density matrices,
         and compile the indices in order
         """
-        state_vector_or_matrix = jnp.array([[1]])
+
+        kron_arrays = []
         state_order = []
-        target_state_objs = [so for so in state_objs]
+
+        # Collect arrays from new existing_product_states
         for product_state in existing_product_states:
-            state_vector_or_matrix = jnp.kron(
-                state_vector_or_matrix, product_state.state
-            )
+            kron_arrays.append(product_state.state)
             state_order.extend(product_state.state_objs)
             product_state.state_objs = []
-        for so in target_state_objs:
-            if (
-                hasattr(so, "envelope")
+            product_state.state = None
+
+        # Collect arrays from new state objects
+        for so in state_objs:
+            if (hasattr(so, "envelope")
                 and so.envelope is not None
                 and so.index is not None
-                and not isinstance(so.index, tuple)
-            ):
-                assert isinstance(so.envelope.state, jnp.ndarray)
-                if minimum_expansion_level is ExpansionLevel.Vector:
-                    assert so.envelope.state.shape == (so.envelope.dimensions, 1)
-                    state_vector_or_matrix = jnp.kron(
-                        state_vector_or_matrix, so.envelope.state
-                    )
-                    so.envelope.state = None
-                else:
-                    assert so.envelope.state.shape == (
-                        so.envelope.dimensions,
-                        so.envelope.dimensions,
-                    )
-                    state_vector_or_matrix = jnp.kron(
-                        state_vector_or_matrix, so.envelope.state
-                    )
-                    so.envelope.state = None
-                indices: List[Optional[BaseState]] = [None, None]
-                assert isinstance(so.envelope.fock.index, int)
-                assert isinstance(so.envelope.polarization.index, int)
+                and not isinstance(so.index, tuple)):
+                kron_arrays.append(so.envelope.state)
+                indices: List[Optional["BaseState"]] = [None, None]
                 indices[so.envelope.fock.index] = so.envelope.fock
                 indices[so.envelope.polarization.index] = so.envelope.polarization
-                assert all(
-                    x is not None for x in indices
-                ), "Indices must not be None at this point"
-                state_order.extend(cast(List["BaseState"], indices))
-            if so.index is None:
-                assert isinstance(so.state, jnp.ndarray)
-                if minimum_expansion_level is ExpansionLevel.Vector:
-                    assert so.state.shape == (so.dimensions, 1)
-                    state_vector_or_matrix = jnp.kron(state_vector_or_matrix, so.state)
-                else:
-                    assert so.state.shape == (so.dimensions, so.dimensions)
-                    state_vector_or_matrix = jnp.kron(state_vector_or_matrix, so.state)
-                so.state = None
+                state_order.extend(indices)
+                so.envelope.state = None
+            elif so.index is None:
+                kron_arrays.append(so.state)
                 state_order.append(so)
+                so.state = None
+
+        state_vector_or_matrix = kron_reduce(kron_arrays)
         """
         Create a new product state object and append it to the states
         """
@@ -829,6 +846,13 @@ class CompositeEnvelope:
         for ps in self.states:
             if all(s in ps.state_objs for s in ordered_states):
                 states_are_combined
+
+        stack = inspect.stack()
+        caller_frame = stack[1]
+        caller_function = caller_frame.function
+        caller_filename = caller_frame.filename
+        caller_line_number = caller_frame.lineno
+        #print(f"REORDER Called by function: {caller_function}, in file: {caller_filename}, at line: {caller_line_number}")
         if not states_are_combined:
             self.combine(*ordered_states)
 
@@ -1124,7 +1148,8 @@ class CompositeEnvelope:
             ), "Only one product state should exist at this point"
         ps = product_states[0]
 
-        self.reorder(*states)
+        if len(states) > 1:
+            self.reorder(*states)
 
         return ps.trace_out(*states)
 
@@ -1186,7 +1211,6 @@ class CompositeEnvelope:
         states: BaseState
             States onto which the operator should be applied
         """
-
         if len(states) == 1:
             if not isinstance(states[0].index, tuple):
                 assert hasattr(states[0], "apply_operation")

@@ -122,6 +122,7 @@ class FockDimensions:
         amount: int
             Amount of increase of the dimensions
         """
+        print("INCREASING DIMENSIONS", amount)
         if self.state.shape == (self.dimensions, 1):
             pad = jnp.zeros((amount, 1), dtype=self.state.dtype)
             # Vertically stack the padding with the current state

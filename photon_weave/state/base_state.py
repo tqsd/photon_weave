@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 import jax
 import jax.numpy as jnp
 import numpy as np
+import sys
 
 from photon_weave._math.ops import apply_kraus, kraus_identity_check
 from photon_weave.photon_weave import Config
@@ -50,6 +51,23 @@ class BaseState(ABC):
     @property
     def envelope(self) -> Union[None, "Envelope"]:
         return self._envelope
+
+    @property
+    def size(self) -> int:
+        """
+        Returns the size of the state in bytes
+
+        Returns
+        -------
+        int
+            Size of the state in bytes
+        """
+        if self.state:
+            if isinstance(self.state, jnp.ndarray):
+                return self.state.nbytes
+            else:
+                return sys.getsizeof(self.state)
+            
 
     @envelope.setter
     def envelope(self, envelope: Union[None, "Envelope"]) -> None:

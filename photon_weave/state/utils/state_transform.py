@@ -1,8 +1,9 @@
 import jax.numpy as jnp
+from memory_profiler import profile
+import jax
 from typing import Union, Tuple
 
 from photon_weave.state.expansion_levels import ExpansionLevel
-
 def state_expand(state: Union[jnp.ndarray, int],
            current_expansion_level:ExpansionLevel,
            dimensions: int) -> Tuple[jnp.ndarray, ExpansionLevel]:
@@ -46,7 +47,7 @@ def state_expand(state: Union[jnp.ndarray, int],
                     "Could not expand state, where label is not int type"
                     )
             assert state >= 0
-            new_state = jnp.zeros(dimensions)
+            new_state = jnp.zeros(dimensions, dtype=jnp.complex128)
             new_state = new_state.at[state].set(1)
             new_state = new_state[:, jnp.newaxis]
             new_expansion_level = ExpansionLevel.Vector

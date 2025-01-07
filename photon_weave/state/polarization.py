@@ -145,7 +145,7 @@ class Polarization(BaseState):
                     vector = [1 / jnp.sqrt(2), -1 / jnp.sqrt(2)]
                 case PolarizationLabel.D:
                     vector = [1 / jnp.sqrt(2), 1 / jnp.sqrt(2)]
-            self.state = jnp.array(vector)[:, jnp.newaxis]
+            self.state = jnp.array(vector, dtype=jnp.complex128)[:, jnp.newaxis]
             self.expansion_level = ExpansionLevel.Vector
         else:
             self.state, self.expansion_level = state_expand(
