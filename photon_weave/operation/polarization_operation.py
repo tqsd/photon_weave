@@ -26,12 +26,12 @@ class PolarizationOperationType(Enum):
 
     Constructs an operator, which acts on a single Polarization Space
 
-    Identity (I)
+    Identity (Id)
     ------------
-    Constructs Identity (:math:`\hat{I}`) operator
+    Constructs Identity (:math:`\hat{Id}`) operator
     .. math::
 
-        \hat{I} = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}
+        \hat{Id} = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}
 
     Pauli X (X)
     -----------
@@ -48,8 +48,8 @@ class PolarizationOperationType(Enum):
     .. math::
 
         \hat{\sigma_y} = \begin{bmatrix}
-            0 & -i \\
-            i & 0
+            0 & -Id \\
+            Id & 0
             \end{bmatrix}
 
     Pauli Z (Z)
@@ -72,20 +72,20 @@ class PolarizationOperationType(Enum):
     Constructs Phase (:math:`\hat S`) operator
     .. math::
 
-        \hat{S} = \begin{bmatrix} 1 & 0 \\ 0 & i \end{bmatrix}
+        \hat{S} = \begin{bmatrix} 1 & 0 \\ 0 & Id \end{bmatrix}
 
     T Opeator (T)
     -------------
     Constructs T (:math:`\hat T`) operator
     .. math::
-        \hat{T} = \begin{bmatrix} 1 & 0 \\ 0 & e^{i \pi/4} \end{bmatrix}
+        \hat{T} = \begin{bmatrix} 1 & 0 \\ 0 & e^{Id \pi/4} \end{bmatrix}
 
     Sqrt(X) Operator (SX)
     ---------------------
     Constructs SX (:math:`\hat{SX}`) operator
     .. math::
 
-        \hat{SX} = \frac{1}{2} \begin{bmatrix} 1+i & 1-i \\ 1-i & 1+i \end{bmatrix}
+        \hat{SX} = \frac{1}{2} \begin{bmatrix} 1+Id & 1-Id \\ 1-Id & 1+Id \end{bmatrix}
 
     RX Operator (RX)
     ----------------
@@ -95,8 +95,8 @@ class PolarizationOperationType(Enum):
     .. math::
 
         \hat{RX} = \begin{bmatrix}
-        \cos\left(\frac{\theta}{2}\right) & -i\sin\left(\frac{\theta}{2}\right) \\
-        -i\sin\left(\frac{\theta}{2}\right) & \cos\left(\frac{\theta}{2}\right)
+        \cos\left(\frac{\theta}{2}\right) & -Id\sin\left(\frac{\theta}{2}\right) \\
+        -Id\sin\left(\frac{\theta}{2}\right) & \cos\left(\frac{\theta}{2}\right)
         \end{bmatrix}
 
     Usage Example
@@ -126,8 +126,8 @@ class PolarizationOperationType(Enum):
     .. math::
 
         \hat{RZ} = \begin{bmatrix}
-        e^{-i\frac{\theta}{2}} & 0 \\
-        0 & e^{i\frac{\theta}{2}}
+        e^{-Id\frac{\theta}{2}} & 0 \\
+        0 & e^{Id\frac{\theta}{2}}
         \end{bmatrix}
 
     Usage Example
@@ -150,7 +150,7 @@ class PolarizationOperationType(Enum):
     >>> op = Operation(PolarizationOperationType.Custom, operator=operator)
     """
 
-    I: Tuple[bool, List[str], ExpansionLevel, int] = (
+    Id: Tuple[bool, List[str], ExpansionLevel, int] = (
         True,
         [],
         ExpansionLevel.Vector,
@@ -263,7 +263,7 @@ class PolarizationOperationType(Enum):
             Returns operator matrix
         """
         match self:
-            case PolarizationOperationType.I:
+            case PolarizationOperationType.Id:
                 return identity_operator()
             case PolarizationOperationType.X:
                 return x_operator()

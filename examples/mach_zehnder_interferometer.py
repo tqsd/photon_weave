@@ -10,20 +10,33 @@ from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.envelope import Envelope
 
 
-def mach_zender_single_shot(phase_shift: float):
+# Generate beam splitter operators
+bs1 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
+ps = Operation(FockOperationType.PhaseShift, phi=0)
+bs2 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
+
+def mach_zender_single_shot(phase_shift: float) -> list[int]:
+    """Return photon count in each port of a Mach-Zehnder Interferometer.
+
+    Parameters
+    ----------
+    phase_shift : float
+        Phase shift between the two arms of the interferometer.
+
+    Returns
+    -------
+    list[int]
+        Photon count in each port of the interferometer.
+    """
     # Create one envelope
     env1 = Envelope()
     # Create one photon
     env1.fock.state = 1
-
     # Other port will consume vacuum
     env2 = Envelope()
-
-    # Generate operators
-    bs1 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
-    ps = Operation(FockOperationType.PhaseShift, phi=phase_shift)
-    bs2 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
-
+    # create phase shift operation
+    ps.kwargs["phi"] = phase_shift
+    # Apply operations
     ce = CompositeEnvelope(env1, env2)
     ce.apply_operation(bs1, env1.fock, env2.fock)
     env1.fock.apply_operation(ps)
@@ -35,21 +48,21 @@ def mach_zender_single_shot(phase_shift: float):
 
 
 if __name__ == "__main__":
-    num_shots = 1000
-    angles = jnp.linspace(0, 2 * jnp.pi, 25)
-    results = {float(angle): [] for angle in angles}
-    for angle in angles:
-        for _ in range(num_shots):
+    from tqdm import tqdm
+    import numpy as np
+    num_shots = 100
+    angles = jnp.linspace(0, 2 * jnp.pi, 10)
+    # (num_angles, num_shots , num_ports) Pre allocating this yields a x2 speedup for free
+    results = np.zeros((angles.shape[0], num_shots, 2))
+    pbar = tqdm(total=len(angles) * num_shots, desc="Simulating Mach-Zehnder Interferometer")
+    for i, angle in enumerate(angles):
+        for j in range(num_shots):
             shot_result = mach_zender_single_shot(angle)
-            results[float(angle)].append(shot_result)
-
-    measurements_1 = []
-    measurements_2 = []
-    for angle, shots in results.items():
-        counts_1 = sum(shot[0] for shot in shots) / num_shots
-        counts_2 = sum(shot[1] for shot in shots) / num_shots
-        measurements_1.append(counts_1)
-        measurements_2.append(counts_2)
+            results[i, j, :] = shot_result
+            pbar.update(1)
+    pbar.close()
+    measurements_1 = results.mean(axis=1)[:, 0]
+    measurements_2 = results.mean(axis=1)[:, 1]
 
     # Plot results
     plt.figure(figsize=(10, 6))

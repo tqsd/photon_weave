@@ -107,6 +107,7 @@ class ProductState:
 
             # Update the new order
             self.state_objs = list(ordered_states)
+
         elif self.expansion_level == ExpansionLevel.Matrix:
             # Get the state and reshape it
             shape = [os.dimensions for os in self.state_objs] * 2
@@ -129,8 +130,8 @@ class ProductState:
     def measure(
         self,
         *states: "BaseState",
-        separate_measurement: bool = False,
         destructive: bool = True,
+        separate_measurement: bool = False,
     ) -> Dict["BaseState", int]:
         """
         Measures this subspace. If the state is measured partially, then the state
@@ -163,13 +164,13 @@ class ProductState:
         C = Config()
 
         remaining_states = [s for s in self.state_objs]
-
+        # TODO: Replace this with a match statement to make it more readable
         if self.expansion_level == ExpansionLevel.Vector:
             # Get the state and reshape it into tensor
             shape = [so.dimensions for so in self.state_objs]
             shape.append(1)
             ps = self.state.reshape(shape)
-            for idx, state in enumerate(states):
+            for state in states:
                 # Constructing the einsum str
                 einsum = ESC.measure_vector(remaining_states, [state])
 
@@ -213,17 +214,20 @@ class ProductState:
                     state.index = None
                     state.expansion_level = ExpansionLevel.Label
                 self.state_objs.remove(state)
+
             if len(self.state_objs) > 0:
                 # Handle reshaping and storing the post measurement product state
                 self.state = ps.reshape(-1, 1)
                 self.state /= jnp.linalg.norm(self.state)
+
             else:
                 # Product state will be deleted
                 self.state = jnp.array([[1]])
+
         elif self.expansion_level == ExpansionLevel.Matrix:
             shape = [so.dimensions for so in self.state_objs] * 2
             ps = self.state.reshape(shape)
-            for idx, state in enumerate(states):
+            for state in states:
                 # Generate einsum string
                 einsum = ESC.measure_matrix(remaining_states, [state])
 
@@ -269,7 +273,7 @@ class ProductState:
                     state.index = None
                     state.expansion_level = ExpansionLevel.Label
 
-                # Remove the mesaured state from the product state
+                # Remove the measured state from the product state
                 self.state_objs.remove(state)
 
             # Reconstruct the post measurement product state
@@ -643,7 +647,8 @@ class ProductState:
             for i, s in enumerate(states):
                 op_type = operation._operation_type
                 assert isinstance(
-                    s, op_type.expected_base_state_types[i]  # type: ignore
+                    s,
+                    op_type.expected_base_state_types[i],  # type: ignore
                 )
             operation.compute_dimensions(
                 [s._num_quanta if isinstance(s, Fock) else 0 for s in states],
@@ -755,6 +760,7 @@ class CompositeEnvelopeContainer:
                     ][0]
 
 
+# FIXME: Inherit from Envelope to limit code duplication ?
 class CompositeEnvelope:
     """
     Composite Envelope is a pointer to a container, which includes the state
