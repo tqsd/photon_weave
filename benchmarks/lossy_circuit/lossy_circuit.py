@@ -95,10 +95,10 @@ def add_system_info(fig, system_info_text):
     )
 
 def create_plot(data, file_location):
-    print(data)
+    linestyles = ("solid", "solid", "dotted") 
+    linecolors = ("black", "red", "blue")
     steps = list(range(1, 7))  # x-axis (steps)
     labels = list(data.keys())  # Method names
-    print(labels)
     state_sizes = [data[label]['output']['state_sizes'] for label in labels]
     operator_sizes = [data[label]['output']['operator_sizes'] for label in labels]
     execution_times = [data[label]['time'] for label in labels]
@@ -107,7 +107,9 @@ def create_plot(data, file_location):
     # Top Plot: State Sizes (Logarithmic Scale)
     ax1 = fig.add_subplot(3, 1, 1)
     for i, label in enumerate(labels):
-        ax1.plot(steps, state_sizes[i], marker='o', label=f"{label} ({execution_times[i]:.2f}s)")
+        ax1.plot(steps, state_sizes[i], marker='o',
+                 label=f"{label} ({execution_times[i]:.2f}s)",
+                 linestyle=linestyles[i], color=linecolors[i])
     ax1.set_title('State Sizes Over Steps (Log Scale)', fontsize=14)
     ax1.set_xlabel('Steps', fontsize=12)
     ax1.set_ylabel('State Sizes (log scale)', fontsize=12)
@@ -117,7 +119,9 @@ def create_plot(data, file_location):
     # Bottom Plot: Operator Sizes (Logarithmic Scale)
     ax2 = fig.add_subplot(3, 1, 2)
     for i, label in enumerate(labels):
-        ax2.plot(steps, operator_sizes[i], marker='o', label=f"{label} ({execution_times[i]:.2f}s)")
+        ax2.plot(steps, operator_sizes[i], marker='o',
+                 label=f"{label} ({execution_times[i]:.2f}s)",
+                 linestyle=linestyles[i], color=linecolors[i])
     ax2.set_title('Operator Sizes Over Steps (Log Scale)', fontsize=14)
     ax2.set_xlabel('Steps', fontsize=12)
     ax2.set_ylabel('Operator Sizes (log scale)', fontsize=12)
@@ -132,5 +136,5 @@ def create_plot(data, file_location):
         bbox=dict(boxstyle="round", alpha=0.3)
     )
 
-    plt.show()
+    plt.savefig("lossy_bs_circuit.pdf")
 run_benchmark(2)
