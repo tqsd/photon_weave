@@ -38,9 +38,10 @@ system_info["Used Swap"] = f"{swap_info.used / (1024 ** 3):.2f} GB"
 # Format system information for display
 system_info_text = "\n".join([f"{key}: {value}" for key, value in system_info.items()])
 
+
 def run_benchmark(initial_state):
     results = {}
-    for name,script in SCRIPTS.items():
+    for name, script in SCRIPTS.items():
         try:
             print(f"Running {name}:{script}")
             start_time = time.time()
@@ -56,8 +57,8 @@ def run_benchmark(initial_state):
 
             output = json.loads(process.stdout)
             results[name] = {
-                "time":execution_time,
-                "output":output
+                "time": execution_time,
+                "output": output
                 }
         except subprocess.CalledProcessError as e:
             # Handle script execution errors
@@ -78,6 +79,7 @@ def run_benchmark(initial_state):
     print(results)
     create_plot(results, None)
 
+
 def add_system_info(fig, system_info_text):
     """
     Adds system information as a separate plot below the main plots.
@@ -94,15 +96,16 @@ def add_system_info(fig, system_info_text):
         bbox=dict(boxstyle="round", alpha=0.3)
     )
 
+
 def create_plot(data, file_location):
-    linestyles = ("solid", "solid", "dotted") 
+    linestyles = ("solid", "solid", "dotted")
     linecolors = ("black", "red", "blue")
     steps = list(range(1, 7))  # x-axis (steps)
     labels = list(data.keys())  # Method names
     state_sizes = [data[label]['output']['state_sizes'] for label in labels]
     operator_sizes = [data[label]['output']['operator_sizes'] for label in labels]
     execution_times = [data[label]['time'] for label in labels]
-    fig = plt.figure(figsize=(24, 32), constrained_layout=True)
+    fig = plt.figure(figsize=(15, 20), constrained_layout=True)
 
     # Top Plot: State Sizes (Logarithmic Scale)
     ax1 = fig.add_subplot(2, 1, 1)
@@ -137,4 +140,6 @@ def create_plot(data, file_location):
     # )
 
     plt.savefig("lossy_circuit.png")
+
+
 run_benchmark(2)

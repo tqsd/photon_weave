@@ -4,7 +4,7 @@ All of the benchmarks were carried out on the ThinkPad X1 Carbon 6th Gen:
 ![Benchmark Circuit](machine_specs.png)
 
 ## Lossy Beam Splitter Circuit
-In this Benchmark we test the circuit with five Beam Splitters. This benchmark is an exercise in handling big product spaces, displaying the effect of dimensional adjustment as well as of constructing operators without padding and applying it to the correct subspace. We measure the time of execution as well as the size of the states and operators in the steps.
+In this benchmark, we test a circuit containing five lossy beam splitters. After each beamsplitter operates on a state, one photon is absorbed in both modes. Tis setup serves as an exercise in managing large product spaces, domenstsarating dimension adjustments, operator construction without padding, and applying opreators directly to the relevant subspace. We measure execution time and track the sizes of states and operators at each step.
 
 ![Benchmark Circuit](lossy_circuit/circuit.png)
 
@@ -14,7 +14,11 @@ In this Benchmark we test the circuit with five Beam Splitters. This benchmark i
 
 ### Comments
 
-Photon Weave achieves the lower memory consumptions for the states because of the dimensionality adjusting, which is not a feature of Qiskit or Qutip.
-Additionally, in Photon Weave the operators are applied to a subspace directly without padding, which combined with lower dimensionality drastically reduces the operator sizes. These two features, combined with the jit functionality of the jax also translate into drastically lower execution times in this specific benchmark.
+- **Memory Efficiency**: Photon Weave's dimension-adjustment feature leads to lower memory consumption  for states, a capability not currently available in Qiskit or QuTip.
+- **Operator Construction**: In Photon Weave, operators are applied directly to the relevant subspace without padding, further reducing operator size. This, combined with liwer dimensionality, significantly decreases memory usage.
+- **Execution Speed**: These features, along with JAX's JIT functionality, translates into substantially faster execution times in this benchmark.
+
+### Bottleneck & Constraints
+Operator construction remains a bottleneck because operators are represented as large square matrices. This limitation restricts the benchmar from scaling to higher input photon numbers. In this test, the input $|2\rangle$ was used. For larger photon-number states, QuTip and Qiskit require excessive memory to construct the necessary operators, making the benchmark impractical at higher dimensions. 
 
 ## State Management
