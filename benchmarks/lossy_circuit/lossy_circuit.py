@@ -102,10 +102,10 @@ def create_plot(data, file_location):
     state_sizes = [data[label]['output']['state_sizes'] for label in labels]
     operator_sizes = [data[label]['output']['operator_sizes'] for label in labels]
     execution_times = [data[label]['time'] for label in labels]
-    fig = plt.figure(figsize=(12, 16), constrained_layout=True)
+    fig = plt.figure(figsize=(24, 32), constrained_layout=True)
 
     # Top Plot: State Sizes (Logarithmic Scale)
-    ax1 = fig.add_subplot(3, 1, 1)
+    ax1 = fig.add_subplot(2, 1, 1)
     for i, label in enumerate(labels):
         ax1.plot(steps, state_sizes[i], marker='o',
                  label=f"{label} ({execution_times[i]:.2f}s)",
@@ -117,7 +117,7 @@ def create_plot(data, file_location):
     ax1.legend(loc='upper left', bbox_to_anchor=(1, 1))
 
     # Bottom Plot: Operator Sizes (Logarithmic Scale)
-    ax2 = fig.add_subplot(3, 1, 2)
+    ax2 = fig.add_subplot(2, 1, 2)
     for i, label in enumerate(labels):
         ax2.plot(steps, operator_sizes[i], marker='o',
                  label=f"{label} ({execution_times[i]:.2f}s)",
@@ -129,12 +129,12 @@ def create_plot(data, file_location):
     ax2.legend(loc='upper left', bbox_to_anchor=(1, 1))
 
     # Dedicated Subplot for System Information
-    ax3 = fig.add_subplot(3, 1, 3)
-    ax3.axis("off")  # No axes for the system info
-    ax3.text(
-        0.5, 0.5, system_info_text, fontsize=12, ha="center", va="center",
-        bbox=dict(boxstyle="round", alpha=0.3)
-    )
+    # ax3 = fig.add_subplot(3, 1, 3)
+    # ax3.axis("off")  # No axes for the system info
+    # ax3.text(
+    #     0.5, 0.5, system_info_text, fontsize=12, ha="center", va="center",
+    #     bbox=dict(boxstyle="round", alpha=0.3)
+    # )
 
-    plt.savefig("lossy_bs_circuit.pdf")
+    plt.savefig("lossy_circuit.png")
 run_benchmark(2)
