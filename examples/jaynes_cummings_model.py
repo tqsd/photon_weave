@@ -101,7 +101,7 @@ H_interaction = (
      )
     )
 
-# Unitary evoplution Hamiltonian
+# Unitary evolution Hamiltonian
 expr = (
     "expm",
     ("s_mult",

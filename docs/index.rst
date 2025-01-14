@@ -298,15 +298,15 @@ Measuring with POVM Operators
 
 **Photon Weave** also allows for measuring the states with POVM operators. POVM measurement is invoked by calling `measure_POVM()` method call of any of the state containers (`Fock`, `Polarization`, `CustomState`, `Envelope`, `CompositeEnvelope`). When measuring in `Fock`, `Polarization` or `CustomState`, only operators need be provided. When measuring in `Envelope` or `CompositeEnvelope` also measured states need to be provided. When providing the states order is important and should reflect the tensoring order in the operator.
 
-Mathematically, a POVM is a set of positive semi-definite operators :math:\{E_i\} that sum up to the identity operator, i.e.,
+Mathematically, a POVM is a set of positive semi-definite operators :math:`E_i` that sum up to the identity operator, i.e.,
 
 .. math:: \sum_i E_i^\dagger E_i = \mathbb{1}.
 
-When measuring a quantum state :math:\rho with a POVM :math:\{E_i\}, the probability of obtaining the outcome :math:i is given by:
+When measuring a quantum state :math:`\rho` with a POVM :math:`E_i`, the probability of obtaining the outcome :math:i is given by:
 
 .. math:: p(i) = \mathrm{Tr}(E_i \rho E_i^\dagger).
 
-The state after measurement, conditioned on the outcome :math:i, becomes:
+The state after measurement, conditioned on the outcome :math:`i`, becomes:
 
 .. math:: \rho_i = \frac{E_i \rho E_i^\dagger}{\mathrm{Tr}(E_i \rho E_i^\dagger)}.
 
@@ -333,12 +333,12 @@ For Reproducability **Photon Weave** allows the user to set the seed that is use
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
    intro
    installation
-   usage
+   examples/index
    photon_weave
    photon_weave.state
    photon_weave.operation

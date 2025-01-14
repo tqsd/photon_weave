@@ -1,9 +1,8 @@
-Usage Guide
+Examples
 ===========
 
-Here's how you can use Photon Weave in your quantum optics project.
 
-Basic Example:
+Example:
 --------------
 
 .. code-block:: python
