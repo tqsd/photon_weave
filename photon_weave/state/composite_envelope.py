@@ -729,7 +729,6 @@ class CompositeEnvelope:
         caller_function = caller_frame.function
         caller_filename = caller_frame.filename
         caller_line_number = caller_frame.lineno
-        #print(f"Called by function: {caller_function}, in file: {caller_filename}, at line: {caller_line_number}")
 
 
         state_objs_set = set(state_objs)
@@ -852,7 +851,6 @@ class CompositeEnvelope:
         caller_function = caller_frame.function
         caller_filename = caller_frame.filename
         caller_line_number = caller_frame.lineno
-        #print(f"REORDER Called by function: {caller_function}, in file: {caller_filename}, at line: {caller_line_number}")
         if not states_are_combined:
             self.combine(*ordered_states)
 
@@ -874,7 +872,7 @@ class CompositeEnvelope:
     def measure(
         self,
         *states: "BaseState",
-        separate_measurement: bool = False,
+        separate_measurement: bool = True,
         destructive: bool = True,
     ) -> Dict["BaseState", int]:
         """

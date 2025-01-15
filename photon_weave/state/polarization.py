@@ -285,8 +285,6 @@ class Polarization(BaseState):
         will be executed in the state container, which contains this
         state.
         """
-        from photon_weave.state.composite_envelope import CompositeEnvelope
-
         if self.expansion_level == ExpansionLevel.Label:
             self.expand()
 
