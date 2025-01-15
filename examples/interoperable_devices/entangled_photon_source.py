@@ -1,6 +1,3 @@
-"""
-Reusable entanglement source
-"""
 from photon_weave.state.envelope import Envelope
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.operation.polarization_operation import PolarizationOperationType

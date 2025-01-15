@@ -46,7 +46,6 @@ class DenseReceiver:
     def receive_message(self, env: Envelope) -> tuple[int, int]:
         env_stored = self.buffer.get()
         ce = env.composite_envelope
-        state = ce.states[0].state
         message = self.decoder.decode(env, env_stored)
         self.received_messages.append(message)
 
@@ -74,5 +73,3 @@ if __name__ == "__main__":
         print("Incorrectly encoded or decoded messages")
         print(messages)
         print(receiver.received_messages)
-
-    

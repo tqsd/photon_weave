@@ -12,5 +12,4 @@ class EnvelopeBuffer:
         self.buffer.put(env)
 
     def get(self) -> Envelope:
-        return self.buffer.get()
-    
+        return self.buffer.get()    
