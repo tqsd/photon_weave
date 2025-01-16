@@ -150,79 +150,79 @@ class PolarizationOperationType(Enum):
     >>> op = Operation(PolarizationOperationType.Custom, operator=operator)
     """
 
-    I: Tuple[bool, List[str], ExpansionLevel, int] = (
+    I: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         [],
         ExpansionLevel.Vector,
         1,
     )
-    X: Tuple[bool, List[str], ExpansionLevel, int] = (
+    X: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         [],
         ExpansionLevel.Vector,
         2,
     )
-    Y: Tuple[bool, List[str], ExpansionLevel, int] = (
+    Y: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         [],
         ExpansionLevel.Vector,
         3,
     )
-    Z: Tuple[bool, List[str], ExpansionLevel, int] = (
+    Z: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         [],
         ExpansionLevel.Vector,
         4,
     )
-    H: Tuple[bool, List[str], ExpansionLevel, int] = (
+    H: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         [],
         ExpansionLevel.Vector,
         5,
     )
-    S: Tuple[bool, List[str], ExpansionLevel, int] = (
+    S: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         [],
         ExpansionLevel.Vector,
         6,
     )
-    T: Tuple[bool, List[str], ExpansionLevel, int] = (
+    T: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         [],
         ExpansionLevel.Vector,
         7,
     )
-    SX: Tuple[bool, List[str], ExpansionLevel, int] = (
+    SX: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         [],
         ExpansionLevel.Vector,
         8,
     )
-    RX: Tuple[bool, List[str], ExpansionLevel, int] = (
+    RX: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         ["theta"],
         ExpansionLevel.Vector,
         9,
     )
-    RY: Tuple[bool, List[str], ExpansionLevel, int] = (
+    RY: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         ["theta"],
         ExpansionLevel.Vector,
         10,
     )
-    RZ: Tuple[bool, List[str], ExpansionLevel, int] = (
+    RZ: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         ["theta"],
         ExpansionLevel.Vector,
         11,
     )
-    U3: Tuple[bool, List[str], ExpansionLevel, int] = (
+    U3: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         ["phi", "theta", "omega"],
         ExpansionLevel.Vector,
         12,
     )
-    Custom: Tuple[bool, List[str], ExpansionLevel, int] = (
+    Custom: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         ["operator"],
         ExpansionLevel.Vector,

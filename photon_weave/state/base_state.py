@@ -48,9 +48,6 @@ class BaseState(ABC):
         self._envelope: Optional[Envelope] = None
         self.state: Optional[Union[int, PolarizationLabel, jnp.ndarray]] = None
 
-    @property
-    def envelope(self) -> Union[None, "Envelope"]:
-        return self._envelope
 
     @property
     def size(self) -> int:
@@ -67,7 +64,11 @@ class BaseState(ABC):
                 return self.state.nbytes
             else:
                 return sys.getsizeof(self.state)
+        return 0
             
+    @property
+    def envelope(self) -> Union[None, "Envelope"]:
+        return self._envelope
 
     @envelope.setter
     def envelope(self, envelope: Union[None, "Envelope"]) -> None:
@@ -138,14 +139,16 @@ class BaseState(ABC):
             return str(self.uid)
         elif self.expansion_level == ExpansionLevel.Vector:
             # Handle cases where the vector has only one element
+            assert isinstance(self.state, jnp.ndarray)
             return representation_vector(self.state)
         elif self.expansion_level == ExpansionLevel.Matrix:
+            assert isinstance(self.state, jnp.ndarray)
             return representation_matrix(self.state)
         return f"{self.uid}"
 
     def apply_kraus(
         self,
-        operators: List[Union[np.ndarray, jnp.ndarray]],
+        operators: List[jnp.ndarray],
         identity_check: bool = True,
     ) -> None:
         """
@@ -173,6 +176,7 @@ class BaseState(ABC):
 
         match self.expansion_level:
             case ExpansionLevel.Vector:
+                assert isinstance(self.state, jnp.ndarray)
                 self.state = apply_kraus_vector(
                     [self],
                     [self],
@@ -180,6 +184,7 @@ class BaseState(ABC):
                     operators
                     )
             case ExpansionLevel.Matrix:
+                assert isinstance(self.state, jnp.ndarray)
                 self.state = apply_kraus_matrix(
                     [self],
                     [self],
@@ -220,7 +225,7 @@ class BaseState(ABC):
     @route_operation()
     def measure_POVM(
         self,
-        operators: List[Union[np.ndarray, jnp.ndarray]],
+        operators: List[jnp.ndarray],
         destructive: bool = True,
         partial: bool = False,
     ) -> Tuple[int, Dict["BaseState", int]]:

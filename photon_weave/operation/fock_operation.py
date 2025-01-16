@@ -112,49 +112,49 @@ class FockOperationType(Enum):
     >>> fock.apply_operation(op)
     """
 
-    Creation: Tuple[bool, List[str], ExpansionLevel, int] = (
+    Creation: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         [],
         ExpansionLevel.Vector,
         1,
     )
-    Annihilation: Tuple[bool, List[str], ExpansionLevel, int] = (
+    Annihilation: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         [],
         ExpansionLevel.Vector,
         2,
     )
-    PhaseShift: Tuple[bool, List[str], ExpansionLevel, int] = (
+    PhaseShift: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         False,
         ["phi"],
         ExpansionLevel.Vector,
         3,
     )
-    Squeeze: Tuple[bool, List[str], ExpansionLevel, int] = (
+    Squeeze: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         True,
         ["zeta"],
         ExpansionLevel.Vector,
         4,
     )
-    Displace: Tuple[bool, List[str], ExpansionLevel, int] = (
+    Displace: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         False,
         ["alpha"],
         ExpansionLevel.Vector,
         5,
     )
-    Identity: Tuple[bool, List[str], ExpansionLevel, int] = (
+    Identity: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         False,
         [],
         ExpansionLevel.Vector,
         6,
     )
-    Custom: Tuple[bool, List[str], ExpansionLevel, int] = (
+    Custom: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         False,
         ["operator"],
         ExpansionLevel.Vector,
         7,
     )
-    Expresion: Tuple[bool, List[str], ExpansionLevel, int] = (
+    Expresion: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
         False,
         ["expr", "context"],
         ExpansionLevel.Vector,
@@ -215,7 +215,7 @@ class FockOperationType(Enum):
     def compute_dimensions(
         self,
         num_quanta: Union[int, List[int]],
-        state: Union[jnp.ndarray, List[jnp.ndarray]],
+        state: jnp.ndarray,
         threshold: float = 1 - 1e-6,
         **kwargs: Any,
     ) -> List[int]:

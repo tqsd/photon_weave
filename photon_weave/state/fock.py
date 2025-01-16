@@ -118,6 +118,8 @@ class Fock(BaseState):
         to the state_matrix
         """
         assert self.dimensions is not None, "self.dimensions shoul not be None"
+        assert self.state is not None
+        assert self.expansion_level is not None
 
         if self.dimensions < 0:
             if isinstance(self.state, int):
@@ -146,6 +148,10 @@ class Fock(BaseState):
         # If state was measured, then do nothing
         if self.measured:
             return
+
+        assert self.dimensions is not None, "self.dimensions shoul not be None"
+        assert self.state is not None
+        assert self.expansion_level is not None
 
         success = True
         while self.expansion_level > final and success:
@@ -231,14 +237,18 @@ class Fock(BaseState):
         Dict[BaseState, int]
             Dictionary of outcomes
         """
+
+        outcomes: Dict[BaseState, int]
         match self.expansion_level:
             case ExpansionLevel.Label:
                 assert isinstance(self.state, int)
                 outcomes = {self:self.state}
             case ExpansionLevel.Vector:
+                assert isinstance(self.state, jnp.ndarray)
                 outcomes, post_measurement_state = measure_vector(
                     [self], [self], self.state)
             case ExpansionLevel.Matrix:
+                assert isinstance(self.state, jnp.ndarray)
                 outcomes, post_measurement_state = measure_matrix(
                     [self],[self], self.state)
 
@@ -369,6 +379,7 @@ class Fock(BaseState):
         to = self.trace_out()
         operation.compute_dimensions(self._num_quanta, to)
         self.resize(operation.dimensions[0])
+        assert isinstance(self.state, jnp.ndarray)
         
         match self.expansion_level:
             case ExpansionLevel.Vector:

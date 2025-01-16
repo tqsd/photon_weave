@@ -148,6 +148,8 @@ class Polarization(BaseState):
             self.state = jnp.array(vector, dtype=jnp.complex128)[:, jnp.newaxis]
             self.expansion_level = ExpansionLevel.Vector
         else:
+            assert isinstance(self.state, jnp.ndarray)
+            assert isinstance(self.expansion_level, ExpansionLevel)
             self.state, self.expansion_level = state_expand(
                 self.state,
                 self.expansion_level,
@@ -185,7 +187,8 @@ class Polarization(BaseState):
             self.expansion_level is ExpansionLevel.Matrix
             and final < ExpansionLevel.Matrix
         ):
-            self.state, self.expansion_level, success = state_contract(
+            assert isinstance(self.state, (jnp.ndarray, int))
+            self.state, self.expansion_level, success = state_contract( # type: ignore
                 self.state,
                 self.expansion_level
                 )
@@ -210,7 +213,7 @@ class Polarization(BaseState):
             elif jnp.allclose(
                 self.state, jnp.array([[1 / jnp.sqrt(2)], [-1 / jnp.sqrt(2)]])
             ):
-                self.state = PolarizatioLabel.A
+                self.state = PolarizationLabel.A
             elif jnp.allclose(
                 self.state, jnp.array([[1 / jnp.sqrt(2)], [1 / jnp.sqrt(2)]])
             ):
@@ -290,10 +293,12 @@ class Polarization(BaseState):
 
         match self.expansion_level:
             case ExpansionLevel.Vector:
+                assert isinstance(self.state, jnp.ndarray)
                 outcomes, post_measurement_state = measure_vector(
                     [self],[self], self.state
                     )
             case ExpansionLevel.Matrix:
+                assert isinstance(self.state, jnp.ndarray)
                 outcomes, post_measurement_state = measure_matrix(
                     [self],[self], self.state
                     )
@@ -338,15 +343,18 @@ class Polarization(BaseState):
 
         match self.expansion_level:
             case ExpansionLevel.Vector:
+                assert isinstance(self.state, jnp.ndarray)
                 self.state = apply_operation_vector(
                     [self], [self], self.state, operation.operator
                     )
             case ExpansionLevel.Matrix:
+                assert isinstance(self.state, jnp.ndarray)
                 self.state = apply_operation_matrix(
                     [self], [self], self.state, operation.operator
                     )
 
             
+        assert isinstance(self.state, jnp.ndarray)
         if not jnp.any(jnp.abs(self.state) > 0):
             raise ValueError(
                 "The state is entirely composed of zeros, is |0⟩ "

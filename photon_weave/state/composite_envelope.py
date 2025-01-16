@@ -41,17 +41,40 @@ if TYPE_CHECKING:
     from photon_weave.state.fock import Fock  # pragma: no cover
 
 @jax.jit
-def kron_reduce(arrays):
-    return reduce(lambda a, b: jnp.kron(a, b), arrays, jnp.array([[1]]))
+def kron_reduce(arrays: list[jnp.ndarray]) -> jnp.ndarray:
+    """
+    Compute the Kronecker product of a sequence of arrays using JAX.
 
-def timing_decorator(func):
-    def wrapper(*args, **kwargs):
-        start_time = time.perf_counter()  # Start timer
-        result = func(*args, **kwargs)   # Execute the wrapped function
-        end_time = time.perf_counter()   # End timer
-        duration = end_time - start_time
-        return result
-    return wrapper
+    Parameters:
+    -----------
+    arrays : list or tuple of jax.numpy.ndarray
+        A sequence of 2D arrays (matrices) to compute the Kronecker product.
+
+    Returns:
+    --------
+    jax.numpy.ndarray
+        The Kronecker product of the input arrays as a single matrix.
+        If `arrays` is empty, returns a 1x1 identity matrix.
+
+    Notes:
+    ------
+    - The function uses `reduce` to iteratively compute the Kronecker product 
+      of all matrices in `arrays`.
+    - JAX's just-in-time (jit) compilation is applied for optimization.
+    - `jnp.kron` is used to compute the Kronecker product between two matrices.
+
+    Example:
+    --------
+    arrays = [jnp.array([[1, 2], [3, 4]]), jnp.array([[0, 5], [6, 7]])]
+    result = kron_reduce(arrays)
+    print(result)
+    # Output:
+    # [[ 0  5  0 10]
+    #  [ 6  7 12 14]
+    #  [ 0 15  0 20]
+    #  [18 21 24 28]]
+    """
+    return reduce(lambda a, b: jnp.kron(a, b), arrays, jnp.array([[1]]))
 
 @dataclass(slots=True)
 class ProductState:
@@ -93,8 +116,10 @@ class ProductState:
             tolerance when comparing trace
         """
         if self.expansion_level is ExpansionLevel.Matrix:
-            self.state, self.expansion_level, success = state_contract(
-                self.state, self.expansion_level)
+            self.state, self.expansion_level, success = cast(
+                tuple[jnp.ndarray, ExpansionLevel, bool],
+                state_contract(self.state, self.expansion_level)
+                )
             if success:
                 for state in self.state_objs:
                     state.expansion_level = ExpansionLevel.Vector
@@ -229,7 +254,7 @@ class ProductState:
 
     def measure_POVM(
         self,
-        operators: List[Union[np.ndarray, jnp.ndarray]],
+        operators: List[jnp.ndarray],
         *states: "BaseState",
         destructive: bool = True,
     ) -> Tuple[int, Dict["BaseState", int]]:
@@ -238,7 +263,7 @@ class ProductState:
 
         Parameters
         ----------
-        operators: List[Union[np.ndarray, jnp.ndarray]]
+        operators: List[jnp.ndarray]
             List of POVM operators
         *stapartial=partials: BaseState
             List of states, on which the POVM measurement should be executed
@@ -301,7 +326,9 @@ class ProductState:
         return (outcome, other_outcomes)
 
     def apply_kraus(
-        self, operators: List[Union[np.ndarray, jnp.ndarray]], *states: "BaseState"
+        self,
+        operators: Union[List[jnp.ndarray],Tuple[jnp.ndarray,...]],
+        *states: "BaseState"
     ) -> None:
         """
         Applies the Kraus oeprators to the selected states, called by the apply_kraus
@@ -361,6 +388,8 @@ class ProductState:
                     self.state_objs,
                     list(states),
                     self.state)
+
+        return jnp.ndarray([[1]])
 
     @property
     def is_empty(self) -> bool:
@@ -551,9 +580,9 @@ class ProductState:
             if isinstance(so, Fock):
                 match so.expansion_level:
                     case ExpansionLevel.Vector:
-                        num_quanta = num_quanta_vector(so.trace_out())
-                    case ExpansionLevel.Vector:
-                        num_quanta = num_quanta_matrix(so.trace_out())
+                        num_quanta = max(1, num_quanta_vector(so.trace_out()))
+                    case ExpansionLevel.Matrix:
+                        num_quanta = max(1, num_quanta_matrix(so.trace_out()))
                 so.resize(num_quanta + 1)
         C = Config()
         if C.contractions:
@@ -790,21 +819,25 @@ class CompositeEnvelope:
             kron_arrays.append(product_state.state)
             state_order.extend(product_state.state_objs)
             product_state.state_objs = []
-            product_state.state = None
+            product_state.state = jnp.array([[1]])
 
         # Collect arrays from new state objects
         for so in state_objs:
             if (hasattr(so, "envelope")
                 and so.envelope is not None
                 and so.index is not None
+                and so.envelope.state is not None
                 and not isinstance(so.index, tuple)):
                 kron_arrays.append(so.envelope.state)
                 indices: List[Optional["BaseState"]] = [None, None]
-                indices[so.envelope.fock.index] = so.envelope.fock
-                indices[so.envelope.polarization.index] = so.envelope.polarization
-                state_order.extend(indices)
+                if isinstance(so.envelope.fock.index, int):
+                    indices[so.envelope.fock.index] = so.envelope.fock
+                if isinstance(so.envelope.polarization.index, int):
+                    indices[so.envelope.polarization.index] = so.envelope.polarization
+                state_order.extend([index for index in indices if index is not None])
                 so.envelope.state = None
             elif so.index is None:
+                assert isinstance(so.state, jnp.ndarray)
                 kron_arrays.append(so.state)
                 state_order.append(so)
                 so.state = None
@@ -979,7 +1012,7 @@ class CompositeEnvelope:
 
     def measure_POVM(
         self,
-        operators: List[Union[np.ndarray, jnp.ndarray]],
+        operators: List[jnp.ndarray],
         *states: "BaseState",
         destructive: bool = True,
     ) -> Tuple[int, Dict["BaseState", int]]:
@@ -988,7 +1021,7 @@ class CompositeEnvelope:
 
         Parameters
         ----------
-        operators: List[Union[np.ndarray, jnp.ndarray]]
+        operators: List[jnp.ndarray]
             List of POVM operators
         *states: List[Union[Fock, Polarization]]
             List of states, on which the POVM measurement should be executed
@@ -1036,7 +1069,7 @@ class CompositeEnvelope:
 
     def apply_kraus(
         self,
-        operators: List[Union[np.ndarray, jnp.ndarray]],
+        operators: List[jnp.ndarray],
         *states: "BaseState",
         identity_check: bool = True,
     ) -> None:
@@ -1049,7 +1082,7 @@ class CompositeEnvelope:
 
         Parameters
         ----------
-        operators: List[Union[np.ndarray, jnp.ndarray]]
+        operators: List[jnp.ndarray]
             List of all Kraus operators
         *states: BaseState
             List of the states, that the channel should be applied to

@@ -222,7 +222,7 @@ class Operation:
     def compute_dimensions(
         self,
         num_quanta: Union[int, List[int]],
-        state: Union[jnp.ndarray, List[jnp.ndarray]],
+        state: jnp.ndarray,
     ) -> None:
         """
         Computes and updates the required dimensions for applying this operation.
@@ -231,7 +231,7 @@ class Operation:
         ----------
         num_quanta : Union[int, List[int]]
             The current maximum number state amplitude or a list of values.
-        state : Union[jnp.ndarray, List[jnp.ndarray]]
+        state : jnp.ndarray
             The traced-out state(s) for dimension estimation.
         """
         if self._operation_type is not FockOperationType.Custom:

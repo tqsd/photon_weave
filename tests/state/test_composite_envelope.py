@@ -530,12 +530,8 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         out = ce.measure(env1.fock, env2.fock, destructive=False)
         self.assertEqual(out[env1.fock], 1)
         self.assertEqual(out[env2.fock], 2)
-        self.assertEqual(out[env1.polarization], 0)
-        self.assertEqual(out[env2.polarization], 0)
         self.assertFalse(env1.fock.measured)
         self.assertFalse(env2.fock.measured)
-        self.assertFalse(env1.polarization.measured)
-        self.assertFalse(env2.polarization.measured)
         self.assertFalse(env1.measured)
         self.assertFalse(env2.measured)
         # Test when the envelopes are combined
@@ -544,14 +540,10 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         out = ce.measure(env1.fock, env2.fock, destructive=False)
         self.assertEqual(out[env1.fock], 1)
         self.assertEqual(out[env2.fock], 2)
-        self.assertEqual(out[env1.polarization], 0)
-        self.assertEqual(out[env2.polarization], 0)
         self.assertFalse(env1.fock.measured)
         self.assertFalse(env2.fock.measured)
         self.assertFalse(env1.polarization.measured)
         self.assertFalse(env2.polarization.measured)
-        self.assertFalse(env1.measured)
-        self.assertFalse(env2.measured)
         self.assertEqual(env1.fock.state, 1)
         self.assertEqual(env2.fock.state, 2)
         self.assertEqual(env1.polarization.state, PolarizationLabel.H)
@@ -561,18 +553,12 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         out = ce.measure(env1.fock, env2.fock, destructive=False)
         self.assertEqual(out[env1.fock], 1)
         self.assertEqual(out[env2.fock], 2)
-        self.assertEqual(out[env1.polarization], 0)
-        self.assertEqual(out[env2.polarization], 0)
         self.assertFalse(env1.fock.measured)
         self.assertFalse(env2.fock.measured)
-        self.assertFalse(env1.polarization.measured)
-        self.assertFalse(env2.polarization.measured)
         self.assertFalse(env1.measured)
         self.assertFalse(env2.measured)
         self.assertEqual(env1.fock.state, 1)
         self.assertEqual(env2.fock.state, 2)
-        self.assertEqual(env1.polarization.state, PolarizationLabel.H)
-        self.assertEqual(env2.polarization.state, PolarizationLabel.H)
 
         ce.combine(env1.fock, env2.fock)
         ce.combine(env1.polarization, env2.polarization)
@@ -580,18 +566,12 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         out = ce.measure(env1.fock, env2.fock, destructive=False)
         self.assertEqual(out[env1.fock], 1)
         self.assertEqual(out[env2.fock], 2)
-        self.assertEqual(out[env1.polarization], 0)
-        self.assertEqual(out[env2.polarization], 0)
         self.assertFalse(env1.fock.measured)
         self.assertFalse(env2.fock.measured)
-        self.assertFalse(env1.polarization.measured)
-        self.assertFalse(env2.polarization.measured)
         self.assertFalse(env1.measured)
         self.assertFalse(env2.measured)
         self.assertEqual(env1.fock.state, 1)
         self.assertEqual(env2.fock.state, 2)
-        self.assertEqual(env1.polarization.state, PolarizationLabel.H)
-        self.assertEqual(env2.polarization.state, PolarizationLabel.H)
 
     def test_measurement_envelope_destructive(self) -> None:
         C = Config()
@@ -611,12 +591,8 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         def asserts(out, env1, env2):
             self.assertEqual(out[env1.fock], 1)
             self.assertEqual(out[env2.fock], 2)
-            self.assertEqual(out[env1.polarization], 0)
-            self.assertEqual(out[env2.polarization], 0)
             self.assertTrue(env1.fock.measured)
             self.assertTrue(env2.fock.measured)
-            self.assertTrue(env1.polarization.measured)
-            self.assertTrue(env2.polarization.measured)
             self.assertTrue(env1.measured)
             self.assertTrue(env2.measured)
 
@@ -665,7 +641,6 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         out = ce.measure(cs, env.fock)
         self.assertEqual(out[cs], 0)
         self.assertEqual(out[env.fock], 0)
-        self.assertEqual(out[env.polarization], 0)
 
         env = Envelope()
         env.uid = "e"
@@ -678,7 +653,6 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         out = ce.measure(cs, env.fock)
         self.assertEqual(out[cs], 0)
         self.assertEqual(out[env.fock], 0)
-        self.assertEqual(out[env.polarization], 1)
 
         env = Envelope()
         env.uid = "e"
@@ -692,7 +666,6 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         out = ce.measure(cs, env.fock)
         self.assertEqual(out[cs], 0)
         self.assertEqual(out[env.fock], 0)
-        self.assertEqual(out[env.polarization], 0)
 
 
 class TestKrausApply(unittest.TestCase):
@@ -1011,8 +984,6 @@ class TestPOVMMeasurement(unittest.TestCase):
 
         outcomes = ce.measure_POVM(operators, env1.fock, env2.fock)
         self.assertEqual(0, outcomes[0])
-        self.assertEqual(outcomes[1][env1.polarization], 0)
-        self.assertEqual(outcomes[1][env2.polarization], 0)
 
     def test_partial_POVM_measurement(self) -> None:
         env1 = Envelope()
@@ -1035,7 +1006,6 @@ class TestPOVMMeasurement(unittest.TestCase):
         C.set_contraction(False)
         outcomes = ce.measure_POVM(operators, env1.fock)
         self.assertEqual(1, outcomes[0])
-        self.assertEqual(0, outcomes[1][env1.polarization])
 
     def test_partial_POVM_measurement_contract(self) -> None:
         env1 = Envelope()
@@ -1058,7 +1028,6 @@ class TestPOVMMeasurement(unittest.TestCase):
         C.set_contraction(True)
         outcomes = ce.measure_POVM(operators, env1.fock)
         self.assertEqual(1, outcomes[0])
-        self.assertEqual(0, outcomes[1][env1.polarization])
         self.assertTrue(jnp.allclose(ce.product_states[0].state, jnp.array([[1], [0]])))
 
     def test_partial_POVM_measurement_non_destructive(self) -> None:

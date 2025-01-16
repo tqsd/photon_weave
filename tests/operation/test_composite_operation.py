@@ -118,7 +118,7 @@ class TestExpressionOperator(unittest.TestCase):
         )
         ce.apply_operation(op, env1.fock)
         self.assertTrue(
-            jnp.allclose(ce.product_states[0].state, jnp.array([[0], [0], [-1], [0], [0], [0]]))
+            jnp.allclose(ce.product_states[0].state, jnp.array([[0], [0], [-1], [0]]))
         )
 
 

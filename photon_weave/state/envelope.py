@@ -348,7 +348,7 @@ class Envelope:
 
     def measure_POVM(
         self,
-        operators: List[Union[np.ndarray, jnp.ndarray]],
+        operators: List[jnp.ndarray],
         *states: "BaseState",
         destructive: bool = True,
     ) -> Tuple[int, Dict["BaseState", int]]:
@@ -361,7 +361,8 @@ class Envelope:
 
         Parameters
         ----------
-        operators: List[Union[np.ndarray, jnp.ndarray]]
+        operators: List[jnp.ndarray]
+            List of the POVM operators
         *states:Tuple[Union[np.ndarray, jnp.ndarray],
                      Optional[Union[np.ndarray, jnp.ndarray]]
             States on which the POVM measurement should be carried out,

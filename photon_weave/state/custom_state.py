@@ -77,6 +77,8 @@ class CustomState(BaseState):
         will be executed in the state container, which contains this
         stat.
         """
+        assert self.state is not None
+        assert isinstance(self.expansion_level, ExpansionLevel)
         self.state, self.expansion_level = state_expand(
             self.state,
             self.expansion_level,
@@ -98,6 +100,9 @@ class CustomState(BaseState):
             Tolerance when comparing matrices
 
         """
+        assert isinstance(self.expansion_level, ExpansionLevel)
+        assert isinstance(self.state, jnp.ndarray)
+        
         success = True
         while self.expansion_level > final and success:
             self.state, self.expansion_level, success = state_contract(
@@ -170,10 +175,12 @@ class CustomState(BaseState):
                 assert isinstance(self.state, int)
                 return {self: self.state}
             case ExpansionLevel.Vector:
+                assert isinstance(self.state, jnp.ndarray)
                 outcomes, post_measurement_state = measure_vector(
                     [self], [self], self.state
                 )
             case ExpansionLevel.Matrix:
+                assert isinstance(self.state, jnp.ndarray)
                 outcomes, post_measurement_state = measure_matrix(
                     [self], [self], self.state
                 )
@@ -185,7 +192,7 @@ class CustomState(BaseState):
 
     def measure_POVM(
         self,
-        operators: List[Union[np.ndarray, jnp.ndarray]],
+        operators: List[jnp.ndarray],
         destructive: bool = True,
         partial: bool = False,
     ) -> Tuple[int, Dict[BaseState, int]]:
@@ -194,7 +201,7 @@ class CustomState(BaseState):
 
         Parameters
         ----------
-        *operators: Union[np.ndarray, jnp.Array]
+        operators: List[jnp.ndarray]
             List of the POVM measurement operators
         destructive: bool
             Does not have an effect on custom state, implemented only to satisfy the
@@ -243,7 +250,7 @@ class CustomState(BaseState):
 
     def apply_kraus(
         self,
-        operators: List[Union[np.ndarray, jnp.ndarray]],
+        operators: List[jnp.ndarray],
         identity_check: bool = True,
     ) -> None:
         """
@@ -272,7 +279,7 @@ class CustomState(BaseState):
                     f"expected ({self.dimensions},{self.dimensions})"
                 )
 
-        if kraus_identity_check:
+        if identity_check:
             if not kraus_identity_check(operators):
                 raise ValueError("Invalid Kraus Channel")
 
@@ -312,6 +319,7 @@ class CustomState(BaseState):
         operation.compute_dimensions(0, to)
 
         assert operation.operator.shape == (self.dimensions, self.dimensions)
+        assert isinstance(self.state, jnp.ndarray)
 
         match self.expansion_level:
             case ExpansionLevel.Vector:
