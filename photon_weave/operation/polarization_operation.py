@@ -3,20 +3,11 @@ from typing import Any, List, Tuple, Union
 
 import jax.numpy as jnp
 
-from photon_weave._math.ops import (
-    hadamard_operator,
-    identity_operator,
-    rx_operator,
-    ry_operator,
-    rz_operator,
-    s_operator,
-    sx_operator,
-    t_operator,
-    u3_operator,
-    x_operator,
-    y_operator,
-    z_operator,
-)
+from photon_weave._math.ops import (hadamard_operator, identity_operator,
+                                    rx_operator, ry_operator, rz_operator,
+                                    s_operator, sx_operator, t_operator,
+                                    u3_operator, x_operator, y_operator,
+                                    z_operator)
 from photon_weave.state.expansion_levels import ExpansionLevel
 
 

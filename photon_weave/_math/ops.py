@@ -471,8 +471,8 @@ def num_quanta_matrix(matrix: jnp.ndarray) -> jnp.int64:
     highest_non_zero_index_col = (
         jnp.where(non_zero_cols)[0][-1].item() if jnp.any(non_zero_cols) else None
     )
-    # assert highest_non_zero_index_row is not None
-    # assert highest_non_zero_index_col is not None
+    assert highest_non_zero_index_row is not None  # for mypy but needs to be checked
+    assert highest_non_zero_index_col is not None  # for mypy but needs to be checked
     # Determine the overall highest index
     highest_non_zero_index_matrix = max(
         highest_non_zero_index_row, highest_non_zero_index_col
