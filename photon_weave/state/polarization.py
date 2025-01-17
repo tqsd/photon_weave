@@ -177,8 +177,6 @@ class Polarization(BaseState):
         will be executed in the state container, which contains this
         state.
         """
-        #from photon_weave.state.envelope import Envelope
-
         # If state was measured, then do nothing
         if self.measured:
             return
@@ -218,7 +216,8 @@ class Polarization(BaseState):
                 self.state, jnp.array([[1 / jnp.sqrt(2)], [1 / jnp.sqrt(2)]])
             ):
                 self.state = PolarizationLabel.D
-            self.expansion_level = ExpansionLevel.Label
+            if isinstance(self.state, PolarizationLabel):
+                self.expansion_level = ExpansionLevel.Label
 
     def extract(self, index: Union[int, Tuple[int, int]]) -> None:
         """
