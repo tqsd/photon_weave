@@ -9,6 +9,7 @@ from jax.scipy.linalg import expm
 jax.config.update("jax_enable_x64", True)
 
 
+@jit
 def identity_operator() -> jax.Array:
     """
     identity_operator _summary_
@@ -19,6 +20,7 @@ def identity_operator() -> jax.Array:
     return jnp.eye(N=2)
 
 
+@jit
 def hadamard_operator() -> jax.Array:
     """
     hadamard_operator _summary_
@@ -79,6 +81,7 @@ def t_operator() -> jax.Array:
     return jnp.array([[1, 0], [0, jnp.exp(1j * np.pi / 4)]])
 
 
+@jit
 def controlled_not_operator() -> jax.Array:
     """
     controlled_not_operator _summary_
@@ -109,6 +112,7 @@ def swap_operator() -> jax.Array:
     return jnp.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 
 
+@jit
 def sx_operator() -> jax.Array:
     """
     sx_operator _summary_
@@ -119,6 +123,7 @@ def sx_operator() -> jax.Array:
     return jnp.array([[1 + 1j, 1 - 1j], [1 - 1j, 1 + 1j]]) / 2
 
 
+@jit
 def controlled_swap_operator() -> jax.Array:
     """
     controlled_swap_operator _summary_
@@ -140,6 +145,7 @@ def controlled_swap_operator() -> jax.Array:
     )
 
 
+@jit
 def rx_operator(theta: float) -> jax.Array:
     """
     rx_operator _summary_
@@ -154,6 +160,7 @@ def rx_operator(theta: float) -> jax.Array:
     return jnp.array([[term_1, term_2], [term_2, term_1]])
 
 
+@jit
 def ry_operator(theta: float) -> jax.Array:
     """
     ry_operator _summary_
@@ -168,6 +175,7 @@ def ry_operator(theta: float) -> jax.Array:
     return jnp.array([[term_1, -term_2], [term_2, term_1]])
 
 
+@jit
 def rz_operator(theta: float) -> jax.Array:
     """
     rz_operator _summary_
@@ -182,6 +190,7 @@ def rz_operator(theta: float) -> jax.Array:
     return jnp.array([[term1, 0], [0, term2]])
 
 
+@jit
 def u3_operator(phi: float, theta: float, omega: float) -> jax.Array:
     """
     u3_operator _summary_
@@ -242,14 +251,6 @@ def number_operator(cutoff: int) -> jnp.ndarray:
     :rtype: jnp.ndarray
     """
     return jnp.matmul(creation_operator(cutoff), annihilation_operator(cutoff))
-
-
-def _expm(mat: jnp.ndarray) -> jnp.ndarray:
-    """
-    Exponential Matrix
-    """
-    eigvals, eigvecs = jnp.linalg.eig(mat)
-    return jnp.array(eigvecs @ jnp.diag(jnp.exp(eigvals)) @ jnp.linalg.pinv(eigvecs))
 
 
 def squeezing_operator(cutoff: int, zeta: complex) -> jnp.ndarray:
@@ -319,7 +320,6 @@ def phase_operator(cutoff: int, theta: float) -> jnp.ndarray:
     indices = jnp.arange(cutoff)
     phases = jnp.exp(1j * indices * theta)
     return jnp.diag(phases)
-    # return jnp.diag(jnp.array([jnp.exp(1j * n * theta) for n in range(cutoff)]))
 
 
 # to do: implement beamsplitter here
@@ -413,6 +413,7 @@ def normalize_vector(vector: Union[jnp.ndarray, np.ndarray]) -> jnp.ndarray:
     return jnp.array(vector / trace)
 
 
+@jit
 def normalize_matrix(vector: Union[jnp.ndarray, np.ndarray]) -> jnp.ndarray:
     """
     Normalizes the given matrix and returns it
@@ -448,13 +449,13 @@ def num_quanta_vector(vector: Union[jnp.ndarray, np.ndarray]) -> int:
     return int(non_zero_indices[-1])
 
 
-def num_quanta_matrix(matrix: jnp.ndarray) -> int:
+def num_quanta_matrix(matrix: jnp.ndarray) -> jnp.int64:
     """
     Returns highest possible measurement outcome
     Parameters
     ----------
     matrix: Union[jnp.ndarray, np.ndarray]
-        matrix for which the max possible quantua has to be calculated
+        matrix for which the max possible quanta has to be calculated
     """
     non_zero_rows = jnp.any(matrix != 0, axis=1)
     non_zero_cols = jnp.any(matrix != 0, axis=0)
@@ -465,8 +466,8 @@ def num_quanta_matrix(matrix: jnp.ndarray) -> int:
     highest_non_zero_index_col = (
         jnp.where(non_zero_cols)[0][-1].item() if jnp.any(non_zero_cols) else None
     )
-    assert highest_non_zero_index_row is not None
-    assert highest_non_zero_index_col is not None
+    # assert highest_non_zero_index_row is not None
+    # assert highest_non_zero_index_col is not None
     # Determine the overall highest index
     highest_non_zero_index_matrix = max(
         highest_non_zero_index_row, highest_non_zero_index_col
