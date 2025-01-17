@@ -1,4 +1,3 @@
-
 from photon_weave.state.envelope import Envelope
 from photon_weave.operation.operation import Operation
 from photon_weave.operation.polarization_operation import PolarizationOperationType
@@ -23,5 +22,5 @@ class DenseEncoder:
             case (1, 1):
                 env.polarization.apply_operation(op_x)
                 env.polarization.apply_operation(op_z)
-        
+
         return env

@@ -6,7 +6,7 @@ import argparse
 import json
 
 
-class ArrayMemoryUsageTracker():
+class ArrayMemoryUsageTracker:
     def __init__(self):
         self.operator_sizes = []
         self.state_sizes = []
@@ -22,6 +22,7 @@ class ArrayMemoryUsageTracker():
         for op in operators:
             mem += op.nbytes
         self.operator_sizes.append(mem)
+
 
 def fock_beamsplitter(dim, theta=np.pi / 4):
     """
@@ -46,9 +47,10 @@ def fock_beamsplitter(dim, theta=np.pi / 4):
 
     # Exponential to get the unitary operator
     U_bs = expm(H_bs)
-    #U_bs = U_bs.reshape([dim, dim, dim, dim])
+    # U_bs = U_bs.reshape([dim, dim, dim, dim])
 
-    return Operator(U_bs, input_dims=(dim, dim), output_dims=(dim,dim))
+    return Operator(U_bs, input_dims=(dim, dim), output_dims=(dim, dim))
+
 
 def conditional_annihilation(dim):
     """
@@ -60,7 +62,7 @@ def conditional_annihilation(dim):
 
     # Populate the matrix
     for n in range(1, dim):  # Start from 1 to skip the vacuum state
-        op_matrix[n-1, n] = n  # Standard annihilation (normalized)
+        op_matrix[n - 1, n] = n  # Standard annihilation (normalized)
 
     # Add identity for the vacuum state
     op_matrix[0, 0] = 1  # Leave |0⟩ unchanged
@@ -113,8 +115,12 @@ def lossy_bs_circuit(initial_state, lossy):
     BS_0 = Operator(np.eye(dim)).tensor(BS).tensor(Operator(np.eye(dim)))
     composite_state.evolve(BS_0)
     if lossy:
-        A_cond = Operator(np.eye(dim)).tensor(conditional_annihilation(dim)).tensor(
-            conditional_annihilation(dim)).tensor(Operator(np.eye(dim)))
+        A_cond = (
+            Operator(np.eye(dim))
+            .tensor(conditional_annihilation(dim))
+            .tensor(conditional_annihilation(dim))
+            .tensor(Operator(np.eye(dim)))
+        )
         composite_state.evolve(A_cond)
         AMUT.record_operator_size(BS_0.data, A_cond.data)
         del BS_0, A_cond
@@ -127,8 +133,12 @@ def lossy_bs_circuit(initial_state, lossy):
     composite_state.evolve(BS_1)
 
     if lossy:
-        A_cond = conditional_annihilation(dim).tensor(conditional_annihilation(dim)).tensor(
-            Operator(np.eye(dim))).tensor(Operator(np.eye(dim)))
+        A_cond = (
+            conditional_annihilation(dim)
+            .tensor(conditional_annihilation(dim))
+            .tensor(Operator(np.eye(dim)))
+            .tensor(Operator(np.eye(dim)))
+        )
         composite_state.evolve(A_cond)
         AMUT.record_operator_size(BS_1.data, A_cond.data)
         del BS_1, A_cond
@@ -140,27 +150,37 @@ def lossy_bs_circuit(initial_state, lossy):
     BS_2 = Operator(np.eye(dim)).tensor(Operator(np.eye(dim))).tensor(BS)
     composite_state.evolve(BS_2)
     if lossy:
-        A_cond = Operator(np.eye(dim)).tensor(Operator(np.eye(dim))).tensor(
-            conditional_annihilation(dim)).tensor(conditional_annihilation(dim))
+        A_cond = (
+            Operator(np.eye(dim))
+            .tensor(Operator(np.eye(dim)))
+            .tensor(conditional_annihilation(dim))
+            .tensor(conditional_annihilation(dim))
+        )
         composite_state.evolve(A_cond)
         AMUT.record_operator_size(BS_2.data, A_cond.data)
         del BS_2, A_cond
     else:
         AMUT.record_operator_size(BS_2.data)
     AMUT.record_state_size(composite_state.data)
-    
-    output =  {
-        "state_sizes":AMUT.state_sizes,
-        "operator_sizes":AMUT.operator_sizes
-        }
+
+    output = {"state_sizes": AMUT.state_sizes, "operator_sizes": AMUT.operator_sizes}
 
     print(json.dumps(output))
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("initial_state", type=int, help="Starting individual photon count")
-    parser.add_argument("--lossy", type=bool, nargs="?", const=True, default=False,
-                        help="A boolean argument. Use '--lossy' to set to True, omit for False.")
+    parser.add_argument(
+        "initial_state", type=int, help="Starting individual photon count"
+    )
+    parser.add_argument(
+        "--lossy",
+        type=bool,
+        nargs="?",
+        const=True,
+        default=False,
+        help="A boolean argument. Use '--lossy' to set to True, omit for False.",
+    )
 
     args = parser.parse_args()
     lossy_bs_circuit(initial_state=args.initial_state, lossy=args.lossy)

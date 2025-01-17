@@ -87,7 +87,6 @@ class TestFockOperationCreation(unittest.TestCase):
             expected_state = expected_state.at[(i + 1) * 2, 0].set(1)
             self.assertTrue(jnp.allclose(env.state, expected_state))
 
-
     def test_creation_operation_envelope_matrix(self) -> None:
         C = Config()
         C.set_contraction(True)
@@ -561,9 +560,7 @@ class TestExpressionOperator(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array(
-                    [[0], [-1], [0], [0]]
-                ),
+                jnp.array([[0], [-1], [0], [0]]),
             )
         )
 
@@ -637,7 +634,7 @@ class TestCustomFockOperation(unittest.TestCase):
         env1.fock.apply_operation(op)
         env1.fock.uid = 1
         env2.fock.uid = 2
-        #print([s.uid for s in ce.product_states[0].state_objs])
+        # print([s.uid for s in ce.product_states[0].state_objs])
         self.assertTrue(
             jnp.allclose(ce.product_states[0].state, jnp.array([[0], [1], [0], [0]]))
         )
@@ -654,7 +651,7 @@ class TestCustomFockOperation(unittest.TestCase):
         env1.fock.apply_operation(op)
         env1.fock.uid = 1
         env2.fock.uid = 2
-        #print([s.uid for s in ce.product_states[0].state_objs])
+        # print([s.uid for s in ce.product_states[0].state_objs])
         self.assertTrue(
             jnp.allclose(ce.product_states[0].state, jnp.array([[0], [1], [0], [0]]))
         )

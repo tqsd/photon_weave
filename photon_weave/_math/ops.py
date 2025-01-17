@@ -368,9 +368,7 @@ def apply_kraus(
     return new_density_matrix
 
 
-def kraus_identity_check(
-    operators: List[jnp.ndarray], tol: float = 1e-6
-) -> bool:
+def kraus_identity_check(operators: List[jnp.ndarray], tol: float = 1e-6) -> bool:
     """
     Check if Kraus operator sum is less or equal to identity,
     thus representing a valid Kraus Channel
@@ -387,11 +385,13 @@ def kraus_identity_check(
     bool
         True if the Kraus operators sum to identity within the tolerance
     """
-    dim = operators[0].shape[0]
-    identity_matrix = jnp.eye(dim)
+    # TODO check if we need dim and identity matrix
+    # dim = operators[0].shape[0]
+    # identity_matrix = jnp.eye(dim)
+
     kraus_sum = sum(jnp.matmul(jnp.conjugate(K.T), K) for K in operators)
-    identity = jnp.eye(kraus_sum.shape[0]) # type: ignore
-    is_valid = jnp.all(jnp.real(jnp.linalg.eigvals(identity-kraus_sum)) >= 0)
+    identity = jnp.eye(kraus_sum.shape[0])  # type: ignore
+    is_valid = jnp.all(jnp.real(jnp.linalg.eigvals(identity - kraus_sum)) >= 0)
     return bool(is_valid)
 
 

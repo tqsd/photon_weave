@@ -13,10 +13,7 @@ def run_mprof(file_list):
 
         # Run mprof and save the output file
         subprocess.run(
-            [
-                "mprof", "run", "--interval", "0.01", "-o", output_file,
-                "python", script
-            ],
+            ["mprof", "run", "--interval", "0.01", "-o", output_file, "python", script],
             check=True,
         )
         data_files.append(output_file)
@@ -75,11 +72,10 @@ def remove_dat_files():
 if __name__ == "__main__":
     # List of Python scripts to benchmark
 
-    
-
     scripts_to_run = [
-        "state_management_photon_weave.py", "state_management_qutip.py",
-        "state_management_qiskit.py"
+        "state_management_photon_weave.py",
+        "state_management_qutip.py",
+        "state_management_qiskit.py",
     ]
 
     # Run mprof benchmarks

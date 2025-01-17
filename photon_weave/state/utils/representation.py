@@ -1,5 +1,7 @@
+from typing import List, Union
+
 import jax.numpy as jnp
-from typing import Union, List
+
 
 def representation_vector(state: jnp.ndarray) -> str:
     """
@@ -16,7 +18,7 @@ def representation_vector(state: jnp.ndarray) -> str:
         String representation of the state vector
     """
     assert isinstance(state, jnp.ndarray)
-    assert state.shape[1] ==1
+    assert state.shape[1] == 1
 
     formatted_vector: Union[str, List[str]]
     formatted_vector = ""
@@ -39,6 +41,7 @@ def representation_vector(state: jnp.ndarray) -> str:
     formatted_vector[-1] = "⎣ " + formatted_vector[-1][2:-1] + "⎦"
     formatted_vector = "\n".join(formatted_vector)
     return formatted_vector
+
 
 def representation_matrix(state: jnp.ndarray) -> str:
     """

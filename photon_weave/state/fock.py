@@ -7,23 +7,19 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
-import jax
 import jax.numpy as jnp
 
-from photon_weave._math.ops import (
-    num_quanta_matrix,
-    num_quanta_vector,
-)
+from photon_weave._math.ops import num_quanta_matrix, num_quanta_vector
 from photon_weave.operation import FockOperationType, Operation
 from photon_weave.photon_weave import Config
-from photon_weave.state.composite_envelope import CompositeEnvelope
 
+# from photon_weave.state.composite_envelope import CompositeEnvelope
 from .base_state import BaseState
 from .expansion_levels import ExpansionLevel
-from .utils.measurements import measure_vector, measure_matrix
-from .utils.operations import apply_operation_vector, apply_operation_matrix
+from .utils.measurements import measure_matrix, measure_vector
+from .utils.operations import apply_operation_matrix, apply_operation_vector
 from .utils.routing import route_operation
-from .utils.state_transform import state_expand, state_contract
+from .utils.state_transform import state_contract, state_expand
 
 if TYPE_CHECKING:
     from .envelope import Envelope
@@ -125,12 +121,9 @@ class Fock(BaseState):
             if isinstance(self.state, int):
                 self.dimensions = self.state + 3
 
-
         self.state, self.expansion_level = state_expand(
-            self.state,
-            self.expansion_level,
-            self.dimensions
-            )
+            self.state, self.expansion_level, self.dimensions
+        )
 
     def contract(
         self, final: ExpansionLevel = ExpansionLevel.Label, tol: float = 1e-6
@@ -156,9 +149,8 @@ class Fock(BaseState):
         success = True
         while self.expansion_level > final and success:
             self.state, self.expansion_level, success = state_contract(
-                self.state,
-                self.expansion_level
-                )
+                self.state, self.expansion_level
+            )
 
     def extract(self, index: Union[int, Tuple[int, int]]) -> None:
         """
@@ -242,15 +234,17 @@ class Fock(BaseState):
         match self.expansion_level:
             case ExpansionLevel.Label:
                 assert isinstance(self.state, int)
-                outcomes = {self:self.state}
+                outcomes = {self: self.state}
             case ExpansionLevel.Vector:
                 assert isinstance(self.state, jnp.ndarray)
                 outcomes, post_measurement_state = measure_vector(
-                    [self], [self], self.state)
+                    [self], [self], self.state
+                )
             case ExpansionLevel.Matrix:
                 assert isinstance(self.state, jnp.ndarray)
                 outcomes, post_measurement_state = measure_matrix(
-                    [self],[self], self.state)
+                    [self], [self], self.state
+                )
 
         self.state = outcomes[self]
         self.expansion_level = ExpansionLevel.Label
@@ -295,7 +289,7 @@ class Fock(BaseState):
         bool
             True if the resizing was succesfull
         """
-        from photon_weave.state.envelope import Envelope
+        # from photon_weave.state.envelope import Envelope
 
         assert isinstance(self.expansion_level, ExpansionLevel)
 
@@ -366,7 +360,6 @@ class Fock(BaseState):
         operation: Operation
             Operation with operation type: FockOperationType
         """
-        from photon_weave.state.envelope import Envelope
 
         assert isinstance(operation._operation_type, FockOperationType)
         assert isinstance(self.expansion_level, ExpansionLevel)
@@ -380,17 +373,17 @@ class Fock(BaseState):
         operation.compute_dimensions(self._num_quanta, to)
         self.resize(operation.dimensions[0])
         assert isinstance(self.state, jnp.ndarray)
-        
+
         match self.expansion_level:
             case ExpansionLevel.Vector:
                 self.state = apply_operation_vector(
                     [self], [self], self.state, operation.operator
-                    )
+                )
             case ExpansionLevel.Matrix:
                 self.state = apply_operation_matrix(
                     [self], [self], self.state, operation.operator
-                    )
-     
+                )
+
         if not jnp.any(jnp.abs(self.state) > 0):
             raise ValueError(
                 "The state is entirely composed of zeros, is |0⟩"

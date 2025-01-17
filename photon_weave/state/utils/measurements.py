@@ -1,7 +1,9 @@
 from __future__ import annotations
+
+from typing import TYPE_CHECKING, Dict, List, Tuple, Union
+
 import jax
 import jax.numpy as jnp
-from typing import TYPE_CHECKING, List, Dict, Union, Tuple
 
 import photon_weave.extra.einsum_constructor as ESC
 from photon_weave.photon_weave import Config
@@ -9,10 +11,12 @@ from photon_weave.photon_weave import Config
 if TYPE_CHECKING:
     from photon_weave.state.base_state import BaseState
 
+
 def measure_vector(
-    state_objs: Union[List[BaseState],Tuple[BaseState, ...]],
-    target_states: Union[List[BaseState],Tuple[BaseState, ...]],
-    product_state: jnp.ndarray) -> Tuple[Dict[BaseState,int], jnp.ndarray]:
+    state_objs: Union[List[BaseState], Tuple[BaseState, ...]],
+    target_states: Union[List[BaseState], Tuple[BaseState, ...]],
+    product_state: jnp.ndarray,
+) -> Tuple[Dict[BaseState, int], jnp.ndarray]:
     """
     Measures state vector and returns the outcome with the
     post measurement state.
@@ -35,7 +39,7 @@ def measure_vector(
     state_objs = list(state_objs)
     assert isinstance(product_state, jnp.ndarray)
     expected_dims = jnp.prod(jnp.array([s.dimensions for s in state_objs]))
-    assert product_state.shape == (expected_dims,1)
+    assert product_state.shape == (expected_dims, 1)
 
     # Reshape the array into the tensor
     shape = [s.dimensions for s in state_objs]
@@ -48,35 +52,33 @@ def measure_vector(
         # Using einsum string we compute the outcome probabilities
         einsum_m = ESC.measure_vector(list(state_objs), [state])
         projected_state = jnp.einsum(einsum_m, product_state)
-        probabilities = jnp.abs(projected_state.flatten())**2
+        probabilities = jnp.abs(projected_state.flatten()) ** 2
         probabilities /= jnp.sum(probabilities)
 
         # Based on the probabilities and key we choose outcome
         key = C.random_key
         outcome = jax.random.choice(
-            key,
-            a=jnp.arange(state.dimensions),
-            p=probabilities
-            )
+            key, a=jnp.arange(state.dimensions), p=probabilities
+        )
         outcomes[state] = int(outcome)
-        
+
         # We remove the measured system from the product state
         indices: List[Union[slice, int]] = [slice(None)] * len(product_state.shape)
         indices[state_objs.index(state)] = outcomes[state]
         product_state = product_state[tuple(indices)]
 
         state_objs.remove(state)
-    
 
-    product_state = product_state.reshape(-1,1)
+    product_state = product_state.reshape(-1, 1)
 
     return outcomes, product_state
-        
-    
+
+
 def measure_matrix(
-    state_objs: Union[List[BaseState],Tuple[BaseState, ...]],
-    target_states: Union[List[BaseState],Tuple[BaseState, ...]],
-    product_state: jnp.ndarray) -> Tuple[Dict[BaseState,int], jnp.ndarray]:
+    state_objs: Union[List[BaseState], Tuple[BaseState, ...]],
+    target_states: Union[List[BaseState], Tuple[BaseState, ...]],
+    product_state: jnp.ndarray,
+) -> Tuple[Dict[BaseState, int], jnp.ndarray]:
     """
     Measures Density Matrix and returns the outcome with the
     post measurement state of the product states, which were not measured.
@@ -114,17 +116,15 @@ def measure_matrix(
         # Using einsum string we compute the outcome probabilities
         einsum_m = ESC.measure_matrix(state_objs, [state])
         projected_state = jnp.einsum(einsum_m, product_state)
-        
+
         probabilities = jnp.abs(jnp.diag(projected_state))
         probabilities /= jnp.sum(probabilities)
 
         # Based on the probabilities and key we choose outcome
         key = C.random_key
         outcome = jax.random.choice(
-            key,
-            a=jnp.arange(state.dimensions),
-            p=probabilities
-            )
+            key, a=jnp.arange(state.dimensions), p=probabilities
+        )
         outcomes[state] = int(outcome)
 
         # Construct post measurement state
@@ -132,8 +132,8 @@ def measure_matrix(
         row_idx = state_index
         col_idx = state_index + len(state_objs)
         indices = [slice(None)] * len(product_state.shape)
-        indices[row_idx] = outcomes[state] # type: ignore
-        indices[col_idx] = outcomes[state] # type: ignore
+        indices[row_idx] = outcomes[state]  # type: ignore
+        indices[col_idx] = outcomes[state]  # type: ignore
         product_state = product_state[tuple(indices)]
 
         state_objs.remove(state)
@@ -144,12 +144,13 @@ def measure_matrix(
 
     return outcomes, product_state
 
+
 def measure_POVM_matrix(
-    state_objs: Union[List[BaseState],Tuple[BaseState, ...]],
-    target_states: Union[List[BaseState],Tuple[BaseState, ...]],
-    operators: Union[List[jnp.ndarray],Tuple[jnp.ndarray]],
-    product_state: jnp.ndarray
-    ) -> Tuple[int, jnp.ndarray]:
+    state_objs: Union[List[BaseState], Tuple[BaseState, ...]],
+    target_states: Union[List[BaseState], Tuple[BaseState, ...]],
+    operators: Union[List[jnp.ndarray], Tuple[jnp.ndarray]],
+    product_state: jnp.ndarray,
+) -> Tuple[int, jnp.ndarray]:
     """
     Peform POVM measurement on the given product state.
 
@@ -183,16 +184,10 @@ def measure_POVM_matrix(
     state_objs = list(state_objs)
     target_states = list(target_states)
     # Transform the operators to tensors
-    op_shape = [s.dimensions for s in target_states]*2
+    op_shape = [s.dimensions for s in target_states] * 2
     operators = [op.reshape(op_shape) for op in operators]
-    product_state = product_state.reshape(
-        [s.dimensions for s in state_objs]*2
-        )
-    target_dims = jnp.prod(
-        jnp.array(
-            [s.dimensions for s in target_states]
-            )
-        )
+    product_state = product_state.reshape([s.dimensions for s in state_objs] * 2)
+    target_dims = jnp.prod(jnp.array([s.dimensions for s in target_states]))
 
     einsum_op = ESC.apply_operator_matrix(state_objs, target_states)
     einsum_to = ESC.trace_out_matrix(state_objs, target_states)
@@ -201,16 +196,12 @@ def measure_POVM_matrix(
     # Get the dimensions
     for operator in operators:
         projected_state = jnp.einsum(
-            einsum_op,
-            operator,
-            product_state,
-            jnp.conj(operator)
-            )
+            einsum_op, operator, product_state, jnp.conj(operator)
+        )
 
-        traced_out_projected_state = jnp.einsum(
-            einsum_to,
-            projected_state
-            ).reshape((target_dims,target_dims))
+        traced_out_projected_state = jnp.einsum(einsum_to, projected_state).reshape(
+            (target_dims, target_dims)
+        )
 
         prob_list.append(float(jnp.trace(traced_out_projected_state).real))
 
@@ -219,26 +210,13 @@ def measure_POVM_matrix(
 
     C = Config()
     key = C.random_key
-    outcome = int(
-        jax.random.choice(
-            key,
-            a=jnp.arange(len(operators)),
-            p=probabilities
-            )
-        )
+    outcome = int(jax.random.choice(key, a=jnp.arange(len(operators)), p=probabilities))
     product_state = jnp.einsum(
-        einsum_op,
-        operators[outcome],
-        product_state,
-        jnp.conj(operators[outcome])
-        )
+        einsum_op, operators[outcome], product_state, jnp.conj(operators[outcome])
+    )
 
     product_state /= jnp.linalg.norm(product_state)
 
-    state_dims = jnp.prod(
-        jnp.array(
-            [s.dimensions for s in state_objs]
-            )
-        )
+    state_dims = jnp.prod(jnp.array([s.dimensions for s in state_objs]))
     product_state = product_state.reshape((state_dims, state_dims))
     return outcome, product_state

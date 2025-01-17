@@ -10,7 +10,7 @@ def run_mprof(file_list):
     for script in file_list:
         output_file = f"{script}.dat"
         print(f"Running mprof for {script}...")
-        
+
         # Run mprof and save the output file
         subprocess.run(
             ["mprof", "run", "--interval", "0.01", "-o", output_file, "python", script],
@@ -59,10 +59,11 @@ def plot_memory_usage(data_files):
     print("Memory usage plot saved as memory_comparison.png")
     plt.savefig("state_management.png")
 
+
 def remove_dat_files():
     # Find all .dat files in the current directory
     dat_files = glob.glob("*.dat")
-    
+
     for dat_file in dat_files:
         print(f"Removing file: {dat_file}")
         os.remove(dat_file)  # Delete the file
@@ -73,7 +74,8 @@ if __name__ == "__main__":
     scripts_to_run = [
         "state_management_photon_weave.py",
         "state_management_qutip.py",
-        "state_management_qiskit.py"]
+        "state_management_qiskit.py",
+    ]
 
     # Run mprof benchmarks
     dat_files = run_mprof(scripts_to_run)

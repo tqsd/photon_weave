@@ -1,12 +1,15 @@
+from typing import Tuple, Union
+
 import jax.numpy as jnp
-from memory_profiler import profile
-import jax
-from typing import Union, Tuple
 
 from photon_weave.state.expansion_levels import ExpansionLevel
-def state_expand(state: Union[jnp.ndarray, int],
-           current_expansion_level:ExpansionLevel,
-           dimensions: int) -> Tuple[jnp.ndarray, ExpansionLevel]:
+
+
+def state_expand(
+    state: Union[jnp.ndarray, int],
+    current_expansion_level: ExpansionLevel,
+    dimensions: int,
+) -> Tuple[jnp.ndarray, ExpansionLevel]:
     """
     Returns the expanded state representation.
     If currently the state is represented as a label,
@@ -36,16 +39,12 @@ def state_expand(state: Union[jnp.ndarray, int],
     assert isinstance(dimensions, int)
     assert isinstance(current_expansion_level, ExpansionLevel)
     if dimensions < 0:
-        raise ValueError(
-            "Dimensions must be larger than 0"
-            )
+        raise ValueError("Dimensions must be larger than 0")
     new_state: Union[jnp.ndarray]
     match current_expansion_level:
         case ExpansionLevel.Label:
             if not isinstance(state, int):
-                raise ValueError(
-                    "Could not expand state, where label is not int type"
-                    )
+                raise ValueError("Could not expand state, where label is not int type")
             assert state >= 0
             new_state = jnp.zeros(dimensions, dtype=jnp.complex128)
             new_state = new_state.at[state].set(1)
@@ -56,25 +55,22 @@ def state_expand(state: Union[jnp.ndarray, int],
             assert isinstance(state, jnp.ndarray)
             assert state.shape == (dimensions, 1)
 
-            new_state = jnp.outer(
-                state.flatten(),
-                jnp.conj(state.flatten())
-                )
+            new_state = jnp.outer(state.flatten(), jnp.conj(state.flatten()))
             new_expansion_level = ExpansionLevel.Matrix
         case ExpansionLevel.Matrix:
-            assert isinstance(state,jnp.ndarray)
+            assert isinstance(state, jnp.ndarray)
             new_state = state
             new_expansion_level = current_expansion_level
         case _:
-            raise ValueError(
-                "Something went wrong"
-            )
+            raise ValueError("Something went wrong")
     return new_state, new_expansion_level
-    
-def state_contract(state:Union[int, jnp.ndarray],
-                   current_expansion_level: ExpansionLevel,
-                   tol: float = 1e-6
-                   ) -> Tuple[Union[int, jnp.ndarray], ExpansionLevel, bool]:
+
+
+def state_contract(
+    state: Union[int, jnp.ndarray],
+    current_expansion_level: ExpansionLevel,
+    tol: float = 1e-6,
+) -> Tuple[Union[int, jnp.ndarray], ExpansionLevel, bool]:
     """
     Returns contracted state representation if possible
 
@@ -92,7 +88,7 @@ def state_contract(state:Union[int, jnp.ndarray],
     Tuple[Union[jnp.ndarray,int], ExpansionLevel, bool]
         Returns a tuple of the new state, new representation expantion level
         and success flag. Is process was succesfull, then the success is True
-        
+
     Notes
     -----
     Needs to be handled carefully in the case of Polarization, because
@@ -114,7 +110,7 @@ def state_contract(state:Union[int, jnp.ndarray],
             if jnp.abs(state_trace - 1) < tol:
                 eigenvalues, eigenvectors = jnp.linalg.eigh(state)
                 pure_state_index = jnp.argmax(eigenvalues)
-                new_state = eigenvectors[:, pure_state_index].reshape(-1,1)
+                new_state = eigenvectors[:, pure_state_index].reshape(-1, 1)
                 # Removing the global phase
                 assert isinstance(new_state, jnp.ndarray)
                 phase = jnp.exp(-1j * jnp.angle(new_state[0]))

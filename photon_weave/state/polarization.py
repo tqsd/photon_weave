@@ -9,7 +9,6 @@ import uuid
 from enum import Enum
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
-import jax
 import jax.numpy as jnp
 
 from photon_weave.operation import PolarizationOperationType
@@ -20,7 +19,7 @@ from .expansion_levels import ExpansionLevel
 from .utils.measurements import measure_matrix, measure_vector
 from .utils.operations import apply_operation_matrix, apply_operation_vector
 from .utils.routing import route_operation
-from .utils.state_transform import state_expand, state_contract
+from .utils.state_transform import state_contract, state_expand
 
 if TYPE_CHECKING:
     from photon_weave.operation import Operation
@@ -83,7 +82,6 @@ class Polarization(BaseState):
         polarization: PolarizationLabel = PolarizationLabel.H,
         envelope: Union["Envelope", None] = None,
     ):
-
         self.uid: uuid.UUID = uuid.uuid4()
         logger.info("Creating polarization with uid %s", self.uid)
         self.index: Optional[Union[int, Tuple[int, int]]] = None
@@ -151,10 +149,8 @@ class Polarization(BaseState):
             assert isinstance(self.state, jnp.ndarray)
             assert isinstance(self.expansion_level, ExpansionLevel)
             self.state, self.expansion_level = state_expand(
-                self.state,
-                self.expansion_level,
-                self.dimensions
-                )
+                self.state, self.expansion_level, self.dimensions
+            )
 
     @route_operation()
     def contract(
@@ -186,10 +182,9 @@ class Polarization(BaseState):
             and final < ExpansionLevel.Matrix
         ):
             assert isinstance(self.state, (jnp.ndarray, int))
-            self.state, self.expansion_level, success = state_contract( # type: ignore
-                self.state,
-                self.expansion_level
-                )
+            self.state, self.expansion_level, success = state_contract(  # type: ignore
+                self.state, self.expansion_level
+            )
         if (
             self.expansion_level is ExpansionLevel.Vector
             and final < ExpansionLevel.Vector
@@ -294,20 +289,20 @@ class Polarization(BaseState):
             case ExpansionLevel.Vector:
                 assert isinstance(self.state, jnp.ndarray)
                 outcomes, post_measurement_state = measure_vector(
-                    [self],[self], self.state
-                    )
+                    [self], [self], self.state
+                )
             case ExpansionLevel.Matrix:
                 assert isinstance(self.state, jnp.ndarray)
                 outcomes, post_measurement_state = measure_matrix(
-                    [self],[self], self.state
-                    )
+                    [self], [self], self.state
+                )
         # Reconstruct the state post measurement
         if outcomes[self] == 0:
             self.state = PolarizationLabel.H
         elif outcomes[self] == 1:
             self.state = PolarizationLabel.V
         self.expansion_level = ExpansionLevel.Label
-        
+
         if destructive:
             self._set_measured()
 
@@ -345,14 +340,13 @@ class Polarization(BaseState):
                 assert isinstance(self.state, jnp.ndarray)
                 self.state = apply_operation_vector(
                     [self], [self], self.state, operation.operator
-                    )
+                )
             case ExpansionLevel.Matrix:
                 assert isinstance(self.state, jnp.ndarray)
                 self.state = apply_operation_matrix(
                     [self], [self], self.state, operation.operator
-                    )
+                )
 
-            
         assert isinstance(self.state, jnp.ndarray)
         if not jnp.any(jnp.abs(self.state) > 0):
             raise ValueError(

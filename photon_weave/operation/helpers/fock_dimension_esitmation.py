@@ -1,5 +1,6 @@
-import jax.numpy as jnp
 from typing import TYPE_CHECKING
+
+import jax.numpy as jnp
 
 if TYPE_CHECKING:
     from photon_weave.operation import Operation

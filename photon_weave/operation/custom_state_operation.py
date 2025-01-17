@@ -3,11 +3,12 @@ Operations on Custom States
 """
 
 from enum import Enum
-import jax.numpy as jnp
-from typing import List, Any, Union
+from typing import Any, List, Union
 
-from photon_weave.state.expansion_levels import ExpansionLevel
+import jax.numpy as jnp
+
 from photon_weave.extra import interpreter
+from photon_weave.state.expansion_levels import ExpansionLevel
 
 
 class CustomStateOperationType(Enum):

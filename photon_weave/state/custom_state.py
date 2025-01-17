@@ -10,7 +10,6 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 from photon_weave._math.ops import apply_kraus, kraus_identity_check
 from photon_weave.operation import CustomStateOperationType, Operation
@@ -18,10 +17,12 @@ from photon_weave.photon_weave import Config
 from photon_weave.state.base_state import BaseState
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.expansion_levels import ExpansionLevel
-from .utils.measurements import measure_vector, measure_matrix
-from .utils.operations import apply_operation_vector, apply_operation_matrix
+
+from .utils.measurements import measure_matrix, measure_vector
+from .utils.operations import apply_operation_matrix, apply_operation_vector
 from .utils.routing import route_operation
 from .utils.state_transform import state_contract, state_expand
+
 
 class CustomState(BaseState):
     def __init__(self, dimensions: int):
@@ -64,12 +65,11 @@ class CustomState(BaseState):
         assert not isinstance(index, int)
         self._index = index
 
-
     @route_operation()
     def expand(self) -> None:
         """
         Expands the state from label to vector and from vector to matrix
-        
+
         Notes
         -----
         Method is decorated with route_operation. If the state is
@@ -80,10 +80,8 @@ class CustomState(BaseState):
         assert self.state is not None
         assert isinstance(self.expansion_level, ExpansionLevel)
         self.state, self.expansion_level = state_expand(
-            self.state,
-            self.expansion_level,
-            self.dimensions
-            )
+            self.state, self.expansion_level, self.dimensions
+        )
 
     @route_operation()
     def contract(
@@ -102,13 +100,12 @@ class CustomState(BaseState):
         """
         assert isinstance(self.expansion_level, ExpansionLevel)
         assert isinstance(self.state, jnp.ndarray)
-        
+
         success = True
         while self.expansion_level > final and success:
             self.state, self.expansion_level, success = state_contract(
-                self.state,
-                self.expansion_level
-                )
+                self.state, self.expansion_level
+            )
 
     @property
     def _measured(self) -> bool:
@@ -287,7 +284,7 @@ class CustomState(BaseState):
         C = Config()
         if C.contractions:
             self.contract()
-            
+
     @route_operation()
     def apply_operation(self, operation: Operation) -> None:
         """
@@ -299,7 +296,7 @@ class CustomState(BaseState):
         ----------
         operation: Operation
             Operation with operation type: FockOperationType
-            
+
         Notes
         -----
         Method is decorated with route_operation. If the state is
@@ -325,11 +322,11 @@ class CustomState(BaseState):
             case ExpansionLevel.Vector:
                 self.state = apply_operation_vector(
                     [self], [self], self.state, operation.operator
-                    )
+                )
             case ExpansionLevel.Matrix:
                 self.state = apply_operation_matrix(
                     [self], [self], self.state, operation.operator
-                    )
+                )
 
         if not jnp.any(jnp.abs(self.state) > 0):
             raise ValueError(

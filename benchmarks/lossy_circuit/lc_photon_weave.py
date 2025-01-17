@@ -11,7 +11,7 @@ from array_memory_usage_tracker import ArrayMemoryUsageTracker
 INITIAL_STATE = 8
 LOSS = 1
 
-            
+
 def conditional_annihilation(dim):
     """
     Creates an operator which acts as identity on the vacuum state,
@@ -22,16 +22,17 @@ def conditional_annihilation(dim):
 
     # Populate the matrix
     for n in range(1, dim):  # Start from 1 to skip the vacuum state
-        op_matrix[n-1, n] = n  # Standard annihilation (normalized)
+        op_matrix[n - 1, n] = n  # Standard annihilation (normalized)
 
     # Add identity for the vacuum state
     op_matrix[0, 0] = 1  # Leave |0⟩ unchanged
 
     return jnp.array(op_matrix)
 
+
 def lossy_bs_circuit(initial_state, lossy):
     AMUT = ArrayMemoryUsageTracker()
-    
+
     env1 = Envelope()
     env1.fock.state = initial_state
     env2 = Envelope()
@@ -49,12 +50,12 @@ def lossy_bs_circuit(initial_state, lossy):
 
     ce = CompositeEnvelope(env1, env2, env3, env4)
 
-    bs = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi/4)
+    bs = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
 
-    context = {
-        "a": lambda dims: conditional_annihilation(dims[0])
-        }
-    loss = Operation(FockOperationType.Expresion, expr=("s_mult", "a", 1), context=context)
+    context = {"a": lambda dims: conditional_annihilation(dims[0])}
+    loss = Operation(
+        FockOperationType.Expresion, expr=("s_mult", "a", 1), context=context
+    )
 
     ce.apply_operation(bs, env1.fock, env2.fock)
     if lossy:
@@ -73,7 +74,6 @@ def lossy_bs_circuit(initial_state, lossy):
     else:
         AMUT.record_operator_size(bs)
     AMUT.record_state_size(ce.product_states[0], ce.product_states[1])
-
 
     ce.apply_operation(bs, env2.fock, env3.fock)
     if lossy:
@@ -102,19 +102,24 @@ def lossy_bs_circuit(initial_state, lossy):
         AMUT.record_operator_size(bs)
     AMUT.record_state_size(ce.product_states[0])
 
-    output =  {
-        "state_sizes":AMUT.state_sizes,
-        "operator_sizes":AMUT.operator_sizes
-        }
+    output = {"state_sizes": AMUT.state_sizes, "operator_sizes": AMUT.operator_sizes}
 
     print(json.dumps(output))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("initial_state", type=int, help="Starting individual photon count")
-    parser.add_argument("--lossy", type=bool, nargs="?", const=True, default=False,
-                        help="A boolean argument. Use '--lossy' to set to True, omit for False.")
+    parser.add_argument(
+        "initial_state", type=int, help="Starting individual photon count"
+    )
+    parser.add_argument(
+        "--lossy",
+        type=bool,
+        nargs="?",
+        const=True,
+        default=False,
+        help="A boolean argument. Use '--lossy' to set to True, omit for False.",
+    )
 
     args = parser.parse_args()
     lossy_bs_circuit(initial_state=args.initial_state, lossy=args.lossy)

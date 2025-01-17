@@ -7,9 +7,11 @@ from random import randint
 from photon_weave.state.envelope import Envelope
 
 from interoperable_devices import (
-    DenseDecoder, DenseEncoder,
-    EntangledPhotonSource, EnvelopeBuffer
-    )
+    DenseDecoder,
+    DenseEncoder,
+    EntangledPhotonSource,
+    EnvelopeBuffer,
+)
 
 
 class DenseSender:
@@ -57,7 +59,7 @@ if __name__ == "__main__":
     sender.register_receiver(receiver)
 
     # Generate message list
-    messages = [ (randint(0, 1), randint(0, 1)) for _ in range(NUMBER_OF_MESSAGES)]
+    messages = [(randint(0, 1), randint(0, 1)) for _ in range(NUMBER_OF_MESSAGES)]
 
     # Preshare the entanglement
     sender.share_entanglement(NUMBER_OF_MESSAGES)

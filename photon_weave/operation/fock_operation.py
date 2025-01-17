@@ -7,15 +7,12 @@ from typing import Any, List, Tuple, Union
 
 import jax.numpy as jnp
 
-from photon_weave._math.ops import (
-    annihilation_operator,
-    creation_operator,
-    displacement_operator,
-    phase_operator,
-    squeezing_operator,
-)
+from photon_weave._math.ops import (annihilation_operator, creation_operator,
+                                    displacement_operator, phase_operator,
+                                    squeezing_operator)
 from photon_weave.extra import interpreter
-from photon_weave.operation.helpers.fock_dimension_esitmation import FockDimensions
+from photon_weave.operation.helpers.fock_dimension_esitmation import \
+    FockDimensions
 from photon_weave.state.expansion_levels import ExpansionLevel
 
 
@@ -112,49 +109,49 @@ class FockOperationType(Enum):
     >>> fock.apply_operation(op)
     """
 
-    Creation: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
+    Creation: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
         True,
         [],
         ExpansionLevel.Vector,
         1,
     )
-    Annihilation: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
+    Annihilation: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
         True,
         [],
         ExpansionLevel.Vector,
         2,
     )
-    PhaseShift: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
+    PhaseShift: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
         False,
         ["phi"],
         ExpansionLevel.Vector,
         3,
     )
-    Squeeze: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
+    Squeeze: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
         True,
         ["zeta"],
         ExpansionLevel.Vector,
         4,
     )
-    Displace: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
+    Displace: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
         False,
         ["alpha"],
         ExpansionLevel.Vector,
         5,
     )
-    Identity: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
+    Identity: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
         False,
         [],
         ExpansionLevel.Vector,
         6,
     )
-    Custom: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
+    Custom: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
         False,
         ["operator"],
         ExpansionLevel.Vector,
         7,
     )
-    Expresion: Tuple[bool, List[str], ExpansionLevel, int] = ( # type: ignore[misc]
+    Expresion: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
         False,
         ["expr", "context"],
         ExpansionLevel.Vector,

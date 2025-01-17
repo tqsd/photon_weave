@@ -1,17 +1,20 @@
 from __future__ import annotations
-import jax
-import jax.numpy as jnp
+
 from typing import TYPE_CHECKING, List, Tuple, Union
+
+import jax.numpy as jnp
 
 import photon_weave.extra.einsum_constructor as ESC
 
 if TYPE_CHECKING:
     from photon_weave.state.base_state import BaseState
 
+
 def trace_out_vector(
-    state_objs: Union[List[BaseState],Tuple[BaseState, ...]],
-    target_states: Union[List[BaseState],Tuple[BaseState, ...]],
-    product_state: jnp.ndarray) -> jnp.ndarray:
+    state_objs: Union[List[BaseState], Tuple[BaseState, ...]],
+    target_states: Union[List[BaseState], Tuple[BaseState, ...]],
+    product_state: jnp.ndarray,
+) -> jnp.ndarray:
     """
     Traces out the system, returning only the space of given target states
 
@@ -41,10 +44,7 @@ def trace_out_vector(
     state_objs = list(state_objs)
     target_states = list(target_states)
 
-    total_dimensions = jnp.prod(
-        jnp.array(
-            [s.dimensions for s in state_objs]
-            ))
+    total_dimensions = jnp.prod(jnp.array([s.dimensions for s in state_objs]))
     shape_dims = [s.dimensions for s in state_objs]
     shape_dims.append(1)
 
@@ -56,13 +56,14 @@ def trace_out_vector(
 
     trace_out_state = jnp.einsum(einsum, product_state)
 
-    return trace_out_state.reshape((-1,1))
+    return trace_out_state.reshape((-1, 1))
 
 
 def trace_out_matrix(
-    state_objs: Union[List[BaseState],Tuple[BaseState, ...]],
-    target_states: Union[List[BaseState],Tuple[BaseState, ...]],
-    product_state: jnp.ndarray) -> jnp.ndarray:
+    state_objs: Union[List[BaseState], Tuple[BaseState, ...]],
+    target_states: Union[List[BaseState], Tuple[BaseState, ...]],
+    product_state: jnp.ndarray,
+) -> jnp.ndarray:
     """
     Traces out the system, returning only the space of given target states
 
@@ -93,15 +94,9 @@ def trace_out_matrix(
     state_objs = list(state_objs)
     target_states = list(target_states)
 
-    total_dimensions = jnp.prod(
-        jnp.array(
-            [s.dimensions for s in state_objs]
-            ))
-    shape_dimensions = [s.dimensions for s in state_objs]*2
-    new_dimensions = [jnp.prod(
-        jnp.array(
-            [s.dimensions for s in target_states]
-            ))]*2
+    total_dimensions = jnp.prod(jnp.array([s.dimensions for s in state_objs]))
+    shape_dimensions = [s.dimensions for s in state_objs] * 2
+    new_dimensions = [jnp.prod(jnp.array([s.dimensions for s in target_states]))] * 2
 
     assert product_state.shape == (total_dimensions, total_dimensions)
 

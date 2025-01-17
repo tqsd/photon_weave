@@ -4,8 +4,8 @@ from photon_weave.operation.polarization_operation import PolarizationOperationT
 from photon_weave.operation.operation import Operation
 from photon_weave.operation.composite_operation import CompositeOperationType
 
-class EntangledPhotonSource:
 
+class EntangledPhotonSource:
     def emit(self) -> tuple[Envelope, Envelope]:
         env1 = Envelope()
         env2 = Envelope()

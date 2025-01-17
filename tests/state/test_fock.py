@@ -1,16 +1,16 @@
+import random
 import unittest
+
+import jax.numpy as jnp
+import numpy as np
 import pytest
 
-import numpy as np
-import jax.numpy as jnp
-import random
-
 from photon_weave.photon_weave import Config
+from photon_weave.state.composite_envelope import CompositeEnvelope
+from photon_weave.state.envelope import Envelope
+from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.state.fock import Fock
 from photon_weave.state.polarization import Polarization, PolarizationLabel
-from photon_weave.state.envelope import Envelope
-from photon_weave.state.composite_envelope import CompositeEnvelope
-from photon_weave.state.expansion_levels import ExpansionLevel
 
 
 class TestFockSmallFunctions(unittest.TestCase):

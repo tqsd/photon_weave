@@ -1,5 +1,4 @@
-
-class ArrayMemoryUsageTracker():
+class ArrayMemoryUsageTracker:
     def __init__(self):
         self.operator_sizes = []
         self.state_sizes = []

@@ -1,12 +1,13 @@
-import numpy as np
-from qiskit.quantum_info import DensityMatrix
 import gc
-from memory_profiler import profile
+
+import numpy as np
 import psutil
+from qiskit.quantum_info import DensityMatrix
 
 process = psutil.Process()
 
 STATE_SIZE = 6
+
 
 def run_combine():
     # Create a 6-dimensional "basis vector" for |0>
@@ -28,6 +29,7 @@ def run_combine():
 
     # Clean up references
     del product_state, c_dm, basis_vec, c_vec
+
 
 # Example single run
 for i in range(100):

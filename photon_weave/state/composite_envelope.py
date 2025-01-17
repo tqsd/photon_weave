@@ -1,44 +1,39 @@
 from __future__ import annotations
-import uuid
-import time
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union, cast
-from functools import reduce
 
-import inspect
+# TODO
+# import inspect
+import uuid
+from dataclasses import dataclass, field
+from functools import reduce
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union, cast
+
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 # from photon_weave.extra.einsum_constructor import EinsumStringConstructor as ESC
 import photon_weave.extra.einsum_constructor as ESC
-from photon_weave._math.ops import (
-    kraus_identity_check,
-    num_quanta_matrix,
-    num_quanta_vector,
-)
-from photon_weave.operation import(
-    CustomStateOperationType,
-    FockOperationType,
-    Operation,
-    PolarizationOperationType,
-)
+from photon_weave._math.ops import (kraus_identity_check, num_quanta_matrix,
+                                    num_quanta_vector)
+from photon_weave.operation import (CustomStateOperationType,
+                                    FockOperationType, Operation,
+                                    PolarizationOperationType)
 from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
 
+from .utils.measurements import (measure_matrix, measure_POVM_matrix,
+                                 measure_vector)
+from .utils.operations import (apply_kraus_matrix, apply_kraus_vector,
+                               apply_operation_matrix, apply_operation_vector)
 from .utils.state_transform import state_contract, state_expand
-from .utils.measurements import measure_vector, measure_matrix, measure_POVM_matrix
-from .utils.trace_out import trace_out_vector, trace_out_matrix
-from .utils.operations import (
-    apply_kraus_matrix, apply_kraus_vector,
-    apply_operation_matrix, apply_operation_vector)
-                
+from .utils.trace_out import trace_out_matrix, trace_out_vector
+
 # For static type checks
 if TYPE_CHECKING:
     from photon_weave.state.base_state import BaseState  # pragma: no cover
     from photon_weave.state.custom_state import CustomState  # pragma: no cover
     from photon_weave.state.envelope import Envelope  # pragma: no cover
     from photon_weave.state.fock import Fock  # pragma: no cover
+
 
 @jax.jit
 def kron_reduce(arrays: list[jnp.ndarray]) -> jnp.ndarray:
@@ -58,7 +53,7 @@ def kron_reduce(arrays: list[jnp.ndarray]) -> jnp.ndarray:
 
     Notes:
     ------
-    - The function uses `reduce` to iteratively compute the Kronecker product 
+    - The function uses `reduce` to iteratively compute the Kronecker product
       of all matrices in `arrays`.
     - JAX's just-in-time (jit) compilation is applied for optimization.
     - `jnp.kron` is used to compute the Kronecker product between two matrices.
@@ -75,6 +70,7 @@ def kron_reduce(arrays: list[jnp.ndarray]) -> jnp.ndarray:
     #  [18 21 24 28]]
     """
     return reduce(lambda a, b: jnp.kron(a, b), arrays, jnp.array([[1]]))
+
 
 @dataclass(slots=True)
 class ProductState:
@@ -96,13 +92,10 @@ class ProductState:
         Expands the state from vector to matrix
         """
         if self.expansion_level < ExpansionLevel.Matrix:
-            dims = int(jnp.prod(jnp.array(
-                [s.dimensions for s in self.state_objs]
-                )))
+            dims = int(jnp.prod(jnp.array([s.dimensions for s in self.state_objs])))
             self.state, self.expansion_level = state_expand(
-                self.state,
-                self.expansion_level,
-                dims)
+                self.state, self.expansion_level, dims
+            )
             for state in self.state_objs:
                 state.expansion_level = ExpansionLevel.Matrix
 
@@ -118,11 +111,12 @@ class ProductState:
         if self.expansion_level is ExpansionLevel.Matrix:
             self.state, self.expansion_level, success = cast(
                 tuple[jnp.ndarray, ExpansionLevel, bool],
-                state_contract(self.state, self.expansion_level)
-                )
+                state_contract(self.state, self.expansion_level),
+            )
             if success:
                 for state in self.state_objs:
                     state.expansion_level = ExpansionLevel.Vector
+
     @property
     def size(self) -> int:
         """
@@ -212,25 +206,22 @@ class ProductState:
             Dictionary of outcomes, where the state is key and its outcome measurement
         is the value (int)
         """
-        from photon_weave.state.polarization import Polarization, PolarizationLabel
+        from photon_weave.state.polarization import (Polarization,
+                                                     PolarizationLabel)
 
         assert all(
             so in self.state_objs for so in states
         ), "All state objects need to be in product state"
-        
+
         match self.expansion_level:
             case ExpansionLevel.Vector:
                 outcomes, self.state = measure_vector(
-                    self.state_objs,
-                    states,
-                    self.state
-                    )
+                    self.state_objs, states, self.state
+                )
             case ExpansionLevel.Matrix:
                 outcomes, self.state = measure_matrix(
-                    self.state_objs,
-                    states,
-                    self.state
-                    )
+                    self.state_objs, states, self.state
+                )
         # Handle post measurement processes
         for state in states:
             if destructive:
@@ -246,7 +237,7 @@ class ProductState:
                 state.expansion_level = ExpansionLevel.Label
                 state.index = None
 
-        self.state_objs = [ s for s in self.state_objs if s not in states]
+        self.state_objs = [s for s in self.state_objs if s not in states]
         C = Config()
         if C.contractions and len(self.state_objs) > 0:
             self.contract()
@@ -289,27 +280,19 @@ class ProductState:
             self.expand()
 
         outcome, self.state = measure_POVM_matrix(
-            self.state_objs,
-            states,
-            operators,
-            self.state)
+            self.state_objs, states, operators, self.state
+        )
 
         other_outcomes = {}
         if destructive:
             # Custom State cannot be destroyed
             for s in states:
                 if isinstance(s, CustomState):
-                    s.state = trace_out_matrix(
-                        self.state_objs,
-                        [s],
-                        self.state
-                        )
+                    s.state = trace_out_matrix(self.state_objs, [s], self.state)
                     s.expansion_level = ExpansionLevel.Matrix
                     s.index = None
-                    
-            remaining_states = [
-                s for s in self.state_objs if s not in states
-                ]
+
+            remaining_states = [s for s in self.state_objs if s not in states]
             if isinstance(
                 CompositeEnvelope._instances[self.container.composite_uid], list
             ):
@@ -321,14 +304,14 @@ class ProductState:
             self.state_objs = remaining_states
 
         C = Config()
-        if C.contractions and len(self.state_objs)>0:
+        if C.contractions and len(self.state_objs) > 0:
             self.contract()
         return (outcome, other_outcomes)
 
     def apply_kraus(
         self,
-        operators: Union[List[jnp.ndarray],Tuple[jnp.ndarray,...]],
-        *states: "BaseState"
+        operators: Union[List[jnp.ndarray], Tuple[jnp.ndarray, ...]],
+        *states: "BaseState",
     ) -> None:
         """
         Applies the Kraus oeprators to the selected states, called by the apply_kraus
@@ -345,18 +328,12 @@ class ProductState:
         match self.expansion_level:
             case ExpansionLevel.Vector:
                 self.state = apply_kraus_vector(
-                    self.state_objs,
-                    states,
-                    self.state,
-                    operators
-                    )
+                    self.state_objs, states, self.state, operators
+                )
             case ExpansionLevel.Matrix:
                 self.state = apply_kraus_matrix(
-                    self.state_objs,
-                    states,
-                    self.state,
-                    operators
-                    )
+                    self.state_objs, states, self.state, operators
+                )
                 C = Config()
                 if C.contractions:
                     self.contract()
@@ -379,15 +356,9 @@ class ProductState:
         """
         match self.expansion_level:
             case ExpansionLevel.Vector:
-                return trace_out_vector(
-                    self.state_objs,
-                    list(states),
-                    self.state)
+                return trace_out_vector(self.state_objs, list(states), self.state)
             case ExpansionLevel.Matrix:
-                return trace_out_matrix(
-                    self.state_objs,
-                    list(states),
-                    self.state)
+                return trace_out_matrix(self.state_objs, list(states), self.state)
 
         return jnp.ndarray([[1]])
 
@@ -511,10 +482,7 @@ class ProductState:
         from photon_weave.state.polarization import Polarization
 
         if not jnp.any(jnp.abs(self.state) > 0):
-            raise ValueError(
-                "The state is invalid"
-                "State 0"
-            )
+            raise ValueError("The state is invalid" "State 0")
 
         if isinstance(operation._operation_type, FockOperationType):
             assert isinstance(states[0], Fock)
@@ -522,7 +490,8 @@ class ProductState:
             to = states[0].trace_out()
             assert isinstance(to, jnp.ndarray)
             operation.compute_dimensions(states[0]._num_quanta, to)
-            succ = states[0].resize(operation.dimensions[0])
+            # TODO
+            _ = states[0].resize(operation.dimensions[0])
 
         elif isinstance(operation._operation_type, PolarizationOperationType):
             assert isinstance(states[0], Polarization)
@@ -545,7 +514,10 @@ class ProductState:
                     s, op_type.expected_base_state_types[i]  # type: ignore
                 )
             operation.compute_dimensions(
-                [s._num_quanta if isinstance(s, Fock) else s.dimensions for s in states],
+                [
+                    s._num_quanta if isinstance(s, Fock) else s.dimensions
+                    for s in states
+                ],
                 [s.trace_out() for s in states],  # type: ignore
             )
             for i, s in enumerate(states):
@@ -555,18 +527,12 @@ class ProductState:
         match self.expansion_level:
             case ExpansionLevel.Vector:
                 self.state = apply_operation_vector(
-                    self.state_objs,
-                    states,
-                    self.state,
-                    operation.operator
-                    )
+                    self.state_objs, states, self.state, operation.operator
+                )
             case ExpansionLevel.Matrix:
                 self.state = apply_operation_matrix(
-                    self.state_objs,
-                    states,
-                    self.state,
-                    operation.operator
-                    )
+                    self.state_objs, states, self.state, operation.operator
+                )
         if not jnp.any(jnp.abs(self.state) > 0):
             raise ValueError(
                 "The state is entirely composed of zeros, "
@@ -742,7 +708,7 @@ class CompositeEnvelope:
     def contract(self, *state_objs: "BaseState") -> None:
         pass
 
-    #@timing_decorator
+    # @timing_decorator
     def combine(self, *state_objs: "BaseState") -> None:
         """
         Combines given states into a product state.
@@ -753,12 +719,13 @@ class CompositeEnvelope:
            Accepts many state_objs
         """
         from photon_weave.state.envelope import Envelope
-        stack = inspect.stack()
-        caller_frame = stack[1]
-        caller_function = caller_frame.function
-        caller_filename = caller_frame.filename
-        caller_line_number = caller_frame.lineno
 
+        # stack = inspect.stack()
+        # caller_frame = stack[1]
+        # TODO
+        # caller_function = caller_frame.function
+        # caller_filename = caller_frame.filename
+        # caller_line_number = caller_frame.lineno
 
         state_objs_set = set(state_objs)
         for ps in self.states:
@@ -823,11 +790,13 @@ class CompositeEnvelope:
 
         # Collect arrays from new state objects
         for so in state_objs:
-            if (hasattr(so, "envelope")
+            if (
+                hasattr(so, "envelope")
                 and so.envelope is not None
                 and so.index is not None
                 and so.envelope.state is not None
-                and not isinstance(so.index, tuple)):
+                and not isinstance(so.index, tuple)
+            ):
                 kron_arrays.append(so.envelope.state)
                 indices: List[Optional["BaseState"]] = [None, None]
                 if isinstance(so.envelope.fock.index, int):
@@ -879,11 +848,14 @@ class CompositeEnvelope:
             if all(s in ps.state_objs for s in ordered_states):
                 states_are_combined
 
-        stack = inspect.stack()
-        caller_frame = stack[1]
-        caller_function = caller_frame.function
-        caller_filename = caller_frame.filename
-        caller_line_number = caller_frame.lineno
+        # TODO
+        # stack = inspect.stack()
+
+        # caller_frame = stack[1]
+
+        # caller_function = caller_frame.function
+        # caller_filename = caller_frame.filename
+        # caller_line_number = caller_frame.lineno
         if not states_are_combined:
             self.combine(*ordered_states)
 

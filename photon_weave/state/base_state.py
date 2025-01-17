@@ -1,23 +1,19 @@
+import sys
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
-import jax
 import jax.numpy as jnp
-import numpy as np
-import sys
 
-from photon_weave._math.ops import apply_kraus, kraus_identity_check
+from photon_weave._math.ops import kraus_identity_check
 from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
-from .utils.measurements import measure_vector, measure_matrix, measure_POVM_matrix
-from .utils.operations import (
-    apply_operation_vector, apply_operation_matrix,
-    apply_kraus_matrix, apply_kraus_vector)
-from .utils.routing import route_operation
-from .utils.representation import representation_matrix, representation_vector
 
+from .utils.measurements import measure_POVM_matrix
+from .utils.operations import apply_kraus_matrix, apply_kraus_vector
+from .utils.representation import representation_matrix, representation_vector
+from .utils.routing import route_operation
 
 if TYPE_CHECKING:
     from photon_weave.state.composite_envelope import CompositeEnvelope
@@ -48,7 +44,6 @@ class BaseState(ABC):
         self._envelope: Optional[Envelope] = None
         self.state: Optional[Union[int, PolarizationLabel, jnp.ndarray]] = None
 
-
     @property
     def size(self) -> int:
         """
@@ -65,7 +60,7 @@ class BaseState(ABC):
             else:
                 return sys.getsizeof(self.state)
         return 0
-            
+
     @property
     def envelope(self) -> Union[None, "Envelope"]:
         return self._envelope
@@ -168,30 +163,18 @@ class BaseState(ABC):
 
         if identity_check:
             if not kraus_identity_check(operators):
-                raise ValueError(
-                    "Invalid Kraus Channel"
-                    )
+                raise ValueError("Invalid Kraus Channel")
         if self.expansion_level == ExpansionLevel.Label:
             self.expand()
 
         match self.expansion_level:
             case ExpansionLevel.Vector:
                 assert isinstance(self.state, jnp.ndarray)
-                self.state = apply_kraus_vector(
-                    [self],
-                    [self],
-                    self.state,
-                    operators
-                    )
+                self.state = apply_kraus_vector([self], [self], self.state, operators)
             case ExpansionLevel.Matrix:
                 assert isinstance(self.state, jnp.ndarray)
-                self.state = apply_kraus_matrix(
-                    [self],
-                    [self],
-                    self.state,
-                    operators
-                    )
-        
+                self.state = apply_kraus_matrix([self], [self], self.state, operators)
+
         C = Config()
         if C.contractions:
             self.contract()
@@ -265,11 +248,7 @@ class BaseState(ABC):
         assert isinstance(self.state, jnp.ndarray)
         assert self.state.shape == (self.dimensions, self.dimensions)
 
-        outcome, self.state = measure_POVM_matrix(
-            [self],
-            [self],
-            operators,
-            self.state)
+        outcome, self.state = measure_POVM_matrix([self], [self], operators, self.state)
 
         result: Tuple[int, Dict["BaseState", int]] = (outcome, {})
         if destructive:

@@ -123,7 +123,7 @@ class TestIdentityOperator(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array([[1 / jnp.sqrt(2)],[1j / jnp.sqrt(2)], [0], [0]]),
+                jnp.array([[1 / jnp.sqrt(2)], [1j / jnp.sqrt(2)], [0], [0]]),
             )
         )
 

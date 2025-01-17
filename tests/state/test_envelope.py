@@ -1,19 +1,20 @@
 import unittest
-import pytest
 from typing import Union
-import numpy as np
+
 import jax.numpy as jnp
+import numpy as np
+import pytest
 
 from photon_weave.photon_weave import Config
-from photon_weave.state.expansion_levels import ExpansionLevel
+from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.envelope import (
     Envelope,
     TemporalProfile,
     TemporalProfileInstance,
 )
+from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.state.fock import Fock
 from photon_weave.state.polarization import Polarization, PolarizationLabel
-from photon_weave.state.composite_envelope import CompositeEnvelope
 
 
 class TestEnvelopeSmallFunctions(unittest.TestCase):
@@ -902,11 +903,8 @@ class TestEnvelopeKraus(unittest.TestCase):
         # Kraus operators do not sum to one
         with self.assertRaises(ValueError):
             op_fail = jnp.array(
-                [[2,0,0,0],
-                 [0,2,0,0],
-                 [0,0,2,0],
-                 [0,0,0,2]]
-                )
+                [[2, 0, 0, 0], [0, 2, 0, 0], [0, 0, 2, 0], [0, 0, 0, 2]]
+            )
             env.apply_kraus([op_fail], env.fock, env.polarization)
 
     def test_kraus_apply_combined_partial(self) -> None:

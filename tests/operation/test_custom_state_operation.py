@@ -1,11 +1,11 @@
-import pytest
 import unittest
-import jax.numpy as jnp
 
-from photon_weave.operation import CustomStateOperationType
-from photon_weave.operation import Operation
-from photon_weave.state.custom_state import CustomState
+import jax.numpy as jnp
+import pytest
+
+from photon_weave.operation import CustomStateOperationType, Operation
 from photon_weave.state.composite_envelope import CompositeEnvelope
+from photon_weave.state.custom_state import CustomState
 
 
 class TestCustomCustomOperation(unittest.TestCase):

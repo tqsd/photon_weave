@@ -3,9 +3,11 @@ from typing import Any, List, Optional, Union
 import jax.numpy as jnp
 
 from photon_weave.operation.composite_operation import CompositeOperationType
-from photon_weave.operation.custom_state_operation import CustomStateOperationType
+from photon_weave.operation.custom_state_operation import \
+    CustomStateOperationType
 from photon_weave.operation.fock_operation import FockOperationType
-from photon_weave.operation.polarization_operation import PolarizationOperationType
+from photon_weave.operation.polarization_operation import \
+    PolarizationOperationType
 from photon_weave.state.expansion_levels import ExpansionLevel
 
 
@@ -238,7 +240,6 @@ class Operation:
             self._dimensions = self._operation_type.compute_dimensions(
                 num_quanta, state, **self.kwargs
             )
-        
 
     @property
     def required_expansion_level(self) -> ExpansionLevel:
