@@ -65,7 +65,7 @@ class PolarizationOperationType(Enum):
 
         \hat{S} = \begin{bmatrix} 1 & 0 \\ 0 & i \end{bmatrix}
 
-    T Opeator (T)
+    T Operator (T)
     -------------
     Constructs T (:math:`\hat T`) operator
     .. math::
@@ -130,7 +130,8 @@ class PolarizationOperationType(Enum):
     Requires three arguments "phi", "theta", "omega"
 
     Usage Example
-    >>> op = Operation(PolarizationOperationType.RZ, theta=jnp.pi)
+    >>> op = Operation(
+        PolarizationOperationType.U3, phi=jnp.pi, theta=jnp.pi/2, omega=jnp.pi/4)
 
     Custom
     ------
