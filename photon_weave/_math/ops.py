@@ -7,6 +7,7 @@ from jax import jit
 from jax.scipy.linalg import expm
 
 jax.config.update("jax_enable_x64", True)
+jitted_exp = jit(expm)
 
 
 @jit
@@ -31,6 +32,7 @@ def hadamard_operator() -> jax.Array:
     return jnp.array([[1, 1], [1, -1]]) * (1 / jnp.sqrt(2))
 
 
+@jit
 def x_operator() -> jax.Array:
     """
     x_operator _summary_
@@ -41,6 +43,7 @@ def x_operator() -> jax.Array:
     return jnp.array([[0, 1], [1, 0]])
 
 
+@jit
 def y_operator() -> jax.Array:
     """
     y_operator _summary_
@@ -51,6 +54,7 @@ def y_operator() -> jax.Array:
     return jnp.array([[0, -1j], [1j, 0]])
 
 
+@jit
 def z_operator() -> jax.Array:
     """
     z_operator _summary_
@@ -61,6 +65,7 @@ def z_operator() -> jax.Array:
     return jnp.array([[1, 0], [0, -1]])
 
 
+@jit
 def s_operator() -> jax.Array:
     """
     s_operator _summary_
@@ -71,6 +76,7 @@ def s_operator() -> jax.Array:
     return jnp.array([[1, 0], [0, 1j]])
 
 
+@jit
 def t_operator() -> jax.Array:
     """
     t_operator _summary_
@@ -92,6 +98,7 @@ def controlled_not_operator() -> jax.Array:
     return jnp.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]])
 
 
+@jit
 def controlled_z_operator() -> jax.Array:
     """
     controlled_z_operator _summary_
@@ -102,6 +109,7 @@ def controlled_z_operator() -> jax.Array:
     return jnp.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]])
 
 
+@jit
 def swap_operator() -> jax.Array:
     """
     swap_operator _summary_
@@ -267,7 +275,8 @@ def squeezing_operator(cutoff: int, zeta: complex) -> jnp.ndarray:
     create = creation_operator(cutoff=cutoff)
     destroy = annihilation_operator(cutoff=cutoff)
     operator = 0.5 * (jnp.conj(zeta) * (destroy @ destroy) - zeta * (create @ create))
-    return expm(operator)
+
+    return jitted_exp(operator)
 
 
 def displacement_operator(cutoff: int, alpha: complex) -> jnp.ndarray:
@@ -284,7 +293,7 @@ def displacement_operator(cutoff: int, alpha: complex) -> jnp.ndarray:
     create = creation_operator(cutoff=cutoff)
     destroy = annihilation_operator(cutoff=cutoff)
     operator = alpha * create - jnp.conj(alpha) * destroy
-    return expm(operator)
+    return jitted_exp(operator)
 
 
 def phase_operator(cutoff: int, theta: float) -> jnp.ndarray:
@@ -361,11 +370,7 @@ def apply_kraus(
     jnp.ndarray
         density matrix after applying Kraus operators
     """
-    new_density_matrix = jnp.zeros_like(density_matrix)
-    for K in kraus_operators:
-        new_density_matrix += K @ density_matrix @ jnp.conjugate(K).T
-
-    return new_density_matrix
+    return sum(K @ density_matrix @ jnp.conjugate((K)).T for K in kraus_operators)
 
 
 def kraus_identity_check(operators: List[jnp.ndarray], tol: float = 1e-6) -> bool:
