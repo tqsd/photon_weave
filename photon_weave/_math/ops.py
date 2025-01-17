@@ -407,7 +407,7 @@ def normalize_vector(vector: Union[jnp.ndarray, np.ndarray]) -> jnp.ndarray:
     Parameters
     ----------
     vector: Union[jnp.ndarray, np.ndarray]
-        Vector which should be normalied
+        Vector which should be normalized
 
     Returns
     -------
@@ -426,7 +426,7 @@ def normalize_matrix(vector: Union[jnp.ndarray, np.ndarray]) -> jnp.ndarray:
     Parameters
     ----------
     vector: Union[jnp.ndarray, np.ndarray]
-        Vector which should be normalied
+        Vector which should be normalized
 
     Returns
     -------
@@ -443,7 +443,7 @@ def num_quanta_vector(vector: Union[jnp.ndarray, np.ndarray]) -> int:
     Parameters
     ----------
     vector: Union[jnp.ndarray, np.ndarray]
-        vector for which the max possible quantua has to be calculated
+        vector for which the max possible quanta has to be calculated
 
     Returns
     -------
