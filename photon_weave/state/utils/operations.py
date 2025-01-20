@@ -164,10 +164,10 @@ def apply_kraus_vector(
     Notes
     -----
     Given product state needs to be reordered, so that the target states
-    are grouped toghether and their index in the tensor (product state)
+    are grouped together and their index in the tensor (product state)
     reflects their index in the target states reflects their index in the
     operator. Photon Weave handles this automatically when called from
-    within the State Comtainer methods.
+    within the State Container methods.
     """
     assert isinstance(product_state, jnp.ndarray)
     state_objs = list(state_objs)
