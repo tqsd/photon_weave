@@ -33,7 +33,7 @@ Tools like QuTiP, Qiskit, Piquasso, and StrawberryFields [@kolarovszki2024piquas
 
 ![Figure 1. The simulation of lossy Mach-Zender Interferometers. The simulation tracks the state evolution throughout the experiment. The losses here are photon absorption.](circuit.png){label="fig.1"}.
 
-In Fig.2, You can see the performance regarding speed where the steps represent the number of applied operations. ![Figure 2. Comparison between Photon Weave, Qiskit, and QuTip regarding simulation time and the required space to simulate the experiment in \ref{fig.1}. The steps are the executed operations.](lossy_circuit_paper-2.png){label="fig.2"}
+![Figure 2. Comparison between Photon Weave, Qiskit, and QuTip regarding simulation time and the required space to simulate the experiment in \ref{fig.1}. The steps are the executed operations.](lossy_circuit_paper-2.png){label="fig.2"}
 
 # Photon Weave Overview
 Photon Weave is a quantum simulation library designed for simulating any system, provided that simulating hardware meets the resource requirements. This simulator allows users to easily create, manipulate, and measure quantum systems.
