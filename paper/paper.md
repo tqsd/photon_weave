@@ -5,6 +5,8 @@ tags:
  - Quantum Optics Simulation
  - Quantum Photonics
  - Quantum Physics
+ - JAX
+ - Quantum Computing
  
   
 authors:
