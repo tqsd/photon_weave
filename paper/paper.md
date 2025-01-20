@@ -32,10 +32,10 @@ In contracts to other frameworks such as Qiskit [@aleksandrowicz2019qiskit], whi
 Tools like QuTiP, Qiskit, Piquasso, and StrawberryFields [@kolarovszki2024piquassophotonicquantumcomputer; @killoran2019strawberry] already exist for modeling quantum phenomena, but many of them either require extensive user control (QuTiP) or enforce rigid circuit structures (StrawberryFields). Researchers in quantum optics and related fields need a tool that simplifies photonic systems simulations and supports dynamic interactions between custom quantum systems. Photon Weave introduces such features without restricting itself to the circuit model so researchers can focus on component development. Such a tool could generate a library of components and gates that closely model real-world devices, fostering greater collaboration among scientists in those fields. In Fig. \ref{fig:1}, a complicated scenario of lossy Beam Splitters is depicted, and in Fig. \ref{fig:2}, the performance is compared to Qiskit and QuTip.
 
 
-![The simulation of lossy Beam Splitters. The simulation tracks the state evolution throughout the experiment. The losses here are photon absorption.[]{label="fig:1"}](circuit.png)
+![The simulation of lossy Beam Splitters. The simulation tracks the state evolution throughout the experiment. The losses here are photon absorption. \label{fig:1}](circuit.png)
 
 
-![Comparison between Photon Weave, Qiskit, and QuTip regarding simulation time and the required space to simulate the experiment in \autoref{fig:1}. The steps are the executed operations.[]{label="fig:2"}](lossy_circuit_paper-2.png)
+![Comparison between Photon Weave, Qiskit, and QuTip regarding simulation time and the required space to simulate the experiment in \autoref{fig:1}. The steps are the executed operations. \label{fig:2}](lossy_circuit_paper-2.png)
 
 # Photon Weave Overview
 Photon Weave is a quantum simulation library designed for simulating any system, provided that simulating hardware meets the resource requirements. This simulator allows users to easily create, manipulate, and measure quantum systems.
