@@ -339,6 +339,7 @@ For Reproducability **Photon Weave** allows the user to set the seed that is use
    intro
    installation
    examples/index
+   benchmarks
    photon_weave
    photon_weave.state
    photon_weave.operation
