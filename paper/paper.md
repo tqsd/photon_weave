@@ -19,7 +19,7 @@ authors:
    affiliation: 1
 affiliations:
  - name: Technical University of Munich, Theoretical Quantum System Design, Munich, Germany
-    index: 1
+   index: 1
 date: 15.10.2024
 bibliography: paper.bib
 ---
