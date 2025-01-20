@@ -35,7 +35,7 @@ Tools like QuTiP, Qiskit, Piquasso, and StrawberryFields [@kolarovszki2024piquas
 ![Figure 1. The simulation of lossy Mach-Zender Interferometers. The simulation tracks the state evolution throughout the experiment. The losses here are photon absorption.]{label="fig:1"}(circuit.png).
 
 
-![Figure 2. Comparison between Photon Weave, Qiskit, and QuTip regarding simulation time and the required space to simulate the experiment in \ref{fig.1}. The steps are the executed operations.]{label="fig:2"}(lossy_circuit_paper-2.png)
+![Figure 2. Comparison between Photon Weave, Qiskit, and QuTip regarding simulation time and the required space to simulate the experiment in \ref{fig:1}. The steps are the executed operations.]{label="fig:2"}(lossy_circuit_paper-2.png)
 
 
 # Photon Weave Overview
