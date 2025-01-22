@@ -12,9 +12,9 @@ import sys
 sys.path.insert(0, os.path.abspath(".."))
 
 project = "photon_weave"
-copyright = "2024, Simon Sekavčnik, Kareem H. El-Safty, Janis Nötzel"
+copyright = "2025, Simon Sekavčnik, Kareem H. El-Safty, Janis Nötzel"
 author = "Simon Sekavčnik, Kareem H. El-Safty, Janis Nötzel"
-release = "0.0.3"
+release = "0.1.5"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
