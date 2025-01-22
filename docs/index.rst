@@ -333,7 +333,7 @@ For Reproducability **Photon Weave** allows the user to set the seed that is use
 
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 4
    :caption: Contents:
 
    intro

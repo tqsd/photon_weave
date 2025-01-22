@@ -1,15 +1,18 @@
+name: Tests
 on:
   push:
     branches:
-      - refractor
+      - master
   pull_request:
-    branches:
-      - refractor
 
 jobs:
   test:
     if: "!contains(github.event.head_commit.message, 'Update coverage badge')"
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
 
     steps:
       - name: Checkout repository
@@ -18,18 +21,20 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.12
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
           pip install .
+          pip install tox
           pip install coverage coverage-badge
           pip install pytest pytest-cov
 
-      - name: Run tests with coverage
+      - name: Run tests
         run: |
           coverage run -m pytest
           coverage report
+          coverage xml
 
       - name: Generate coverage badge
         run: |
@@ -44,8 +49,9 @@ jobs:
 
       - name: Commit coverage badge to repository
         run: |
+          git pull
           git config --local user.name "GitHub Actions"
           git config --local user.email "actions@github.com"
           git add assets/coverage.svg
-          git commit -m "Update coverage badge"
+          git commit --allow-empty -m "Update coverage badge"
           git push origin HEAD:${{ github.ref_name }}

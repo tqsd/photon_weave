@@ -7,12 +7,15 @@ from typing import Any, List, Tuple, Union
 
 import jax.numpy as jnp
 
-from photon_weave._math.ops import (annihilation_operator, creation_operator,
-                                    displacement_operator, phase_operator,
-                                    squeezing_operator)
+from photon_weave._math.ops import (
+    annihilation_operator,
+    creation_operator,
+    displacement_operator,
+    phase_operator,
+    squeezing_operator,
+)
 from photon_weave.extra import interpreter
-from photon_weave.operation.helpers.fock_dimension_esitmation import \
-    FockDimensions
+from photon_weave.operation.helpers.fock_dimension_esitmation import FockDimensions
 from photon_weave.state.expansion_levels import ExpansionLevel
 
 

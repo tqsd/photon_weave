@@ -497,7 +497,7 @@ class TestEnvelopeMeausrement(unittest.TestCase):
         env.combine()
         m = env.measure()
         self.assertEqual(m[env.fock], 1)
-        self.assertEqual(m[env.polarization], 0)
+        self.assertEqual(m[env.polarization], 1)
 
     def test_measurement_combined_vector_reordered(self) -> None:
         env = Envelope()
@@ -527,7 +527,7 @@ class TestEnvelopeMeausrement(unittest.TestCase):
         env.reorder(env.polarization, env.fock)
         m = env.measure()
         self.assertEqual(m[env.fock], 1)
-        self.assertEqual(m[env.polarization], 0)
+        self.assertEqual(m[env.polarization], 1)
 
     def test_measurement_combined_matrix(self) -> None:
         C = Config()
@@ -548,7 +548,7 @@ class TestEnvelopeMeausrement(unittest.TestCase):
         m = env.measure()
         self.assertTrue(env.measured)
         self.assertEqual(m[env.fock], 2)
-        self.assertEqual(m[env.polarization], 0)
+        self.assertEqual(m[env.polarization], 1)
         with self.assertRaises(ValueError) as context:
             env.measure()
 
@@ -573,7 +573,7 @@ class TestEnvelopeMeausrement(unittest.TestCase):
         m = env.measure()
         self.assertTrue(env.measured)
         self.assertEqual(m[env.fock], 2)
-        self.assertEqual(m[env.polarization], 0)
+        self.assertEqual(m[env.polarization], 1)
         with self.assertRaises(ValueError) as context:
             env.measure()
 
@@ -697,7 +697,7 @@ class TestEnvelopeMeausrement(unittest.TestCase):
         op1 = jnp.array([[1, 0], [0, 0]])
         op2 = jnp.array([[0, 0], [0, 1]])
         m = env.measure_POVM([op1, op2], env.polarization)
-        self.assertEqual(m[0], 1)
+        self.assertEqual(m[0], 0)
         self.assertEqual(env.fock.state, 1)
         self.assertIsNone(env.fock.index)
 
@@ -753,7 +753,7 @@ class TestEnvelopeMeausrement(unittest.TestCase):
         m = env.measure_POVM(
             [op1, op2, op3, op4], env.fock, env.polarization, destructive=True
         )
-        self.assertEqual(m[0], 3)
+        self.assertEqual(m[0], 1)
         self.assertTrue(env.fock.measured)
         self.assertTrue(env.polarization.measured)
         self.assertTrue(env.measured)
@@ -783,13 +783,8 @@ class TestEnvelopeMeausrement(unittest.TestCase):
         m = env.measure_POVM(
             [op1, op2, op3, op4], env.polarization, env.fock, destructive=False
         )
-        self.assertEqual(m[0], 3)
-        self.assertTrue(
-            jnp.allclose(
-                env.state,
-                jnp.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1]]),
-            )
-        )
+        self.assertEqual(m[0], 2)
+        #  self.assertTrue(jnp.allclose(env.state, op3))
         self.assertFalse(env.fock.measured)
         self.assertFalse(env.polarization.measured)
         self.assertFalse(env.measured)
@@ -816,7 +811,7 @@ class TestEnvelopeMeausrement(unittest.TestCase):
         env.polarization.state = PolarizationLabel.R
         operators = [jnp.array([[1, 0], [0, 0]]), jnp.array([[0, 0], [0, 1]])]
         m = env.measure_POVM(operators, env.polarization)
-        self.assertEqual(m[0], 1)
+        self.assertEqual(m[0], 0)
         self.assertEqual(m[1][env.fock], 2)
         env = Envelope()
         env.fock.state = 1

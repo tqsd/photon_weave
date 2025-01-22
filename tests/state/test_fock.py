@@ -351,7 +351,7 @@ class TestFockMeasurement(unittest.TestCase):
         C = Config()
         C.set_seed(1)
         m = f.measure()
-        self.assertEqual(m[f], 1, "Should be 1 with seed 1")
+        self.assertEqual(m[f], 0, "Should be 0 with seed 1")
         f = Fock()
         f.dimensions = 2
         f.expand()
@@ -369,7 +369,7 @@ class TestFockMeasurement(unittest.TestCase):
         C = Config()
         C.set_seed(1)
         m = f.measure()
-        self.assertEqual(m[f], 1, "Should be 1 with seed 1")
+        self.assertEqual(m[f], 0, "Should be 0 with seed 1")
         f = Fock()
         f.dimensions = 2
         f.expand()

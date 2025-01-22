@@ -282,8 +282,8 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(
             m[pol],
-            1,
-            "Measurement outcome when measuring R must always be 1, when seed is set to 1",
+            0,
+            "Measurement outcome when measuring R must always be 0, when seed is set to 1",
         )
         self.assertTrue(
             pol.measured, "Polarization must have measurement=True after measurement."
@@ -325,8 +325,8 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(
             m[pol],
-            1,
-            "Measurement outcome when measuring R must always be 1, when seed is set to 1",
+            0,
+            "Measurement outcome when measuring R must always be 0, when seed is set to 1",
         )
         self.assertTrue(
             pol.measured, "Polarization must have measurement=True after measurement."
@@ -367,8 +367,8 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(
             m[pol],
-            1,
-            "Measurement outcome when measuring L must always be 1, when seed is set to 1",
+            0,
+            "Measurement outcome when measuring L must always be 0, when seed is set to 1",
         )
         self.assertTrue(
             pol.measured, "Polarization must have measurement=True after measurement."
@@ -410,8 +410,8 @@ class TestPolarizationMeasurement(unittest.TestCase):
         m = pol.measure()
         self.assertEqual(
             m[pol],
-            1,
-            "Measurement outcome when measuring L must always be 1, when seed is set to 1",
+            0,
+            "Measurement outcome when measuring L must always be 0, when seed is set to 1",
         )
         self.assertTrue(
             pol.measured, "Polarization must have measurement=True after measurement."

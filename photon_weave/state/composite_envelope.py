@@ -12,18 +12,27 @@ import jax.numpy as jnp
 
 # from photon_weave.extra.einsum_constructor import EinsumStringConstructor as ESC
 import photon_weave.extra.einsum_constructor as ESC
-from photon_weave._math.ops import (kraus_identity_check, num_quanta_matrix,
-                                    num_quanta_vector)
-from photon_weave.operation import (CustomStateOperationType,
-                                    FockOperationType, Operation,
-                                    PolarizationOperationType)
+from photon_weave._math.ops import (
+    kraus_identity_check,
+    num_quanta_matrix,
+    num_quanta_vector,
+)
+from photon_weave.operation import (
+    CustomStateOperationType,
+    FockOperationType,
+    Operation,
+    PolarizationOperationType,
+)
 from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
 
-from .utils.measurements import (measure_matrix, measure_POVM_matrix,
-                                 measure_vector)
-from .utils.operations import (apply_kraus_matrix, apply_kraus_vector,
-                               apply_operation_matrix, apply_operation_vector)
+from .utils.measurements import measure_matrix, measure_POVM_matrix, measure_vector
+from .utils.operations import (
+    apply_kraus_matrix,
+    apply_kraus_vector,
+    apply_operation_matrix,
+    apply_operation_vector,
+)
 from .utils.state_transform import state_contract, state_expand
 from .utils.trace_out import trace_out_matrix, trace_out_vector
 
@@ -206,8 +215,7 @@ class ProductState:
             Dictionary of outcomes, where the state is key and its outcome measurement
         is the value (int)
         """
-        from photon_weave.state.polarization import (Polarization,
-                                                     PolarizationLabel)
+        from photon_weave.state.polarization import Polarization, PolarizationLabel
 
         assert all(
             so in self.state_objs for so in states

@@ -370,7 +370,12 @@ def apply_kraus(
     jnp.ndarray
         density matrix after applying Kraus operators
     """
-    return sum(K @ density_matrix @ jnp.conjugate((K)).T for K in kraus_operators)
+    new_density_matrix = jnp.zeros_like(density_matrix)
+    for K in kraus_operators:
+        new_density_matrix += K @ density_matrix @ jnp.conjugate(K).T
+    return new_density_matrix
+
+    # return sum(K @ density_matrix @ jnp.conjugate((K)).T for K in kraus_operators)
 
 
 def kraus_identity_check(operators: List[jnp.ndarray], tol: float = 1e-6) -> bool:

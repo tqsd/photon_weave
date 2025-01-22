@@ -5,11 +5,14 @@ from typing import Any, List, Union
 import jax.numpy as jnp
 from jax.scipy.linalg import expm
 
-from photon_weave._math.ops import (annihilation_operator,
-                                    controlled_not_operator,
-                                    controlled_swap_operator,
-                                    controlled_z_operator, creation_operator,
-                                    swap_operator)
+from photon_weave._math.ops import (
+    annihilation_operator,
+    controlled_not_operator,
+    controlled_swap_operator,
+    controlled_z_operator,
+    creation_operator,
+    swap_operator,
+)
 from photon_weave.extra import interpreter
 from photon_weave.state.base_state import BaseState
 from photon_weave.state.expansion_levels import ExpansionLevel
