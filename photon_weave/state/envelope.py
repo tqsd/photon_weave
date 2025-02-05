@@ -8,36 +8,28 @@ from __future__ import annotations
 
 import uuid
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
+                    Union)
 
 import jax.numpy as jnp
 import numpy as np
 from jax import jit
 from scipy.integrate import quad
 
-from photon_weave._math.ops import (
-    kraus_identity_check,
-    num_quanta_matrix,
-    num_quanta_vector,
-)
+from photon_weave._math.ops import (kraus_identity_check, num_quanta_matrix,
+                                    num_quanta_vector)
 from photon_weave.constants import C0, gaussian
-from photon_weave.operation import (
-    FockOperationType,
-    Operation,
-    PolarizationOperationType,
-)
+from photon_weave.operation import (FockOperationType, Operation,
+                                    PolarizationOperationType)
 from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.state.fock import Fock
 from photon_weave.state.polarization import Polarization
 
-from .utils.measurements import measure_matrix, measure_POVM_matrix, measure_vector
-from .utils.operations import (
-    apply_kraus_matrix,
-    apply_kraus_vector,
-    apply_operation_matrix,
-    apply_operation_vector,
-)
+from .utils.measurements import (measure_matrix, measure_POVM_matrix,
+                                 measure_vector)
+from .utils.operations import (apply_kraus_matrix, apply_kraus_vector,
+                               apply_operation_matrix, apply_operation_vector)
 from .utils.representation import representation_matrix, representation_vector
 from .utils.state_transform import state_contract, state_expand
 from .utils.trace_out import trace_out_matrix, trace_out_vector
@@ -651,7 +643,8 @@ class Envelope:
             order (tensoring order), with the rest traced out
         """
         from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization, PolarizationLabel
+        from photon_weave.state.polarization import (Polarization,
+                                                     PolarizationLabel)
 
         if self.composite_envelope is not None:
             assert isinstance(self.composite_envelope, CompositeEnvelope)
