@@ -68,6 +68,6 @@ PhotonWeave offers a robust measurement framework for any state. By default, Foc
 PhotonWeave is an open-source quantum system simulator under the Apache-2.0 license, targeting researchers and developers who need an easy-to-use yet powerful simulation tool. One of the intended outcomes is to build a library of interoperable quantum device models powered by the PhotonWeave framework.
 
 # Acknowledgments
-This work was financed by the Federal Ministry of Education and Research of Germany via grants 16KIS1598K, 16KISQ039, 16KISQ077, and 16KISQ168 as well as in the program of "Souverän. Digital. Vernetzt.". Joint project 6G-life, project identification number: 16KISK002. We acknowledge further funding from the DFG via grant NO 1129/2-1 and by the Bavarian Ministry for Economic Affairs (StMWi) via the project 6GQT and the Munich Quantum Valley.
+This work was financed by the Federal Ministry of Education and Research of Germany via grants 16KIS1598K, 16KISQ039, 16KISQ077, and 16KISQ093 as well as in the program of "Souverän. Digital. Vernetzt.". Joint project 6G-life, project identification number: 16KISK002. We acknowledge further funding from the DFG via grant NO 1129/2-1 and by the Bavarian Ministry for Economic Affairs (StMWi) via the project 6GQT and the Munich Quantum Valley.
 
 # References
