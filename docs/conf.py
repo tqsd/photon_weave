@@ -25,6 +25,10 @@ extensions = [
     "sphinx.ext.viewcode",  # links to the source code
     "sphinx.ext.autosummary",  # summary tables for documentation
 ]
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
