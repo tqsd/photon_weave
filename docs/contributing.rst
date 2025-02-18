@@ -1,5 +1,3 @@
-.. _contributing:
-
 Contributing to Photon Weave
 ====================
 
@@ -10,8 +8,8 @@ We love your input! We want to make contributing to this project as easy and tra
 - Proposing new features
 - Becoming a maintainer
 
-We Develop with Github
-====================
+**We Develop with Github**
+
 We use github to host code, to track issues and feature requests, as well as accept pull requests.
 
 we use [Github Flow](https://guides.github.com/introduction/flow/index.html), All Code Changes Happen Through Pull Requests
@@ -28,7 +26,7 @@ Any Contribution you make will be under the Apache-2.0 License
 In short, when you submit code changes, your submissions are understood to bu under the same [Apache-2.0 License](https://www.apache.org/licenses/LICENSE-2.0) that covers the project. Feel free to contact the maintainers if that's a concern.
 
 Report bugs using Github's [issues](https://github.com/tqsd/photon_weave/issues)
-====================
+
 We use GitHub issues to track public bugs. Report a bug by opening a new issue.
 
 Write bug reports with detail, background and sample code
@@ -44,6 +42,6 @@ Write bug reports with detail, background and sample code
 Use a Consistent Coding Stype
 We aim to be consistent with PEP8.
 
-License
-=========
+**License**
+
 By contributing, you agree that your contributions will be licensed under Apache-2.0 License.
