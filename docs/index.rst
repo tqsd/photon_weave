@@ -333,17 +333,19 @@ For Reproducability **Photon Weave** allows the user to set the seed that is use
 
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
    :caption: Contents:
 
    intro
    installation
+   code_of_conduct
+   contributing
    examples/index
    benchmarks
    photon_weave
    photon_weave.state
    photon_weave.operation
-   
+
 
 ..  LocalWords:  toctree Fock CustomState mathcal rangle ldots langle
 ..  LocalWords:  orthonormal nm mathbb representable bmatrix frac jnp
