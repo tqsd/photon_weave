@@ -42,10 +42,11 @@ jobs:
           coverage-badge -o assets/coverage.svg -f
 
       - name: Upload coverage badge
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: coverage-badge
+          name: coverage-badge-${{ matrix.runs-on }}
           path: assets/coverage.svg
+          merge-multiple: true
 
       - name: Commit coverage badge to repository
         run: |
