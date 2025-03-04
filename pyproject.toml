@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "photon_weave"
-version = "0.1.4"
+version = "0.1.6"
 description = "A quantum optics simulator for modeling and analysis of quantum systems."
 authors = ["Simon Sekavčnik, Kareem H. El-Safty, Janis Nötzel"]
 license = "Apache-2.0"
@@ -17,8 +17,8 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">= 3.10"
-jax = "*"
-jaxlib = "*"
+jax = "0.5.0"
+jaxlib = "0.5.0"
 # Add other dependencies as required
 
 [tool.poetry.dev-dependencies]

@@ -26,5 +26,7 @@ setup(
         "Topic :: Scientific/Engineering :: Physics",
     ],
     packages=find_packages(where="."),
-    install_requires=["jax", "jaxlib"],
+    install_requires=[
+        "jax==0.5.0",
+        "jaxlib==0.5.0"],
 )
