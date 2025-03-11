@@ -29,7 +29,6 @@ from photon_weave.state.expansion_levels import ExpansionLevel
 from .utils.measurements import measure_matrix, measure_POVM_matrix, measure_vector
 from .utils.operations import (
     apply_kraus_matrix,
-    apply_kraus_vector,
     apply_operation_matrix,
     apply_operation_vector,
 )
@@ -333,18 +332,14 @@ class ProductState:
             List of states to apply the operators to, the tensoring order in operators
             must follow the order of the states in this list
         """
-        match self.expansion_level:
-            case ExpansionLevel.Vector:
-                self.state = apply_kraus_vector(
-                    self.state_objs, states, self.state, operators
-                )
-            case ExpansionLevel.Matrix:
-                self.state = apply_kraus_matrix(
-                    self.state_objs, states, self.state, operators
-                )
-                C = Config()
-                if C.contractions:
-                    self.contract()
+        while self.expansion_level < ExpansionLevel.Matrix:
+            self.expand()
+        self.state = apply_kraus_matrix(
+            self.state_objs, states, self.state, operators
+            )
+        C = Config()
+        if C.contractions:
+            self.contract()
 
     def trace_out(self, *states: "BaseState") -> jnp.ndarray:
         """

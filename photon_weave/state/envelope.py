@@ -34,7 +34,6 @@ from photon_weave.state.polarization import Polarization
 from .utils.measurements import measure_matrix, measure_POVM_matrix, measure_vector
 from .utils.operations import (
     apply_kraus_matrix,
-    apply_kraus_vector,
     apply_operation_matrix,
     apply_operation_vector,
 )
@@ -514,15 +513,11 @@ class Envelope:
         state_objs[self.polarization.index] = self.polarization  # type: ignore
 
         # Kraus operators are only applied to the density matrices
-        match self.expansion_level:
-            case ExpansionLevel.Vector:
-                self.state = apply_kraus_vector(
-                    state_objs, states, self.state, operators  # type: ignore
-                )
-            case ExpansionLevel.Matrix:
-                self.state = apply_kraus_matrix(
-                    state_objs, states, self.state, operators  # type: ignore
-                )
+        while self.expansion_level < ExpansionLevel.Matrix:
+            self.expand()
+        self.state = apply_kraus_matrix(
+            state_objs, states, self.state, operators  # type: ignore
+        )
 
         C = Config()
         if C.contractions:
