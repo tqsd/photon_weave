@@ -11,7 +11,7 @@ from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
 
 from .utils.measurements import measure_POVM_matrix
-from .utils.operations import apply_kraus_matrix, apply_kraus_vector
+from .utils.operations import apply_kraus_matrix
 from .utils.representation import representation_matrix, representation_vector
 from .utils.routing import route_operation
 
@@ -164,17 +164,12 @@ class BaseState(ABC):
         if identity_check:
             if not kraus_identity_check(operators):
                 raise ValueError("Invalid Kraus Channel")
-        if self.expansion_level == ExpansionLevel.Label:
+        while self.expansion_level < ExpansionLevel.Matrix:
             self.expand()
 
-        match self.expansion_level:
-            case ExpansionLevel.Vector:
-                assert isinstance(self.state, jnp.ndarray)
-                self.state = apply_kraus_vector([self], [self], self.state, operators)
-            case ExpansionLevel.Matrix:
-                assert isinstance(self.state, jnp.ndarray)
-                self.state = apply_kraus_matrix([self], [self], self.state, operators)
-
+        assert isinstance(self.state, jnp.ndarray)
+        self.state = apply_kraus_matrix([self], [self], self.state, operators)
+ 
         C = Config()
         if C.contractions:
             self.contract()

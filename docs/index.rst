@@ -257,6 +257,40 @@ Each of the states (`Fock`, `Polarization`, `CustomState` and `CompositeEnvelope
 .. math::
   \psi= \sum_i K_i \rho K_i^\ast
 
+.. code:: python
+
+    # Create the operators, which transform any polarization state to |H⟩
+    op1 = jnp.array([[1,0],[0,0]])
+    op2 = jnp.array([[0,1],[0,0]])
+    pol = Polarization()
+    
+    # Set the state of the polarization to |V⟩
+    pol.state = PolarizationLabel.V
+    pol.apply_kraus([op1, op2])
+    print(pol)
+    # |H⟩
+    
+    env1=Envelope()
+    # Set the state of the polarization to |R⟩
+    env1.polarization.state = PolarizationLabel.R
+    # Apply the Kraus channel to the polarization space
+    env1.apply_kraus([op1, op2], env1.polarization)
+    print(envelope)
+    # |0⟩ ⊗ |H⟩
+    
+    # Reset the state of the polarization to |A⟩
+    env1.polarization.state = PolarizationLabel.A
+    env2 = Envelope()
+    
+    ce = CompositeEnvelope(env1, env2)
+    ce.combine(env1.polarization, env2.polarization)
+    # Apply the Kraus channel to the correct polarization space
+    ce.apply_kraus([op1, op2], env1.polarization)
+    
+    print(env1.polarization.trace_out())
+    # [[1.+0.j]
+    #  [0.+0.j]]
+
 
 Note that in order to apply Kraus operator, the states needs to be in a density matrix formalism and it will be automatically expanded for you.
 
