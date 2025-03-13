@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Tuple, Union, Callable, Optional
 
 import jax
 import jax.numpy as jnp
@@ -16,6 +16,7 @@ def measure_vector(
     state_objs: Union[List[BaseState], Tuple[BaseState, ...]],
     target_states: Union[List[BaseState], Tuple[BaseState, ...]],
     product_state: jnp.ndarray,
+    prob_callback: Optional[Callable[[BaseState, jnp.ndarray], None]] = None
 ) -> Tuple[Dict[BaseState, int], jnp.ndarray]:
     """
     Measures state vector and returns the outcome with the
@@ -25,8 +26,13 @@ def measure_vector(
     ----------
     state_objs:Union[List[BaseState],Tuple[BaseState, ...]]
         List of all state objects which are in the probuct state
-    states: Union[List[BaseState],Tuple[BaseState, ...]]
+    target_states: Union[List[BaseState],Tuple[BaseState, ...]]
         List of the states, which should be measured
+    product_state: jnp.ndarray
+        Product state containing the states to be measured
+    prob_callback: Optional[Callable[[BaseState, jnp.ndarray],None]]
+        Probability callback, used for testing the correctness of
+        measurement outcome probabilities
 
     Returns
     -------
@@ -35,11 +41,17 @@ def measure_vector(
         - A dictionary mapping each target state to its measurement
         - A jax array representing the post measuremen state of the rest of the
           product state
+
+    Notes:
+    ------
+    calls the prob_callback() if provided
     """
     state_objs = list(state_objs)
-    assert isinstance(product_state, jnp.ndarray)
+    assert isinstance(product_state, jnp.ndarray), \
+        f"Expected jnp.ndarray, received {type(product_state)}"
     expected_dims = jnp.prod(jnp.array([s.dimensions for s in state_objs]))
-    assert product_state.shape == (expected_dims, 1)
+    assert product_state.shape == (expected_dims, 1), \
+       f"Expected shape: ({expected_dims},1) , Received shape {product_state.shape}"
 
     # Reshape the array into the tensor
     shape = [s.dimensions for s in state_objs]
@@ -49,11 +61,21 @@ def measure_vector(
     C = Config()
     outcomes = {}
     for idx, state in enumerate(target_states):
-        # Using einsum string we compute the outcome probabilities
-        einsum_m = ESC.measure_vector(list(state_objs), [state])
-        projected_state = jnp.einsum(einsum_m, product_state)
-        probabilities = jnp.abs(projected_state.flatten()) ** 2
+        probabilities = []
+        dims = state.dimensions
+        for moutcome in range(dims):
+            slicer = [slice(None)] * len(product_state.shape)
+            slicer[state_objs.index(state)] = moutcome
+            slice_psi = product_state[tuple(slicer)]
+            probabilities.append(
+                jnp.sum(jnp.abs(slice_psi)**2)
+                )
+        probabilities = jnp.array(probabilities)
         probabilities /= jnp.sum(probabilities)
+
+        # For testing correctness of measurement probabilities
+        if prob_callback:
+            prob_callback(state, probabilities)
 
         # Based on the probabilities and key we choose outcome
         key = C.random_key
@@ -78,6 +100,7 @@ def measure_matrix(
     state_objs: Union[List[BaseState], Tuple[BaseState, ...]],
     target_states: Union[List[BaseState], Tuple[BaseState, ...]],
     product_state: jnp.ndarray,
+    prob_callback: Optional[Callable[[BaseState, jnp.ndarray], None]] = None
 ) -> Tuple[Dict[BaseState, int], jnp.ndarray]:
     """
     Measures Density Matrix and returns the outcome with the
@@ -87,9 +110,13 @@ def measure_matrix(
     ----------
     state_objs: List[BaseState]
         List of all state objects which are in the probuct state
-
-    states: List[BaseState]
+    target_states: List[BaseState]
         List of the states, which should be measured
+    product_state: jnp.ndarray
+        Product state containing the states to be measured
+    prob_callback: Optional[Callable[[BaseState, jnp.ndarray],None]]
+        Probability callback, used for testing the correctness of
+        measurement outcome probabilities
 
     Returns
     -------
@@ -98,27 +125,45 @@ def measure_matrix(
         - A dictionary mapping each target state to its measurement
         - A jax array representing the post measuremen state of the rest of the
           product state
+
+    Notes:
+    ------
+    calls the prob_callback() if provided
     """
-    assert isinstance(product_state, jnp.ndarray)
     state_objs = list(state_objs)
+
+    assert isinstance(product_state, jnp.ndarray), \
+        f"Expected jnp.ndarray, received {type(product_state)}"
     expected_dims = jnp.prod(jnp.array([s.dimensions for s in state_objs]))
-    assert product_state.shape == (expected_dims, expected_dims)
+    assert product_state.shape == (expected_dims, expected_dims), \
+       f"Expected shape: ({expected_dims},{expected_dims}) , Received shape {product_state.shape}"
 
     # Reshape the array into the tensor
     shape = [s.dimensions for s in state_objs] * 2
     product_state = product_state.reshape(shape)
 
-    # Assume that the state is correctly reshaped
-    # TODO: assert
     C = Config()
     outcomes = {}
     for idx, state in enumerate(target_states):
-        # Using einsum string we compute the outcome probabilities
-        einsum_m = ESC.measure_matrix(state_objs, [state])
-        projected_state = jnp.einsum(einsum_m, product_state)
+        probabilities = []
+        dims = state.dimensions
+        state_index = state_objs.index(state)
+        for moutcome in range(dims):
+            slicer = [slice(None)] * len(product_state.shape)
+            slicer[state_index] = moutcome
+            slicer[state_index + len(state_objs)] = moutcome
+            block = product_state[tuple(slicer)]
+            block = block.reshape((int(block.size//block.size**0.5), -1))
+            probabilities.append(
+                float(jnp.real(jnp.trace(block)))
+            )
 
-        probabilities = jnp.abs(jnp.diag(projected_state))
+        #probabilities = jnp.abs(jnp.diag(projected_state))
+        probabilities = jnp.array(probabilities)
         probabilities /= jnp.sum(probabilities)
+        # For testing correctness of measurement probabilities
+        if prob_callback:
+            prob_callback(state, probabilities)
 
         # Based on the probabilities and key we choose outcome
         key = C.random_key
