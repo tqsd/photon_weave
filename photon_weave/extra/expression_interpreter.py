@@ -2,6 +2,7 @@ from typing import Callable, Dict, List
 
 import jax.numpy as jnp
 from jax.scipy.linalg import expm
+from jax.numpy.linalg import matrix_power
 
 
 def interpreter(
@@ -56,7 +57,10 @@ def interpreter(
             >>> ('kron', A,B,C) -> jnp.kron(A,jnp.kron(B,C))
             - expm: Exponentiate matrix term, accepts one argument
             >>> ('expm', A) -> e^A
-
+            - s_pow: Raises a scalar value to the power of another scalar value, accepts two arguments
+            >>> ('s_pow', 2, 3) -> 2^3
+            - m_pow: Raises a matrix to the power of a scalar, accepts two arguments
+            >>> ('m_pow', A, 3) -> A^3
             Expressions can be nested to produce complex expressions:
             >>> ('expm', ('s_mult', 1j, jnp.pi, 'n'))
 
@@ -106,6 +110,12 @@ def interpreter(
             return interpreter(args[0], context, dimensions) / interpreter(
                 args[1], context, dimensions
             )
+        elif op == "s_pow":
+            result = jnp.pow(interpreter(args[0], context, dimensions), interpreter(args[1], context, dimensions))
+            return result
+        elif op == "m_pow":
+            result = matrix_power(interpreter(args[0], context, dimensions), interpreter(args[1], context, dimensions))
+            return result
     elif isinstance(expr, str):
         # Grab a value from the context
         return context[expr](dimensions)

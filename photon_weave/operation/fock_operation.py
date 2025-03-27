@@ -92,7 +92,7 @@ class FockOperationType(Enum):
     >>> )
     >>> op = Operation(FockOperationType.Custom, operator=operator)
 
-    Expresion
+    Expression
     ---------
     Constucts an operator based on the expression provided. Alongside expression
     also list of state types needs to be provided together with the context.
@@ -154,7 +154,7 @@ class FockOperationType(Enum):
         ExpansionLevel.Vector,
         7,
     )
-    Expresion: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    Expression: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
         False,
         ["expr", "context"],
         ExpansionLevel.Vector,
@@ -206,7 +206,7 @@ class FockOperationType(Enum):
                 return squeezing_operator(dimensions[0], kwargs["zeta"])
             case FockOperationType.Identity:
                 return jnp.identity(dimensions[0])
-            case FockOperationType.Expresion:
+            case FockOperationType.Expression:
                 return interpreter(kwargs["expr"], kwargs["context"], dimensions)
             case FockOperationType.Custom:
                 return kwargs["operator"]
@@ -287,10 +287,10 @@ class FockOperationType(Enum):
                 return [cd]
             case FockOperationType.Identity:
                 return [num_quanta + 1]
-            case FockOperationType.Expresion:
+            case FockOperationType.Expression:
                 fd = FockDimensions(
                     state,
-                    Operation(FockOperationType.Expresion, **kwargs),
+                    Operation(FockOperationType.Expression, **kwargs),
                     num_quanta,
                     threshold,
                 )
