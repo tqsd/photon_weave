@@ -195,7 +195,10 @@ def trace_out_vector(state_objs: list, states: list) -> str:
     return f"{einsum_str[0]}->{einsum_str[1]}"
 
 
-def trace_out_matrix(state_objs: list, states: list) -> str:
+def trace_out_matrix(
+    state_objs: list,
+    states: list
+    ) -> str:
     """
     Produces an Einstein sum string. It's application traces out
     the states which are not included in the states list. Where
@@ -216,11 +219,13 @@ def trace_out_matrix(state_objs: list, states: list) -> str:
 
     einsum_list_list: List[List[int]] = [[], []]
     counter = itertools.count(start=0)
-    sum_out = next(counter)
+    einsum_dict: Dict["BaseState", int] = {}
     for _ in range(2):
         for so in state_objs:
-            if so not in states:
-                einsum_list_list[0].append(sum_out)
+            if not any(so.uid==s.uid for s in states):
+                if so not in einsum_dict.keys():
+                    einsum_dict[so] = next(counter)
+                einsum_list_list[0].append(einsum_dict[so])
             else:
                 c = next(counter)
                 einsum_list_list[0].append(c)
