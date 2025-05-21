@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 import jax.numpy as jnp
 
 from photon_weave._math.ops import num_quanta_matrix, num_quanta_vector
-from photon_weave.operation import FockOperationType, Operation
 from photon_weave.photon_weave import Config
 
 # from photon_weave.state.composite_envelope import CompositeEnvelope
@@ -23,6 +22,7 @@ from .utils.state_transform import state_contract, state_expand
 
 if TYPE_CHECKING:
     from .envelope import Envelope
+    from photon_weave.operation import Operation
 
 
 class Fock(BaseState):
@@ -256,7 +256,8 @@ class Fock(BaseState):
         if self.envelope is not None and not separate_measurement:
             if not self.envelope.polarization.measured:
                 out = self.envelope.polarization.measure(
-                    separate_measurement=separate_measurement, destructive=destructive
+                    separate_measurement=separate_measurement,
+                    destructive=destructive,
                 )
                 for m_key, m_value in out.items():
                     outcomes[m_key] = m_value
@@ -316,7 +317,10 @@ class Fock(BaseState):
                     self.dimensions = new_dimensions
                     return True
                 num_quanta = num_quanta_vector(self.state)
-                if self.dimensions > new_dimensions and num_quanta < new_dimensions + 1:
+                if (
+                    self.dimensions > new_dimensions
+                    and num_quanta < new_dimensions + 1
+                ):
                     self.state = self.state[:new_dimensions]
                     self.dimensions = new_dimensions
                     return True
@@ -360,10 +364,6 @@ class Fock(BaseState):
         operation: Operation
             Operation with operation type: FockOperationType
         """
-
-        assert isinstance(operation._operation_type, FockOperationType)
-        assert isinstance(self.expansion_level, ExpansionLevel)
-        assert isinstance(operation.required_expansion_level, ExpansionLevel)
 
         while self.expansion_level < operation.required_expansion_level:
             self.expand()

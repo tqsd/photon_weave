@@ -1,6 +1,6 @@
 import importlib
 from enum import Enum
-from typing import Any, List, Union
+from typing import Any, List, Sequence, Union, Type, TYPE_CHECKING
 
 import jax.numpy as jnp
 from jax.scipy.linalg import expm
@@ -13,9 +13,12 @@ from photon_weave._math.ops import (
     creation_operator,
     swap_operator,
 )
-from photon_weave.extra import interpreter
-from photon_weave.state.base_state import BaseState
+
 from photon_weave.state.expansion_levels import ExpansionLevel
+from photon_weave.extra import interpreter
+
+if TYPE_CHECKING:
+    from photon_weave.state.base_state import BaseState
 
 
 class CompositeOperationType(Enum):
@@ -26,24 +29,31 @@ class CompositeOperationType(Enum):
 
     NonPolarizingBeamSplitter
     -------------------------
-    Constructs a non-polarizing  beam splitter operator that acts on two Fock spaces.
-    The operator is represented by a unitary transformation that mices the two modes.
-    The constructed operator is of the form:
+    Constructs a non-polarizing  beam splitter operator that acts on two Fock
+    spaces. The operator is represented by a unitary transformation that mixes
+    the two modes. The constructed operator is of the form:
     .. math::
 
-        \hat U_{BS} = e^{i\theta(\hat a^\dagger \hat b + \hat a \hat b^\dagger)}
+        \hat U_{BS} = e^{i\theta(\hat a^\dagger \hat b +
+        \hat a \hat b^\dagger)}
 
-    For a 50/50 beam splitter, :math:`\theta = \frac{\pi}{4}\`, which leas to equal
-    mixing of the two modes.
+    For a 50/50 beam splitter, :math:`\theta = \frac{\pi}{4}\`, which leas to
+    equal mixing of the two modes.
 
     CNOT (CXPolarization)
     -----------------------
-    Constructs a CNOT operator operating on two polarization states. First state
-    provided is control and the second is target
+    Constructs a CNOT operator operating on two polarization states. First
+    state provided is control and the second is target
 
     .. math::
 
-        \hat{CX} = \begin{bmatrix}1&0&0&0\\0&0&0&1\\0&0&1&0\\0&1&0&0\end{bmatrix}
+        \hat{CX} =
+        \begin{bmatrix}
+          1&0&0&0\\
+          0&0&0&1\\
+          0&0&1&0\\
+          0&1&0&0
+        \end{bmatrix}
 
     >>> op = Operation(CompositeOperationType.CXPolarization)
     >>> ce.apply_operation(op, control_pol, target_pol)
@@ -54,18 +64,30 @@ class CompositeOperationType(Enum):
     First state provided is control and the second is target.
     .. math::
 
-        \hat{CZ} = \begin{bmatrix}1&0&0&0\\0&1&0&0\\0&0&1&0\\0&0&0&-1\end{bmatrix}
+        \hat{CZ} =
+        \begin{bmatrix}
+            1&0&0&0\\
+            0&1&0&0\\
+            0&0&1&0\\
+            0&0&0&-1
+        \end{bmatrix}
 
     >>> op = Operation(CompositeOperationType.CZPolarization)
     >>> ce.apply_operation(op, control_pol, target_pol)
 
     SWAP (SwapPolarization)
     -----------------------
-    Constructs a SWAP operation, swaping the states of two provided polarization
-    states.
+    Constructs a SWAP operation, swaping the states of two provided
+    polarization states.
 
     .. math::
-        \hat{SWAP} = \begin{bmatrix}1&0&0&0\\0&0&1&0\\0&1&0&0\\0&0&0&1\end{bmatrix}
+        \hat{SWAP} =
+        \begin{bmatrix}
+            1&0&0&0\\
+            0&0&1&0\\
+            0&1&0&0\\
+            0&0&0&1
+        \end{bmatrix}
 
     Example Usage:
     >>> op = Operation(CompositeOperationType.SwapPolarization)
@@ -73,9 +95,9 @@ class CompositeOperationType(Enum):
 
     Controlled-SWAP (CSwapPolarization)
     -----------------------------------
-    Constructs a Controlled-SWAP operation, conditionally swapping the states of
-    two provided polarization states. First state is the control state and the
-    next two states are target states.
+    Constructs a Controlled-SWAP operation, conditionally swapping the states
+    of two provided polarization states. First state is the control state and
+    the next two states are target states.
     .. math::
 
         \hat{CSWAP} =
@@ -96,10 +118,11 @@ class CompositeOperationType(Enum):
 
     Expression
     ----------
-    Constucts an operator based on the expression provided. Alongside expression
-    also list of state types needs to be provided together with the context.
-    Context needs to be a dictionary of operators, where the keys are strings used in
-    the expression and values are lambda functions, expecting one argument: dimensions.
+    Constructs an operator based on the expression provided. Alongside
+    expression also list of state types needs to be provided together with the
+    context. Context needs to be a dictionary of operators, where the keys are
+    strings used in the expression and values are lambda functions, expecting
+    one argument: dimensions.
 
     An example of context and operator usage
     >>> context = {
@@ -113,16 +136,18 @@ class CompositeOperationType(Enum):
     >>>                context=context)
     >>> ce.apply_operation(op, fock_in_ce)
 
-    It is IMPORTANT to correctly use the indexing in the context dictionary, when using
-    dim[0], this operator will be used for the first state. And the dimensions of first
-    state will be passed to the lambda function.
+    It is IMPORTANT to correctly use the indexing in the context dictionary,
+    when using dim[0], this operator will be used for the first state. And the
+    dimensions of first state will be passed to the lambda function.
 
-    It is also IMPORTANT to correctly write the expression as expression doesn't have a
-    dimension asserting functionality, meaning that if you operate on two states, you
-    need to correctly kron the operators to achieve correct operator dimensionality.
+    It is also IMPORTANT to correctly write the expression as expression
+    doesn't have a dimension asserting functionality, meaning that if you
+    operate on two states, you need to correctly kron the operators to achieve
+    correct operator dimensionality.
 
-    For example if you which to operate on two Fock spaces like in beam splitter example
-    you need to produce the following context and expression:
+    For example if you which to operate on two Fock spaces like in
+    beam-splitter example you need to produce the following context and
+    expression:
     >>> context = {
     >>>     'a_dag': lambda dims: creation_opreator(dims[0])
     >>>     'a':     lambda dims: annihilation_opreator(dims[0])
@@ -144,10 +169,10 @@ class CompositeOperationType(Enum):
 
     In this example 'a_dag' and 'a' will correspond to the fock1 state and
     'b_dag' and 'b' will correspond to the fock2 state. Notice also that the
-    operators are always kronned in the order that corresponds to the usage later
-    on. Application of the operation already reorders the states in a product state,
-    such that their order corresponds to the order called in the apply_operation
-    method call.
+    operators are always kronned in the order that corresponds to the usage
+    later on. Application of the operation already reorders the states in a
+    product state, such that their order corresponds to the order called in
+    the apply_operation method call.
     """
 
     NonPolarizingBeamSplitter = (
@@ -156,83 +181,116 @@ class CompositeOperationType(Enum):
         ["Fock", "Fock"],
         ExpansionLevel.Vector,
         1,
-    )  # type: ignore
+    )
     CXPolarization = (
         True,
         [],
         ["Polarization", "Polarization"],
         ExpansionLevel.Vector,
         2,
-    )  # type: ignore
+    )
     SwapPolarization = (
         True,
         [],
         ["Polarization", "Polarization"],
         ExpansionLevel.Vector,
         3,
-    )  # type: ignore
+    )
     CSwapPolarization = (
         True,
         [],
         ["Polarization" for _ in range(3)],
         ExpansionLevel.Vector,
         4,
-    )  # type: ignore
+    )
     CZPolarization = (
         True,
         [],
         ["Polarization" for _ in range(2)],
         ExpansionLevel.Vector,
         5,
-    )  # type: ignore
+    )
     Expression = (
         True,
         ["expr", "state_types", "context"],
         [],
         ExpansionLevel.Vector,
         6,
-    )  # type: ignore
+    )
 
-    def __init__(
-        self,
+    renormalize: bool
+    required_params: List[str]
+    expected_base_state_types: List[Type["BaseState"]]
+    required_expansion_level: ExpansionLevel
+
+    def __new__(
+        cls,
         renormalize: bool,
         required_params: List[str],
-        expected_base_state_types: List[BaseState],
-        required_expansion_level: ExpansionLevel,
+        expected_base_state_types: Sequence[Union[Type["BaseState"], str]],
+        expansion_level: ExpansionLevel,
         op_id: int,
-    ) -> None:
-        self.renormalize = renormalize
-        self.required_params = required_params
-        self.expected_base_state_types = expected_base_state_types
-        self.required_expansion_level = required_expansion_level
+    ):
+        obj = object.__new__(cls)
+        obj._value_ = op_id
+
+        # Lazy resolve string class names to actual classes
+        resolved_types: List[Type["BaseState"]] = []
+        if expected_base_state_types:
+            for st in expected_base_state_types:
+                if isinstance(st, str):
+                    mod_pol = importlib.import_module(
+                        "photon_weave.state.polarization"
+                    )
+                    if st == "Polarization":
+                        resolved_types.append(getattr(mod_pol, "Polarization"))
+                    elif st == "Fock":
+                        mod_fock = importlib.import_module(
+                            "photon_weave.state.fock"
+                        )
+                        resolved_types.append(getattr(mod_fock, "Fock"))
+                    elif st == "CustomState":
+                        mod_custom = importlib.import_module(
+                            "photon_weave.state.custom_state"
+                        )
+                        resolved_types.append(
+                            getattr(mod_custom, "CustomState")
+                        )
+                    else:
+                        raise ValueError(f"Unknown state type: {st}")
+                else:
+                    resolved_types.append(st)
+
+        obj.expected_base_state_types = resolved_types
+        obj.renormalize = renormalize
+        obj.required_params = required_params
+        obj.required_expansion_level = expansion_level
+        return obj
 
     def update(self, **kwargs: Any) -> None:
-        """
-        Updates the required_base_types in the case of Expression type
+        if (
+            self is CompositeOperationType.Expression
+            and "state_types" in kwargs
+        ):
+            from photon_weave.state.fock import Fock
+            from photon_weave.state.polarization import Polarization
+            from photon_weave.state.custom_state import CustomState
 
-        Parameters
-        ----------
-        **kwargs: Any
-            kwargs, where "state_types" is included
-        """
-        Fock = importlib.import_module("photon_weave.state.fock").Fock
-        Polarization = importlib.import_module(
-            "photon_weave.state.polarization"
-        ).Polarization
-        CustomState = importlib.import_module(
-            "photon_weave.state.custom_state"
-        ).CustomState
-        if self is CompositeOperationType.Expression:
-            self.expected_base_state_types = list(kwargs["state_types"])
-        for i, state_type in enumerate(self.expected_base_state_types):
-            if state_type == "Fock":
-                self.expected_base_state_types[i] = Fock
-            elif state_type == "Polarization":
-                self.expected_base_state_types[i] = Polarization
-            elif state_type == "CustomState":
-                self.expected_base_state_types[i] = CustomState
+            resolved = []
+            for st in kwargs["state_types"]:
+                if st == "Fock":
+                    resolved.append(Fock)
+                elif st == "Polarization":
+                    resolved.append(Polarization)
+                elif st == "CustomState":
+                    resolved.append(CustomState)
+                else:
+                    resolved.append(st)  # already a class
+            self.expected_base_state_types = resolved
 
-    def compute_operator(self, dimensions: List[int], **kwargs: Any) -> jnp.ndarray:
+    def compute_operator(
+        self, dimensions: List[int], **kwargs: Any
+    ) -> jnp.ndarray:
         """
         Generates the operator for this operation, given
         the dimensions
@@ -262,7 +320,9 @@ class CompositeOperationType(Enum):
             case CompositeOperationType.CZPolarization:
                 return controlled_z_operator()
             case CompositeOperationType.Expression:
-                return interpreter(kwargs["expr"], kwargs["context"], dimensions)
+                return interpreter(
+                    kwargs["expr"], kwargs["context"], dimensions
+                )
         raise ValueError("Operation Type not recognized")
 
     def compute_dimensions(

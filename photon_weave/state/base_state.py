@@ -1,7 +1,7 @@
 import sys
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Type, Union
 from uuid import UUID, uuid4
 
 import jax.numpy as jnp
@@ -108,7 +108,9 @@ class BaseState(ABC):
         return self._expansion_level
 
     @expansion_level.setter
-    def expansion_level(self, expansion_level: "ExpansionLevel") -> None:
+    def expansion_level(
+        self, expansion_level: Optional["ExpansionLevel"]
+    ) -> None:
         self._expansion_level = expansion_level
 
     @property
@@ -169,7 +171,7 @@ class BaseState(ABC):
 
         assert isinstance(self.state, jnp.ndarray)
         self.state = apply_kraus_matrix([self], [self], self.state, operators)
- 
+
         C = Config()
         if C.contractions:
             self.contract()
@@ -243,7 +245,9 @@ class BaseState(ABC):
         assert isinstance(self.state, jnp.ndarray)
         assert self.state.shape == (self.dimensions, self.dimensions)
 
-        outcome, self.state = measure_POVM_matrix([self], [self], operators, self.state)
+        outcome, self.state = measure_POVM_matrix(
+            [self], [self], operators, self.state
+        )
 
         result: Tuple[int, Dict["BaseState", int]] = (outcome, {})
         if destructive:

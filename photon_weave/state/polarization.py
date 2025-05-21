@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 
-from photon_weave.operation import PolarizationOperationType
 from photon_weave.photon_weave import Config
 
 from .base_state import BaseState
@@ -23,7 +22,7 @@ from .utils.state_transform import state_contract, state_expand
 
 if TYPE_CHECKING:
     from photon_weave.operation import Operation
-
+    from photon_weave.operation import PolarizationOperationType
     from .composite_envelope import CompositeEnvelope
     from .envelope import Envelope
 
@@ -85,7 +84,9 @@ class Polarization(BaseState):
         self.uid: uuid.UUID = uuid.uuid4()
         logger.info("Creating polarization with uid %s", self.uid)
         self.index: Optional[Union[int, Tuple[int, int]]] = None
-        self.state: Optional[Union[jnp.ndarray, PolarizationLabel]] = polarization
+        self.state: Optional[Union[jnp.ndarray, PolarizationLabel]] = (
+            polarization
+        )
         self._dimensions: int = 2
         self.envelope: Optional["Envelope"] = envelope
         self._expansion_level: Optional[ExpansionLevel] = ExpansionLevel.Label
@@ -143,7 +144,9 @@ class Polarization(BaseState):
                     vector = [1 / jnp.sqrt(2), -1 / jnp.sqrt(2)]
                 case PolarizationLabel.D:
                     vector = [1 / jnp.sqrt(2), 1 / jnp.sqrt(2)]
-            self.state = jnp.array(vector, dtype=jnp.complex128)[:, jnp.newaxis]
+            self.state = jnp.array(vector, dtype=jnp.complex128)[
+                :, jnp.newaxis
+            ]
             self.expansion_level = ExpansionLevel.Vector
         else:
             assert isinstance(self.state, jnp.ndarray)
@@ -246,7 +249,9 @@ class Polarization(BaseState):
             else:
                 self.index = minor
         else:
-            raise ValueError("Polarization state does not seem to be extracted")
+            raise ValueError(
+                "Polarization state does not seem to be extracted"
+            )
 
     def _set_measured(self) -> None:
         """
@@ -327,8 +332,6 @@ class Polarization(BaseState):
         will be executed in the state container, which contains this
         state.
         """
-        assert isinstance(operation._operation_type, PolarizationOperationType)
-        assert isinstance(self.expansion_level, ExpansionLevel)
 
         while self.expansion_level < operation.required_expansion_level:
             self.expand()
