@@ -369,9 +369,14 @@ class Fock(BaseState):
             self.expand()
 
         # Consolidate the dimensions
-        to = self.trace_out()
-        operation.compute_dimensions(self._num_quanta, to)
-        self.resize(operation.dimensions[0])
+        C = Config()
+        if C.dynamic_dimensions:
+            to = self.trace_out()
+            operation.compute_dimensions(self._num_quanta, to)
+            self.resize(operation.dimensions[0])
+        else:
+            operation._dimensions = [self.dimensions]
+
         assert isinstance(self.state, jnp.ndarray)
 
         match self.expansion_level:

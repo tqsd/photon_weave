@@ -1,4 +1,5 @@
 import unittest
+import traceback
 
 import jax.numpy as jnp
 import pytest
@@ -29,15 +30,18 @@ class TestFockOperationCreation(unittest.TestCase):
     def test_creation_operation_label(self) -> None:
         C = Config()
         C.set_contraction(True)
+        C.set_dynamic_dimensions(True)
         f = Fock()
         op = Operation(FockOperationType.Creation)
         for i in range(20):
             f.apply_operation(op)
             self.assertEqual(f.state, i + 1)
+        C.set_dynamic_dimensions(False)
 
     def test_creation_operation_vector(self) -> None:
         C = Config()
         C.set_contraction(False)
+        C.set_dynamic_dimensions(True)
 
         f = Fock()
         f.expand()
@@ -59,9 +63,12 @@ class TestFockOperationCreation(unittest.TestCase):
             expected_state = expected_state.at[i + 1, 0].set(1)
             self.assertEqual(f.state, i + 1)
 
+        C.set_dynamic_dimensions(False)
+
     def test_creation_operation_matrix(self) -> None:
         C = Config()
         C.set_contraction(False)
+        C.set_dynamic_dimensions(True)
 
         f = Fock()
         f.expand()
@@ -72,6 +79,7 @@ class TestFockOperationCreation(unittest.TestCase):
             expected_state = jnp.zeros((i + 2, i + 2))
             expected_state = expected_state.at[i + 1, i + 1].set(1)
             self.assertTrue(jnp.allclose(f.state, expected_state))
+        C.set_dynamic_dimensions(False)
 
     def test_creation_operation_envelope_vector(self) -> None:
         C = Config()
@@ -106,6 +114,7 @@ class TestFockOperationCreation(unittest.TestCase):
     def test_creation_operation_composite_envelope_envelope(self) -> None:
         C = Config()
         C.set_contraction(True)
+        C.set_dynamic_dimensions(True)
         env1 = Envelope()
         env1.fock.expand()
         env1.polarization.expand()
@@ -118,7 +127,9 @@ class TestFockOperationCreation(unittest.TestCase):
             env1.apply_operation(op, env1.fock)
             expected_state = jnp.zeros(((i + 2) * 2 * 2, 1))
             expected_state = expected_state.at[(i + 1) * 4, 0].set(1)
-            self.assertTrue(jnp.allclose(ce.product_states[0].state, expected_state))
+            self.assertTrue(jnp.allclose(
+                ce.product_states[0].state, expected_state))
+        C.set_dynamic_dimensions(False)
 
 
 class TestFockOperationAnnihilation(unittest.TestCase):
@@ -238,7 +249,8 @@ class TestFockOperationAnnihilation(unittest.TestCase):
                 env.fock.apply_operation(op)
                 expected_state = jnp.zeros((env.fock.dimensions, 1))
                 expected_state = expected_state.at[s, 0].set(1)
-                self.assertTrue(jnp.allclose(env.fock.trace_out(), expected_state))
+                self.assertTrue(jnp.allclose(
+                    env.fock.trace_out(), expected_state))
             else:
                 with self.assertRaises(ValueError):
                     env.fock.apply_operation(op)
@@ -263,7 +275,8 @@ class TestFockOperationAnnihilation(unittest.TestCase):
                 env.fock.apply_operation(op)
                 expected_state = jnp.zeros((env.fock.dimensions, 1))
                 expected_state = expected_state.at[s, 0].set(1)
-                self.assertTrue(jnp.allclose(env.fock.trace_out(), expected_state))
+                self.assertTrue(jnp.allclose(
+                    env.fock.trace_out(), expected_state))
             else:
                 with self.assertRaises(ValueError):
                     env.fock.apply_operation(op)
@@ -271,11 +284,21 @@ class TestFockOperationAnnihilation(unittest.TestCase):
 
 class TestFockOperationPhaseShift(unittest.TestCase):
     def test_phase_shift_in_place(self) -> None:
-        f = Fock()
-        f.state = 3
-        op = Operation(FockOperationType.PhaseShift, phi=jnp.pi / 2)
-        f.apply_operation(op)
-        self.assertTrue(jnp.allclose(f.state, jnp.array([[0], [0], [0], [-1j]])))
+        try:
+            f = Fock()
+            f.state = 3
+            op = Operation(FockOperationType.PhaseShift, phi=jnp.pi / 2)
+            f.apply_operation(op)
+            self.assertTrue(
+                jnp.allclose(f.state, jnp.array(
+                    [[0], [0], [0], [-1j], [0], [0]]))
+            )
+        except Exception:
+            traceback.format_exc()
+            self.fail(
+                f"Fock dimensions {f.dimensions}\n"
+                f"Operator dimensions {op.dimensions}"
+            )
 
     def test_phase_shift_in_envelope_vector(self) -> None:
         env = Envelope()
@@ -285,7 +308,8 @@ class TestFockOperationPhaseShift(unittest.TestCase):
         env.fock.apply_operation(op)
         self.assertTrue(
             jnp.allclose(
-                env.state, jnp.array([[0], [0], [0], [0], [0], [0], [-1j], [0]])
+                env.state, jnp.array(
+                    [[0], [0], [0], [0], [0], [0], [-1j], [0]])
             )
         )
 
@@ -302,7 +326,8 @@ class TestFockOperationPhaseShift(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 env.state,
-                jnp.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0]]),
+                jnp.array([[0, 0, 0, 0], [0, 0, 0, 0],
+                          [0, 0, 1, 0], [0, 0, 0, 0]]),
             )
         )
 
@@ -348,7 +373,9 @@ class TestFockOperationDisplace(unittest.TestCase):
         f.dimensions = 2
         op = Operation(FockOperationType.Displace, alpha=1)
         f.apply_operation(op)
-        self.assertEqual(f.dimensions, 12)
+        self.assertEqual(f.dimensions, 2, "Dimensions should not change")
+        self.assertTrue(f.state.shape == (2, 1),
+                        "Dimensions should not change")
 
     def test_displace_fock_matrix(self) -> None:
         f = Fock()
@@ -358,7 +385,8 @@ class TestFockOperationDisplace(unittest.TestCase):
         f.expand()
         op = Operation(FockOperationType.Displace, alpha=2)
         f.apply_operation(op)
-        self.assertEqual(f.dimensions, 20)
+        self.assertEqual(f.dimensions, 2)
+        self.assertTrue(f.state.shape == (2, 1))
 
     def test_displace_fock_envelope_vector(self) -> None:
         env = Envelope()
@@ -463,9 +491,10 @@ class TestExpressionOperator(unittest.TestCase):
             context=context,
         )
         f.apply_operation(op)
-        self.assertTrue(jnp.allclose(f.state, jnp.array([[0], [-1], [0], [0]])))
+        self.assertTrue(jnp.allclose(
+            f.state, jnp.array([[0], [-1], [0], [0]])))
 
-    def test_expression_operator_fock_vector_two_scalers(self) -> None:
+    def test_expression_operator_fock_vector_two_scalars(self) -> None:
         f = Fock()
         # DISPLACE
         context = {
@@ -479,7 +508,8 @@ class TestExpressionOperator(unittest.TestCase):
             context=context,
         )
         f.apply_operation(op)
-        self.assertTrue(f.state.shape == (12, 1))
+        self.assertTrue(f.state.shape == (3, 1),
+                        f"Expected (3,1), got {f.state.shape}")
 
     def test_expression_operator_fock_matrix(self) -> None:
         f = Fock()
@@ -537,7 +567,8 @@ class TestExpressionOperator(unittest.TestCase):
         env.fock.apply_operation(op)
         # Global phase is lost in a density matrix
         self.assertTrue(
-            jnp.allclose(env.state, jnp.array([[0], [0], [1], [0], [0], [0], [0], [0]]))
+            jnp.allclose(env.state, jnp.array(
+                [[0], [0], [1], [0], [0], [0], [0], [0]]))
         )
 
     def test_expression_operator_composite_envelope_vector(self) -> None:
@@ -593,7 +624,8 @@ class TestCustomFockOperation(unittest.TestCase):
     def test_custom_operator_fock_vector(self) -> None:
         f = Fock()
         f.dimensions = 2
-        op = Operation(FockOperationType.Custom, operator=jnp.array([[0, 0], [1, 0]]))
+        op = Operation(FockOperationType.Custom,
+                       operator=jnp.array([[0, 0], [1, 0]]))
         f.apply_operation(op)
         self.assertEqual(f.state, 1)
 
@@ -602,7 +634,8 @@ class TestCustomFockOperation(unittest.TestCase):
         f.dimensions = 2
         f.expand()
         f.expand()
-        op = Operation(FockOperationType.Custom, operator=jnp.array([[0, 0], [1, 0]]))
+        op = Operation(FockOperationType.Custom,
+                       operator=jnp.array([[0, 0], [1, 0]]))
         f.apply_operation(op)
         self.assertEqual(f.state, 1)
 
@@ -610,18 +643,22 @@ class TestCustomFockOperation(unittest.TestCase):
         env = Envelope()
         env.fock.dimensions = 2
         env.combine()
-        op = Operation(FockOperationType.Custom, operator=jnp.array([[0, 0], [1, 0]]))
+        op = Operation(FockOperationType.Custom,
+                       operator=jnp.array([[0, 0], [1, 0]]))
         env.fock.apply_operation(op)
-        self.assertTrue(jnp.allclose(env.state, jnp.array([[0], [0], [1], [0]])))
+        self.assertTrue(jnp.allclose(
+            env.state, jnp.array([[0], [0], [1], [0]])))
 
     def test_custom_operator_envelope_matrix(self) -> None:
         env = Envelope()
         env.fock.dimensions = 2
         env.combine()
         env.expand()
-        op = Operation(FockOperationType.Custom, operator=jnp.array([[0, 0], [1, 0]]))
+        op = Operation(FockOperationType.Custom,
+                       operator=jnp.array([[0, 0], [1, 0]]))
         env.fock.apply_operation(op)
-        self.assertTrue(jnp.allclose(env.state, jnp.array([[0], [0], [1], [0]])))
+        self.assertTrue(jnp.allclose(
+            env.state, jnp.array([[0], [0], [1], [0]])))
 
     def test_custom_operator_composite_envelope_vector(self) -> None:
         env1 = Envelope()
@@ -630,13 +667,15 @@ class TestCustomFockOperation(unittest.TestCase):
         env2.fock.dimensions = 2
         ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.fock, env2.fock)
-        op = Operation(FockOperationType.Custom, operator=jnp.array([[0, 0], [1, 0]]))
+        op = Operation(FockOperationType.Custom,
+                       operator=jnp.array([[0, 0], [1, 0]]))
         env1.fock.apply_operation(op)
         env1.fock.uid = 1
         env2.fock.uid = 2
         # print([s.uid for s in ce.product_states[0].state_objs])
         self.assertTrue(
-            jnp.allclose(ce.product_states[0].state, jnp.array([[0], [1], [0], [0]]))
+            jnp.allclose(ce.product_states[0].state,
+                         jnp.array([[0], [1], [0], [0]]))
         )
 
     def test_custom_operator_composite_envelope_matrix(self) -> None:
@@ -647,11 +686,13 @@ class TestCustomFockOperation(unittest.TestCase):
         ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.fock, env2.fock)
         ce.expand(env1.fock)
-        op = Operation(FockOperationType.Custom, operator=jnp.array([[0, 0], [1, 0]]))
+        op = Operation(FockOperationType.Custom,
+                       operator=jnp.array([[0, 0], [1, 0]]))
         env1.fock.apply_operation(op)
         env1.fock.uid = 1
         env2.fock.uid = 2
         # print([s.uid for s in ce.product_states[0].state_objs])
         self.assertTrue(
-            jnp.allclose(ce.product_states[0].state, jnp.array([[0], [1], [0], [0]]))
+            jnp.allclose(ce.product_states[0].state,
+                         jnp.array([[0], [1], [0], [0]]))
         )
