@@ -35,8 +35,8 @@ class FockOperationType(Enum):
     The operator however normalizes the state afterwards, to when using
     Creation operator the resulting state is:
     :math:`\hat a^\dagger |n\rangle = |n+1\rangle`
-    The dimensions of the Fock space is changed to the highest number state
-    with non zero amplitude plus two.
+    If `dynamic_dimensions` setting is set, the dimensions of the Fock space is
+    changed to the highest number state with non zero amplitude plus two.
 
     Annihilation
     ------------
@@ -46,8 +46,8 @@ class FockOperationType(Enum):
     The operator however normalizes the state afterwards, to when using
     Creation operator the resulting state is:
     :math:`\hat a|n\rangle = |n-1\rangle`
-    The dimensions of the Fock space is changed to the highest number
-    state with non zero amplitude plust two.
+    If `dynamic_dimensions` setting is set, the dimensions of the Fock space
+    is changed to the highest number state with non zero amplitude plust two.
 
     PhaseShift
     ----------
@@ -60,9 +60,9 @@ class FockOperationType(Enum):
     -------
     Constructs a Squeezing operator
     :math:`\hat S(\zeta)=e^{\frac{1}{2}(z^*\hat a^2 - z \hat a^\dagger^2)}`
-    The dimensions of the Fock space required to accurately represent the
-    application of this operator is iteratively determined, resulting in
-    appropriate dimension.
+    If the `dynamic_dimensions` setting is set, the dimensions of the Fock
+    space required to accurately represent the application of this operator is
+    iteratively determined, resulting in appropriate dimension.
 
     Displace
     --------
@@ -70,9 +70,10 @@ class FockOperationType(Enum):
     :math:`\hat D(\alpha)=e^{\alpha \hat a^\dagger - \alpha^* \hat a}`
     The dimensions of the Fock space required to accurately represent the
     application of this operator is iteratively determined, resulting in
-    appropriate dimension. The dimensions of the Fock space required to
-    accurately represent the application of this operator is iteratively
-    determined, resulting in appropriate dimension.
+    appropriate dimension. If `dynamic_dimensions' setting is set, the
+    dimensions of the Fock space required to accurately represent the
+    application of this operator is iteratively determined, resulting in
+    appropriate dimension.
 
     Identity
     --------
@@ -118,6 +119,10 @@ class FockOperationType(Enum):
     >>>                context=context)
     >>> fock.apply_operation(op)
     """
+
+    renormalize: bool
+    required_params: List[str]
+    required_expansion_level: ExpansionLevel
 
     def __new__(
         cls,
@@ -181,18 +186,6 @@ class FockOperationType(Enum):
         ExpansionLevel.Vector,
         8,
     )
-
-    def __init__(
-        self,
-        renormalize: bool,
-        required_params: list,
-        required_expansion_level: ExpansionLevel,
-        op_id: int,
-    ) -> None:
-        self.renormalize = renormalize
-        self.required_params = required_params
-        self.required_expansion_level = required_expansion_level
-        self.op_id = op_id
 
     def update(self, **kwargs: Any) -> None:
         """
