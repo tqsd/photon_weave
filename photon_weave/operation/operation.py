@@ -3,25 +3,30 @@ from typing import Any, List, Optional, Union
 import jax.numpy as jnp
 
 from photon_weave.operation.composite_operation import CompositeOperationType
-from photon_weave.operation.custom_state_operation import CustomStateOperationType
+from photon_weave.operation.custom_state_operation import (
+    CustomStateOperationType,
+)
 from photon_weave.operation.fock_operation import FockOperationType
-from photon_weave.operation.polarization_operation import PolarizationOperationType
+from photon_weave.operation.polarization_operation import (
+    PolarizationOperationType,
+)
 from photon_weave.state.expansion_levels import ExpansionLevel
 
 
 class Operation:
     """
-    Represents a quantum operation applied to a state in various frameworks (Fock,
-    Polarization, Composite, or Custom). The `Operation` class provides functionalities
-    for applying quantum operations, managing operator matrices, and computing
-    dimensions for these operations. It is designed to handle custom and predefined
-    operations, updating internal parameters based on the specific operation type.
+    Represents a quantum operation applied to a state in various frameworks
+    (Fock, Polarization, Composite, or Custom). The `Operation` class provides
+    functionalities for applying quantum operations, managing operator
+    matrices, and computing dimensions for these operations. It is designed to
+    handle custom and predefined operations, updating internal parameters based
+    on the specific operation type.
 
     Attributes
     ----------
     _operator : Optional[jnp.ndarray]
-        The matrix representation of the operation. This is only used for custom
-        operations.
+        The matrix representation of the operation. This is only used for
+        custom operations.
     _operation_type : Union[FockOperationType, PolarizationOperationType,
     CompositeOperationType, CustomStateOperationType]
         The type of the operation, which determines how the operation behaves.
@@ -30,53 +35,56 @@ class Operation:
     _renormalize : bool
         Determines if renormalization is required after applying the operation.
     kwargs : dict
-        Additional keyword arguments required for the operation, such as specific
-        parameters related to the operation type.
+        Additional keyword arguments required for the operation, such as
+        specific parameters related to the operation type.
     _expansion_level : ExpansionLevel
-        Expansion level required for the operation (inferred from the operation type).
+        Expansion level required for the operation (inferred from the operation
+        type).
     _expression : str
-        String-based expression defining the operation if applicable (e.g., custom
-        operations).
+        String-based expression defining the operation if applicable (e.g.,
+        custom operations).
     _dimensions : List[int]
-        The estimated dimensions required to apply the operation, computed based on the
-        number of quanta and state.
+        The estimated dimensions required to apply the operation, computed
+        based on the number of quanta and state.
 
     Methods
     -------
     __init__(operation_type, expression=None, apply_count=1, **kwargs)
-        Initializes the operation, updates internal parameters based on the operation
-        type, and validates required parameters.
+        Initializes the operation, updates internal parameters based on the
+        operation type, and validates required parameters.
 
     __repr__()
-        Provides a string representation of the operation, including matrix formatting
-        for custom operators.
+        Provides a string representation of the operation, including matrix
+        formatting for custom operators.
 
     dimensions
         Getter and setter for the dimensions required for the operation.
 
     compute_dimensions(num_quanta, state)
-        Computes the required dimensions for applying the operation based on the
-        provided quanta and state.
+        Computes the required dimensions for applying the operation based on
+        the provided quanta and state.
 
     required_expansion_level
         Returns the required expansion level for the operation.
 
     renormalize
-        Returns whether renormalization is required after applying the operation.
+        Returns whether renormalization is required after applying the
+        operation.
 
     operator
-        Getter and setter for the operator matrix. This is computed automatically
-        unless the operation type is custom.
+        Getter and setter for the operator matrix. This is computed
+        automatically unless the operation type is custom.
 
     Raises
     ------
     KeyError
         If required parameters for the operation type are not provided.
     ValueError
-        If an attempt is made to manually set the operator for non-custom operation
-        types.
+        If an attempt is made to manually set the operator for non-custom
+        operation types.
     AssertionError
-        If the provided operator is not a valid `jnp.ndarray` for custom operations.
+        If the provided operator is not a valid `jnp.ndarray` for custom
+        operations.
     """
 
     __slots__ = (
@@ -103,8 +111,8 @@ class Operation:
         **kwargs: Any,
     ) -> None:
         """
-        Initializes an `Operation` instance with the specified type, expression, and
-        application count.
+        Initializes an `Operation` instance with the specified type,
+        expression, and application count.
 
         Parameters
         ----------
@@ -123,7 +131,8 @@ class Operation:
         KeyError
             If any required parameter for the operation type is missing.
         AssertionError
-            If the operator for a custom operation is not a valid `jnp.ndarray`.
+            If the operator for a custom operation is not a valid
+            `jnp.ndarray`.
         """
         self._operation_type: Union[
             FockOperationType,
@@ -146,18 +155,18 @@ class Operation:
         for param in operation_type.required_params:
             if param not in kwargs:
                 raise KeyError(
-                    f"The '{param}' argument is required for {operation_type.name}"
+                    f"The '{param}' argument is required for {
+                        operation_type.name}"
                 )
 
     def __repr__(self) -> str:
         """
-        Returns a string representation of the operation, including the operator matrix
-        for custom operations.
+        Returns a string representation of the operation, including the
+        operator matrix for custom operations.
         """
         if self._operator is None:
-            repr_string = (
-                f"{self._operation_type.__class__.__name__}.{self._operation_type.name}"
-            )
+            repr_string = f"{self._operation_type.__class__.__name__}.{
+                self._operation_type.name}"
         else:
             repr_string = f"{self._operation_type.__class__.__name__}"
             repr_string += f".{self._operation_type.name}\n"
@@ -168,17 +177,14 @@ class Operation:
                 return repr_string
 
             for row in self._operator:
-                formatted_row = "⎢ "  # Start each row with the ⎢ symbol
+                formatted_row = "⎢ "
                 for num in row:
-                    formatted_row += f"{num.real:+.2f} "  # Include a space
-                    # after the real part
-                    # Add either "+" or "-" for the imaginary part based on the sign
+                    formatted_row += f"{num.real:+.2f} "
                     if num.imag >= 0:
                         formatted_row += "+ "
                     else:
                         formatted_row += "- "
 
-                    # Format the imaginary part and add "j"
                     formatted_row += f"{abs(num.imag):.2f}j   "
 
                 formatted_row = formatted_row.strip() + " ⎥\n"
@@ -197,7 +203,8 @@ class Operation:
     @property
     def dimensions(self) -> List[int]:
         """
-        Gets or sets the estimated dimensions required for applying the operation.
+        Gets or sets the estimated dimensions required for applying the
+        operation.
 
         Returns
         -------
@@ -225,7 +232,8 @@ class Operation:
         state: jnp.ndarray,
     ) -> None:
         """
-        Computes and updates the required dimensions for applying this operation.
+        Computes and updates the required dimensions for applying this
+        operation.
 
         Parameters
         ----------
@@ -254,7 +262,8 @@ class Operation:
     @property
     def renormalize(self) -> bool:
         """
-        Indicates whether renormalization is required after applying the operation.
+        Indicates whether renormalization is required after applying the
+        operation.
 
         Returns
         -------
@@ -303,5 +312,7 @@ class Operation:
         """
         assert isinstance(operator, jnp.ndarray)
         if self._operation_type is not FockOperationType.Custom:
-            raise ValueError("Operator can only be configured for the Custom types")
+            raise ValueError(
+                "Operator can only be configured for the Custom types"
+            )
         self._operator = operator
