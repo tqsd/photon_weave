@@ -20,10 +20,11 @@ class CustomStateOperationType(Enum):
     Construcs an operator based on the expression provided.
     Alongside expression also a context needs to be provided.
     Context needs to be a dictionary of operators, where the keys are strings
-    used in the expression and values are lambda functions, expecting one argument
-    dimension. In this case the lambda can also not use the dims parameter,
-    but it needs to be defined. Keep in mind that the resulting operator needs
-    to have the same dimensionality of the state it is designed to operate on.
+    used in the expression and values are lambda functions, expecting one
+    argument dimension. In this case the lambda can also not use the dims
+    parameter, but it needs to be defined. Keep in mind that the resulting
+    operator needs to have the same dimensionality of the state it is designed
+    to operate on.
 
     An example of usage:
     >>> context = {
@@ -31,13 +32,17 @@ class CustomStateOperationType(Enum):
     >>>     "b": lambda dims: jnp.array([[0,0,0],[0,0,0],[0,1,0]])
     >>> }
     >>> expr = ("add", "a", "b")
-    >>> op = Operation(CustomStateOperationType.Expresion, expr=expr, context=context)
+    >>> op = Operation(
+    >>>     CustomStateOperationType.Expresion,
+    >>>     expr=expr,
+    >>>     context=context
+    >>> )
 
     Custom
     ------
-    Constructs a custom operator, which means that the oeprator needs to be manually
-    provided. The dimensions of the operator must match the dimensions of the state,
-    on which the operator is operating.
+    Constructs a custom operator, which means that the oeprator needs to be
+    manually provided. The dimensions of the operator must match the dimensions
+    of the state, on which the operator is operating.
 
     An example of usage:
     >>> operator = jnp.array(
@@ -51,16 +56,23 @@ class CustomStateOperationType(Enum):
     Expresion = (True, ["expr", "context"], ExpansionLevel.Vector, 1)
     Custom = (True, ["operator"], ExpansionLevel.Vector, 2)
 
-    def __init__(
-        self,
+    renormalize: bool
+    required_params: List[str]
+    required_expansion_level: ExpansionLevel
+
+    def __new__(
+        cls,
         renormalize: bool,
-        required_params: list,
-        required_expansion_level: ExpansionLevel,
+        required_params: List[str],
+        expansion_level: ExpansionLevel,
         op_id: int,
-    ) -> None:
-        self.renormalize = renormalize
-        self.required_params = required_params
-        self.required_expansion_level = required_expansion_level
+    ):
+        obj = object.__new__(cls)
+        obj._value_ = op_id
+        obj.renormalize = renormalize
+        obj.required_params = required_params
+        obj.required_expansion_level = expansion_level
+        return obj
 
     def update(self, **kwargs: Any) -> None:
         """
@@ -68,7 +80,9 @@ class CustomStateOperationType(Enum):
         """
         return
 
-    def compute_operator(self, dimensions: List[int], **kwargs: Any) -> jnp.ndarray:
+    def compute_operator(
+        self, dimensions: List[int], **kwargs: Any
+    ) -> jnp.ndarray:
         """
         Generates the operator for this operation
 
@@ -84,7 +98,9 @@ class CustomStateOperationType(Enum):
             case CustomStateOperationType.Custom:
                 return kwargs["operator"]
             case CustomStateOperationType.Expresion:
-                return interpreter(kwargs["expr"], kwargs["context"], dimensions)
+                return interpreter(
+                    kwargs["expr"], kwargs["context"], dimensions
+                )
         raise ValueError("Operator not recognized")
 
     def compute_dimensions(
