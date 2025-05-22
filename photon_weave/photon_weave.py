@@ -20,6 +20,7 @@ class Config:
             self._random_seed = random.randint(0, sys.maxsize)
             self._key = jax.random.PRNGKey(self._random_seed)
             self._contractions = True
+            self._dynamic_dimensions = False
 
     def set_seed(self, seed: int) -> None:
         """
@@ -50,3 +51,14 @@ class Config:
     @property
     def contractions(self) -> bool:
         return self._contractions
+
+    @property
+    def dynamic_dimensions(self) -> bool:
+        return self._dynamic_dimensions
+
+    @dynamic_dimensions.setter
+    def dynamic_dimensions(self, dynamic_dimensions) -> None:
+        self._dynamic_dimensions = bool(dynamic_dimensions)
+
+    def set_dynamic_dimensions(self, dynamic_dimensions: bool) -> None:
+        self._dynamic_dimensions = bool(dynamic_dimensions)

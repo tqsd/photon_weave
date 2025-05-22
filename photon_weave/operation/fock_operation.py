@@ -3,7 +3,7 @@ Operations on fock spaces
 """
 
 from enum import Enum
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Union
 
 import jax.numpy as jnp
 
@@ -15,7 +15,9 @@ from photon_weave._math.ops import (
     squeezing_operator,
 )
 from photon_weave.extra import interpreter
-from photon_weave.operation.helpers.fock_dimension_esitmation import FockDimensions
+from photon_weave.operation.helpers.fock_dimension_esitmation import (
+    FockDimensions,
+)
 from photon_weave.state.expansion_levels import ExpansionLevel
 
 
@@ -33,8 +35,8 @@ class FockOperationType(Enum):
     The operator however normalizes the state afterwards, to when using
     Creation operator the resulting state is:
     :math:`\hat a^\dagger |n\rangle = |n+1\rangle`
-    The dimensions of the Fock space is changed to the highest number state
-    with non zero amplitude plus two.
+    If `dynamic_dimensions` setting is set, the dimensions of the Fock space is
+    changed to the highest number state with non zero amplitude plus two.
 
     Annihilation
     ------------
@@ -44,8 +46,8 @@ class FockOperationType(Enum):
     The operator however normalizes the state afterwards, to when using
     Creation operator the resulting state is:
     :math:`\hat a|n\rangle = |n-1\rangle`
-    The dimensions of the Fock space is changed to the highest number
-    state with non zero amplitude plust two.
+    If `dynamic_dimensions` setting is set, the dimensions of the Fock space
+    is changed to the highest number state with non zero amplitude plust two.
 
     PhaseShift
     ----------
@@ -58,32 +60,37 @@ class FockOperationType(Enum):
     -------
     Constructs a Squeezing operator
     :math:`\hat S(\zeta)=e^{\frac{1}{2}(z^*\hat a^2 - z \hat a^\dagger^2)}`
-    The dimensions of the Fock space required to accurately represent the application
-    of this operator is iteratively determined, resulting in appropriate dimension.
+    If the `dynamic_dimensions` setting is set, the dimensions of the Fock
+    space required to accurately represent the application of this operator is
+    iteratively determined, resulting in appropriate dimension.
 
     Displace
     --------
     Constructs a Squeezing operator
     :math:`\hat D(\alpha)=e^{\alpha \hat a^\dagger - \alpha^* \hat a}`
-    The dimensions of the Fock space required to accurately represent the application
-    of this operator is iteratively determined, resulting in appropriate dimension.
-    The dimensions of the Fock space required to accurately represent the application
-    of this operator is iteratively determined, resulting in appropriate dimension.
+    The dimensions of the Fock space required to accurately represent the
+    application of this operator is iteratively determined, resulting in
+    appropriate dimension. If `dynamic_dimensions' setting is set, the
+    dimensions of the Fock space required to accurately represent the
+    application of this operator is iteratively determined, resulting in
+    appropriate dimension.
 
     Identity
     --------
     Constructs a Squeezing operator :math:`\hat I`
-    This operator has no effect on the quantum state. The dimensions remain unchanged.
+    This operator has no effect on the quantum state. The dimensions remain
+    unchanged.
 
     Custom
     ------
     Constructs a custom operator, which means the operator needs to be manually
-    provided, one must pay attention to the fact that operators dimensions need to match
-    the dimensions of the Fock space. If the operator is larger than the underlying
-    fock space, then the dimensions of the respective Fock space will increase to match
-    the provided operator. Otherwise the state will be shrunk. If shrinking is not
-    succesfull then the operation will fail. Shinking is not succesfull if part of the
-    state is removed by the process of shrinking.
+    provided, one must pay attention to the fact that operators dimensions need
+    to match the dimensions of the Fock space. If the operator is larger than
+    the underlying fock space, then the dimensions of the respective Fock space
+    will increase to match the provided operator. Otherwise the state will be
+    shrunk. If shrinking is not succesfull then the operation will fail.
+    Shrinking is not succesfull if part of the state is removed by the process
+    of shrinking.
 
     Usage Example:
     >>> operator = jnp.ndarray(
@@ -94,10 +101,11 @@ class FockOperationType(Enum):
 
     Expresion
     ---------
-    Constucts an operator based on the expression provided. Alongside expression
-    also list of state types needs to be provided together with the context.
-    Context needs to be a dictionary of operators, where the keys are strings used in
-    the expression and values are lambda functions, expecting one argument: dimensions.
+    Constucts an operator based on the expression provided. Alongside
+    expression also list of state types needs to be provided together with the
+    context. Context needs to be a dictionary of operators, where the keys are
+    strings used in the expression and values are lambda functions, expecting
+    one argument: `dimensions`.
 
     An example of context and operator usage
     >>> context = {
@@ -112,65 +120,72 @@ class FockOperationType(Enum):
     >>> fock.apply_operation(op)
     """
 
-    Creation: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    renormalize: bool
+    required_params: List[str]
+    required_expansion_level: ExpansionLevel
+
+    def __new__(
+        cls,
+        renormalize: bool,
+        required_params: List[str],
+        expansion_level: ExpansionLevel,
+        op_id: int,
+    ):
+        obj = object.__new__(cls)
+        obj._value_ = op_id
+        obj.renormalize = renormalize
+        obj.required_params = required_params
+        obj.required_expansion_level = expansion_level
+        return obj
+
+    Creation = (
         True,
         [],
         ExpansionLevel.Vector,
         1,
     )
-    Annihilation: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    Annihilation = (
         True,
         [],
         ExpansionLevel.Vector,
         2,
     )
-    PhaseShift: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    PhaseShift = (
         False,
         ["phi"],
         ExpansionLevel.Vector,
         3,
     )
-    Squeeze: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    Squeeze = (
         True,
         ["zeta"],
         ExpansionLevel.Vector,
         4,
     )
-    Displace: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    Displace = (
         False,
         ["alpha"],
         ExpansionLevel.Vector,
         5,
     )
-    Identity: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    Identity = (
         False,
         [],
         ExpansionLevel.Vector,
         6,
     )
-    Custom: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    Custom = (
         False,
         ["operator"],
         ExpansionLevel.Vector,
         7,
     )
-    Expresion: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    Expresion = (
         False,
         ["expr", "context"],
         ExpansionLevel.Vector,
         8,
     )
-
-    def __init__(
-        self,
-        renormalize: bool,
-        required_params: list,
-        required_expansion_level: ExpansionLevel,
-        op_id: int,
-    ) -> None:
-        self.renormalize = renormalize
-        self.required_params = required_params
-        self.required_expansion_level = required_expansion_level
 
     def update(self, **kwargs: Any) -> None:
         """
@@ -178,7 +193,9 @@ class FockOperationType(Enum):
         """
         return
 
-    def compute_operator(self, dimensions: List[int], **kwargs: Any) -> jnp.ndarray:
+    def compute_operator(
+        self, dimensions: List[int], **kwargs: Any
+    ) -> jnp.ndarray:
         """
         Generates the operator for this operation, given
         the dimensions
@@ -207,7 +224,9 @@ class FockOperationType(Enum):
             case FockOperationType.Identity:
                 return jnp.identity(dimensions[0])
             case FockOperationType.Expresion:
-                return interpreter(kwargs["expr"], kwargs["context"], dimensions)
+                return interpreter(
+                    kwargs["expr"], kwargs["context"], dimensions
+                )
             case FockOperationType.Custom:
                 return kwargs["operator"]
         raise ValueError("Something went wrong in operation generation")

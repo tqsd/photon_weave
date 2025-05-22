@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 import jax.numpy as jnp
 
 from photon_weave._math.ops import num_quanta_matrix, num_quanta_vector
-from photon_weave.operation import FockOperationType, Operation
 from photon_weave.photon_weave import Config
 
 # from photon_weave.state.composite_envelope import CompositeEnvelope
@@ -23,6 +22,7 @@ from .utils.state_transform import state_contract, state_expand
 
 if TYPE_CHECKING:
     from .envelope import Envelope
+    from photon_weave.operation import Operation
 
 
 class Fock(BaseState):
@@ -57,25 +57,10 @@ class Fock(BaseState):
         Holds information about the expansion level of this system
     """
 
-    __slots__ = (
-        "uid",
-        "index",
-        "state",
-        "dimensions",
-        "density_matrix",
-        "envelope",
-        "expansions",
-        "expansion_level",
-        "measured",
-    )
-
     def __init__(self, envelope: Optional[Envelope] = None):
-        self.uid: uuid.UUID = uuid.uuid4()
-        self.index: Optional[Union[int, Tuple[int, int]]] = None
-        self.dimensions: int = -1
+        super().__init__()
         self.state: Optional[Union[int, jnp.ndarray]] = 0
         self.envelope: Optional["Envelope"] = envelope
-        self._composite_envelope = None
         self.expansion_level: Optional[ExpansionLevel] = ExpansionLevel.Label
         self.measured = False
 
@@ -256,7 +241,8 @@ class Fock(BaseState):
         if self.envelope is not None and not separate_measurement:
             if not self.envelope.polarization.measured:
                 out = self.envelope.polarization.measure(
-                    separate_measurement=separate_measurement, destructive=destructive
+                    separate_measurement=separate_measurement,
+                    destructive=destructive,
                 )
                 for m_key, m_value in out.items():
                     outcomes[m_key] = m_value
@@ -316,7 +302,10 @@ class Fock(BaseState):
                     self.dimensions = new_dimensions
                     return True
                 num_quanta = num_quanta_vector(self.state)
-                if self.dimensions > new_dimensions and num_quanta < new_dimensions + 1:
+                if (
+                    self.dimensions > new_dimensions
+                    and num_quanta < new_dimensions + 1
+                ):
                     self.state = self.state[:new_dimensions]
                     self.dimensions = new_dimensions
                     return True
@@ -361,17 +350,18 @@ class Fock(BaseState):
             Operation with operation type: FockOperationType
         """
 
-        assert isinstance(operation._operation_type, FockOperationType)
-        assert isinstance(self.expansion_level, ExpansionLevel)
-        assert isinstance(operation.required_expansion_level, ExpansionLevel)
-
         while self.expansion_level < operation.required_expansion_level:
             self.expand()
 
         # Consolidate the dimensions
-        to = self.trace_out()
-        operation.compute_dimensions(self._num_quanta, to)
-        self.resize(operation.dimensions[0])
+        C = Config()
+        if C.dynamic_dimensions:
+            to = self.trace_out()
+            operation.compute_dimensions(self._num_quanta, to)
+            self.resize(operation.dimensions[0])
+        else:
+            operation._dimensions = [self.dimensions]
+
         assert isinstance(self.state, jnp.ndarray)
 
         match self.expansion_level:
@@ -395,3 +385,11 @@ class Fock(BaseState):
         C = Config()
         if C.contractions:
             self.contract()
+
+    @property
+    def state(self) -> Optional[Union[int, jnp.ndarray]]:
+        return self._state
+
+    @state.setter
+    def state(self, value: Optional[Union[int, jnp.ndarray]]) -> None:
+        self._state = value

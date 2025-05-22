@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, List, Tuple, Union
 import jax.numpy as jnp
 
 import photon_weave.extra.einsum_constructor as ESC
+from photon_weave.state.expansion_levels import ExpansionLevel
+from .state_transform import state_expand
 
 if TYPE_CHECKING:
     from photon_weave.state.base_state import BaseState
@@ -15,7 +17,7 @@ def trace_out_vector(
     target_states: Union[List[BaseState], Tuple[BaseState, ...]],
     product_state: jnp.ndarray,
 ) -> jnp.ndarray:
-    """
+    """(DEPRECATED)
     Traces out the system, returning only the space of given target states
 
     Parameters
@@ -41,22 +43,10 @@ def trace_out_vector(
         Tensoring order in the product space must reflect the order
         of the states given in the state_objs argument.
     """
-    state_objs = list(state_objs)
-    target_states = list(target_states)
 
-    total_dimensions = jnp.prod(jnp.array([s.dimensions for s in state_objs]))
-    shape_dims = [s.dimensions for s in state_objs]
-    shape_dims.append(1)
-
-    assert product_state.shape == (total_dimensions, 1)
-
-    product_state = product_state.reshape(shape_dims)
-
-    einsum = ESC.trace_out_vector(state_objs, target_states)
-
-    trace_out_state = jnp.einsum(einsum, product_state)
-
-    return trace_out_state.reshape((-1, 1))
+    dims = int(jnp.prod(jnp.array([s.dimensions for s in state_objs])))
+    product_state, _ = state_expand(product_state, ExpansionLevel.Vector, dims)
+    return trace_out_matrix(state_objs, target_states, product_state)
 
 
 def trace_out_matrix(
@@ -96,7 +86,9 @@ def trace_out_matrix(
 
     total_dimensions = jnp.prod(jnp.array([s.dimensions for s in state_objs]))
     shape_dimensions = [s.dimensions for s in state_objs] * 2
-    new_dimensions = [jnp.prod(jnp.array([s.dimensions for s in target_states]))] * 2
+    new_dimensions = [
+        jnp.prod(jnp.array([s.dimensions for s in target_states]))
+    ] * 2
 
     assert product_state.shape == (total_dimensions, total_dimensions)
 

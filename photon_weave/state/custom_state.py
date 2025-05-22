@@ -26,15 +26,13 @@ from .utils.state_transform import state_contract, state_expand
 
 class CustomState(BaseState):
     def __init__(self, dimensions: int):
-        self.uid = uuid.uuid4()
+        super().__init__()
         # Custom state can only be separate or part of composite envelope
-        self.index: Optional[Tuple[int, int]] = None
         self._dimensions_set = False
         self.dimensions = dimensions
         # Initialize in the |0> state
         self.state: Optional[Union[int, jnp.ndarray]] = 0
         self.expansion_level = ExpansionLevel.Label
-        self.composite_envelope: Optional["CompositeEnvelope"] = None
 
     @property
     def uid(self) -> Union[str, uuid.UUID]:
@@ -234,10 +232,13 @@ class CustomState(BaseState):
 
         key = C.random_key
         outcome = int(
-            jax.random.choice(key, a=jnp.arange(len(operators)), p=probabilities)
+            jax.random.choice(
+                key, a=jnp.arange(len(operators)), p=probabilities
+            )
         )
         self.state = jnp.matmul(
-            operators[outcome], jnp.matmul(self.state, jnp.conj(operators[outcome].T))
+            operators[outcome],
+            jnp.matmul(self.state, jnp.conj(operators[outcome].T)),
         )
         self.state = self.state / jnp.trace(self.state)
 

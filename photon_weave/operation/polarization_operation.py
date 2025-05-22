@@ -66,7 +66,9 @@ class PolarizationOperationType(Enum):
 
     .. math::
 
-        \hat{H} = \frac{1}{\sqrt{2}} \begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}
+        \hat{H} = \frac{1}{\sqrt{2}} \begin{bmatrix} 1 & 1 \\ 1 & -1
+        \end{bmatrix}
+
     Phase Opeator (S)
     -----------------
     Constructs Phase (:math:`\hat S`) operator
@@ -85,7 +87,8 @@ class PolarizationOperationType(Enum):
     Constructs SX (:math:`\hat{SX}`) operator
     .. math::
 
-        \hat{SX} = \frac{1}{2} \begin{bmatrix} 1+i & 1-i \\ 1-i & 1+i \end{bmatrix}
+        \hat{SX} = \frac{1}{2} \begin{bmatrix} 1+i & 1-i \\ 1-i & 1+i
+        \end{bmatrix}
 
     RX Operator (RX)
     ----------------
@@ -95,7 +98,8 @@ class PolarizationOperationType(Enum):
     .. math::
 
         \hat{RX} = \begin{bmatrix}
-        \cos\left(\frac{\theta}{2}\right) & -i\sin\left(\frac{\theta}{2}\right) \\
+        \cos\left(\frac{\theta}{2}\right) & -i\sin\left(\frac{\theta}{2}\right)
+        \\
         -i\sin\left(\frac{\theta}{2}\right) & \cos\left(\frac{\theta}{2}\right)
         \end{bmatrix}
 
@@ -111,7 +115,8 @@ class PolarizationOperationType(Enum):
     .. math::
 
         \hat{RY} = \begin{bmatrix}
-        \cos\left(\frac{\theta}{2}\right) & -\sin\left(\frac{\theta}{2}\right) \\
+        \cos\left(\frac{\theta}{2}\right) & -\sin\left(\frac{\theta}{2}\right)
+        \\
         \sin\left(\frac{\theta}{2}\right) & \cos\left(\frac{\theta}{2}\right)
         \end{bmatrix}
 
@@ -140,7 +145,11 @@ class PolarizationOperationType(Enum):
 
     Usage Example
     >>> op = Operation(
-        PolarizationOperationType.U3, phi=jnp.pi, theta=jnp.pi/2, omega=jnp.pi/4)
+    >>>     PolarizationOperationType.U3,
+    >>>     phi=jnp.pi,
+    >>>     theta=jnp.pi/2,
+    >>>     omega=jnp.pi/4
+    >>> )
 
     Custom
     ------
@@ -151,95 +160,102 @@ class PolarizationOperationType(Enum):
     >>> op = Operation(PolarizationOperationType.Custom, operator=operator)
     """
 
-    I: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    renormalize: bool
+    required_params: List[str]
+    required_expansion_level: ExpansionLevel
+
+    def __new__(
+        cls,
+        renormalize: bool,
+        required_params: List[str],
+        expansion_level: ExpansionLevel,
+        op_id: int,
+    ):
+        obj = object.__new__(cls)
+        obj._value_ = op_id
+        obj.renormalize = renormalize
+        obj.required_params = required_params
+        obj.required_expansion_level = expansion_level
+        return obj
+
+    I = (  # noqa: E741
         True,
         [],
         ExpansionLevel.Vector,
         1,
     )
-    X: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    X = (
         True,
         [],
         ExpansionLevel.Vector,
         2,
     )
-    Y: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    Y = (
         True,
         [],
         ExpansionLevel.Vector,
         3,
     )
-    Z: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    Z = (
         True,
         [],
         ExpansionLevel.Vector,
         4,
     )
-    H: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    H = (
         True,
         [],
         ExpansionLevel.Vector,
         5,
     )
-    S: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    S = (
         True,
         [],
         ExpansionLevel.Vector,
         6,
     )
-    T: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    T = (
         True,
         [],
         ExpansionLevel.Vector,
         7,
     )
-    SX: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    SX = (
         True,
         [],
         ExpansionLevel.Vector,
         8,
     )
-    RX: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    RX = (
         True,
         ["theta"],
         ExpansionLevel.Vector,
         9,
     )
-    RY: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    RY = (
         True,
         ["theta"],
         ExpansionLevel.Vector,
         10,
     )
-    RZ: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    RZ = (
         True,
         ["theta"],
         ExpansionLevel.Vector,
         11,
     )
-    U3: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    U3 = (
         True,
         ["phi", "theta", "omega"],
         ExpansionLevel.Vector,
         12,
     )
-    Custom: Tuple[bool, List[str], ExpansionLevel, int] = (  # type: ignore[misc]
+    Custom = (
         True,
         ["operator"],
         ExpansionLevel.Vector,
         13,
     )
-
-    def __init__(
-        self,
-        renormalize: bool,
-        required_params: List[str],
-        required_expansion_level: ExpansionLevel,
-        op_id: int,
-    ) -> None:
-        self.renormalize = renormalize
-        self.required_params = required_params
-        self.required_expansion_level = required_expansion_level
 
     def update(self, **kwargs: Any) -> None:
         """
@@ -247,7 +263,9 @@ class PolarizationOperationType(Enum):
         """
         return
 
-    def compute_operator(self, dimensions: List[int], **kwargs: Any) -> jnp.ndarray:
+    def compute_operator(
+        self, dimensions: List[int], **kwargs: Any
+    ) -> jnp.ndarray:
         """
         Computes an operator
 
@@ -287,7 +305,9 @@ class PolarizationOperationType(Enum):
             case PolarizationOperationType.RZ:
                 return rz_operator(kwargs["theta"])
             case PolarizationOperationType.U3:
-                return u3_operator(kwargs["phi"], kwargs["theta"], kwargs["omega"])
+                return u3_operator(
+                    kwargs["phi"], kwargs["theta"], kwargs["omega"]
+                )
             case PolarizationOperationType.Custom:
                 return kwargs["operator"]
         raise ValueError("Operator not recognized")
@@ -306,7 +326,7 @@ class PolarizationOperationType(Enum):
         Parameters
         ----------
         num_quanta: int
-            Accepts num quatna, but it doesn't have an effect
+            Accepts num quanta, but it doesn't have an effect
         state: jnp.ndarray
             Accepts traced out state of the state on which the operator
             will operate, doens't have an effect
