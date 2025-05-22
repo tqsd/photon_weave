@@ -74,24 +74,19 @@ class Polarization(BaseState):
         If the state was measured than measured is True
     """
 
-    __slots__ = BaseState.__slots__
-
     def __init__(
         self,
         polarization: PolarizationLabel = PolarizationLabel.H,
         envelope: Union["Envelope", None] = None,
     ):
-        self.uid: uuid.UUID = uuid.uuid4()
-        logger.info("Creating polarization with uid %s", self.uid)
-        self.index: Optional[Union[int, Tuple[int, int]]] = None
+        super().__init__()
         self.state: Optional[Union[jnp.ndarray, PolarizationLabel]] = (
             polarization
         )
         self._dimensions: int = 2
-        self.envelope: Optional["Envelope"] = envelope
+        self._envelope: Optional["Envelope"] = envelope
         self._expansion_level: Optional[ExpansionLevel] = ExpansionLevel.Label
         self._measured: bool = False
-        self._composite_envelope: Optional[CompositeEnvelope] = None
 
     @property
     def measured(self) -> bool:

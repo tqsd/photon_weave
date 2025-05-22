@@ -1,0 +1,14 @@
+{
+	"typeCheckingMode": "basic",
+	"useLibraryCodeForTypes": true,
+	"exclude": [
+  	"**/__pycache__",
+  	"**/.venv",
+  	"**/build",
+  	"**/dist",
+  	"**/.mypy_cache",
+  	"**/.git"
+	]
+	"reportUnusedImport": true,
+	"pythonVersion": "3.13"
+}

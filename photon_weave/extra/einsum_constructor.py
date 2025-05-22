@@ -103,7 +103,8 @@ def apply_operator_matrix(state_objs: list, operator_objs: list) -> str:
     >>> new_state = new_state.reshape(new_dims)
 
     In this example:
-    - `dims` and `new_dims` are the dimensions of the original and reshaped state.
+    - `dims` and `new_dims` are the dimensions of the original and reshaped
+      state.
     - `state_objs` is the list of state objects.
     - `operator_objs` is the list of operator objects.
     - `operator` is the operator to be applied.
@@ -154,7 +155,9 @@ def apply_operator_matrix(state_objs: list, operator_objs: list) -> str:
             einsum_list_list[3].append(einsum_dict[s][1])
 
     einsum_list = ["".join([chr(97 + i) for i in s]) for s in einsum_list_list]
-    return f"{einsum_list[0]},{einsum_list[1]},{einsum_list[2]}->{einsum_list[3]}"
+    return (
+        f"{einsum_list[0]},{einsum_list[1]},{einsum_list[2]}->{einsum_list[3]}"
+    )
 
 
 def trace_out_vector(state_objs: list, states: list) -> str:
@@ -189,16 +192,15 @@ def trace_out_vector(state_objs: list, states: list) -> str:
     c = next(c1)
     einsum_list_list[0].append(c)
     einsum_list_list[1].append(c)
-    einsum_list = [[chr(97 + x) for x in string] for string in einsum_list_list]
+    einsum_list = [
+        [chr(97 + x) for x in string] for string in einsum_list_list
+    ]
     einsum_str = ["".join(s) for s in einsum_list]
 
     return f"{einsum_str[0]}->{einsum_str[1]}"
 
 
-def trace_out_matrix(
-    state_objs: list,
-    states: list
-    ) -> str:
+def trace_out_matrix(state_objs: list, states: list) -> str:
     """
     Produces an Einstein sum string. It's application traces out
     the states which are not included in the states list. Where
@@ -222,7 +224,7 @@ def trace_out_matrix(
     einsum_dict: Dict["BaseState", int] = {}
     for _ in range(2):
         for so in state_objs:
-            if not any(so.uid==s.uid for s in states):
+            if not any(so.uid == s.uid for s in states):
                 if so not in einsum_dict.keys():
                     einsum_dict[so] = next(counter)
                 einsum_list_list[0].append(einsum_dict[so])

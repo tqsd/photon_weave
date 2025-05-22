@@ -57,25 +57,10 @@ class Fock(BaseState):
         Holds information about the expansion level of this system
     """
 
-    __slots__ = (
-        "uid",
-        "index",
-        "state",
-        "dimensions",
-        "density_matrix",
-        "envelope",
-        "expansions",
-        "expansion_level",
-        "measured",
-    )
-
     def __init__(self, envelope: Optional[Envelope] = None):
-        self.uid: uuid.UUID = uuid.uuid4()
-        self.index: Optional[Union[int, Tuple[int, int]]] = None
-        self.dimensions: int = -1
+        super().__init__()
         self.state: Optional[Union[int, jnp.ndarray]] = 0
         self.envelope: Optional["Envelope"] = envelope
-        self._composite_envelope = None
         self.expansion_level: Optional[ExpansionLevel] = ExpansionLevel.Label
         self.measured = False
 
@@ -400,3 +385,11 @@ class Fock(BaseState):
         C = Config()
         if C.contractions:
             self.contract()
+
+    @property
+    def state(self) -> Optional[Union[int, jnp.ndarray]]:
+        return self._state
+
+    @state.setter
+    def state(self, value: Optional[Union[int, jnp.ndarray]]) -> None:
+        self._state = value

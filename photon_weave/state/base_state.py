@@ -1,7 +1,7 @@
 import sys
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
 import jax.numpy as jnp
@@ -23,21 +23,20 @@ if TYPE_CHECKING:
 
 class BaseState(ABC):
     __slots__ = (
-        "label",
         "_uid",
         "_expansion_level",
         "_index",
         "_dimensions",
         "_measured",
         "_composite_envelope",
-        "state",
         "_envelope",
+        "state",
     )
 
     @abstractmethod
     def __init__(self) -> None:
         self._uid: Union[str, UUID] = uuid4()
-        self._expansion_level: Optional[ExpansionLevel] = None
+        self._expansion_level: ExpansionLevel = ExpansionLevel.Label
         self._index: Optional[Union[int, Tuple[int, int]]] = None
         self._dimensions: int = -1
         self._composite_envelope: Optional[CompositeEnvelope] = None
@@ -121,7 +120,6 @@ class BaseState(ABC):
     def index(self, index: Union[None, int, Tuple[int, int]]) -> None:
         self._index = index
 
-    # Dunder methods
     def __hash__(self) -> int:
         return hash(self.uid)
 
