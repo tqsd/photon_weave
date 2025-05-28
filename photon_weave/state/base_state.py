@@ -23,21 +23,20 @@ if TYPE_CHECKING:
 
 class BaseState(ABC):
     __slots__ = (
-        "label",
         "_uid",
         "_expansion_level",
         "_index",
         "_dimensions",
         "_measured",
         "_composite_envelope",
-        "state",
         "_envelope",
+        "state",
     )
 
     @abstractmethod
     def __init__(self) -> None:
         self._uid: Union[str, UUID] = uuid4()
-        self._expansion_level: Optional[ExpansionLevel] = None
+        self._expansion_level: ExpansionLevel = ExpansionLevel.Label
         self._index: Optional[Union[int, Tuple[int, int]]] = None
         self._dimensions: int = -1
         self._composite_envelope: Optional[CompositeEnvelope] = None
@@ -108,7 +107,9 @@ class BaseState(ABC):
         return self._expansion_level
 
     @expansion_level.setter
-    def expansion_level(self, expansion_level: "ExpansionLevel") -> None:
+    def expansion_level(
+        self, expansion_level: Optional["ExpansionLevel"]
+    ) -> None:
         self._expansion_level = expansion_level
 
     @property
@@ -119,7 +120,6 @@ class BaseState(ABC):
     def index(self, index: Union[None, int, Tuple[int, int]]) -> None:
         self._index = index
 
-    # Dunder methods
     def __hash__(self) -> int:
         return hash(self.uid)
 
@@ -169,7 +169,7 @@ class BaseState(ABC):
 
         assert isinstance(self.state, jnp.ndarray)
         self.state = apply_kraus_matrix([self], [self], self.state, operators)
- 
+
         C = Config()
         if C.contractions:
             self.contract()
@@ -243,7 +243,9 @@ class BaseState(ABC):
         assert isinstance(self.state, jnp.ndarray)
         assert self.state.shape == (self.dimensions, self.dimensions)
 
-        outcome, self.state = measure_POVM_matrix([self], [self], operators, self.state)
+        outcome, self.state = measure_POVM_matrix(
+            [self], [self], operators, self.state
+        )
 
         result: Tuple[int, Dict["BaseState", int]] = (outcome, {})
         if destructive:
