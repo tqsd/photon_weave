@@ -46,11 +46,11 @@ jobs:
         with:
           name: coverage-badge-${{ matrix.runs-on }}
           path: assets/coverage.svg
-          merge-multiple: true
 
       - name: Commit coverage badge to repository
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         run: |
-          git pull
+          git pull origin ${{ github.ref_name }}
           git config --local user.name "GitHub Actions"
           git config --local user.email "actions@github.com"
           git add assets/coverage.svg

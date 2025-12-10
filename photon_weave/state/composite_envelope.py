@@ -2,20 +2,22 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from functools import reduce
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union, cast
+from typing import Dict, List, Optional, Tuple, Union, cast
 
-import jax
 import jax.numpy as jnp
+import opt_einsum as oe
 
 # from photon_weave.extra.einsum_constructor import EinsumStringConstructor as ESC
 import photon_weave.extra.einsum_constructor as ESC
-from photon_weave._math.ops import (
+from photon_weave.core.ops import (
     kraus_identity_check,
+    kron_reduce,
     num_quanta_matrix,
     num_quanta_vector,
 )
+from photon_weave.core.rng import borrow_key
 from photon_weave.operation import (
+    CompositeOperationType,
     CustomStateOperationType,
     FockOperationType,
     Operation,
@@ -23,76 +25,88 @@ from photon_weave.operation import (
 )
 from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
+from photon_weave.state.interfaces import (
+    BaseStateLike as BaseState,
+)
+from photon_weave.state.interfaces import (
+    EnvelopeLike as Envelope,
+)
 
+from .utils import shape_planning
 from .utils.measurements import (
-    measure_matrix,
+    measure_matrix_expectation,
+    measure_matrix_jit,
     measure_POVM_matrix,
-    measure_vector,
+    measure_vector_expectation,
+    measure_vector_jit,
 )
-from .utils.operations import (
-    apply_kraus_matrix,
-    apply_operation_matrix,
-    apply_operation_vector,
+from .utils.operations import apply_kraus_matrix
+from .utils.shape_planning import ShapePlan, compiled_kernels
+from .utils.state_transform import (
+    state_contract,
+    state_expand,
+    state_expand_jit,
 )
-from .utils.state_transform import state_contract, state_expand
 from .utils.trace_out import trace_out_matrix, trace_out_vector
 
-# For static type checks
-if TYPE_CHECKING:
-    from photon_weave.state.base_state import BaseState  # pragma: no cover
-    from photon_weave.state.custom_state import CustomState  # pragma: no cover
-    from photon_weave.state.envelope import Envelope  # pragma: no cover
-    from photon_weave.state.fock import Fock  # pragma: no cover
+
+def _is_envelope(obj: object) -> bool:
+    return hasattr(obj, "fock") and hasattr(obj, "polarization")
 
 
-@jax.jit
-def kron_reduce(arrays: list[jnp.ndarray]) -> jnp.ndarray:
-    """
-    Compute the Kronecker product of a sequence of arrays using JAX.
-
-    Parameters:
-    -----------
-    arrays : list or tuple of jax.numpy.ndarray
-        A sequence of 2D arrays (matrices) to compute the Kronecker product.
-
-    Returns:
-    --------
-    jax.numpy.ndarray
-        The Kronecker product of the input arrays as a single matrix.
-        If `arrays` is empty, returns a 1x1 identity matrix.
-
-    Notes:
-    ------
-    - The function uses `reduce` to iteratively compute the Kronecker product
-      of all matrices in `arrays`.
-    - JAX's just-in-time (jit) compilation is applied for optimization.
-    - `jnp.kron` is used to compute the Kronecker product between two matrices.
-
-    Example:
-    --------
-    arrays = [jnp.array([[1, 2], [3, 4]]), jnp.array([[0, 5], [6, 7]])]
-    result = kron_reduce(arrays)
-    print(result)
-    # Output:
-    # [[ 0  5  0 10]
-    #  [ 6  7 12 14]
-    #  [ 0 15  0 20]
-    #  [18 21 24 28]]
-    """
-    return reduce(lambda a, b: jnp.kron(a, b), arrays, jnp.array([[1]]))
+def _is_custom_state(obj: object) -> bool:
+    return obj.__class__.__name__ == "CustomState"
 
 
-@dataclass(slots=True)
+def _is_fock(obj: object) -> bool:
+    return obj.__class__.__name__ == "Fock"
+
+
+def _is_polarization(obj: object) -> bool:
+    return obj.__class__.__name__ == "Polarization"
+
+
 class ProductState:
     """
     Stores Product state and references to its constituents
     """
 
+    __slots__ = (
+        "expansion_level",
+        "container",
+        "uid",
+        "state",
+        "state_objs",
+        "_meta_cache",
+        "_meta_key",
+        "_plan_cache",
+    )
+
     expansion_level: ExpansionLevel
     container: CompositeEnvelopeContainer
-    uid: uuid.UUID = field(default_factory=uuid.uuid4)
-    state: jnp.ndarray = field(default_factory=lambda: jnp.array([[1]]))
-    state_objs: List[BaseState] = field(default_factory=list)
+    uid: uuid.UUID
+    state: jnp.ndarray
+    state_objs: List[BaseState]
+    _meta_cache: shape_planning.DimsMeta | None
+    _plan_cache: Dict[
+        Tuple[Tuple[int, ...], Tuple[int, ...], Tuple[int, ...]], ShapePlan
+    ]
+
+    def __init__(
+        self,
+        expansion_level: ExpansionLevel,
+        container: CompositeEnvelopeContainer,
+        state: Optional[jnp.ndarray] = None,
+        state_objs: Optional[List[BaseState]] = None,
+    ) -> None:
+        self.expansion_level = expansion_level
+        self.container = container
+        self.uid = uuid.uuid4()
+        self.state = jnp.array([[1]]) if state is None else state
+        self.state_objs = [] if state_objs is None else state_objs
+        self._meta_cache = None
+        self._meta_key: Tuple[Tuple[int, ...], Tuple[int, ...]] | None = None
+        self._plan_cache = {}
 
     def __hash__(self) -> int:
         return hash(self.uid)
@@ -105,9 +119,14 @@ class ProductState:
             dims = int(
                 jnp.prod(jnp.array([s.dimensions for s in self.state_objs]))
             )
-            self.state, self.expansion_level = state_expand(
-                self.state, self.expansion_level, dims
-            )
+            if Config().use_jit:
+                self.state, self.expansion_level = state_expand_jit(
+                    self.state, self.expansion_level, dims
+                )
+            else:
+                self.state, self.expansion_level = state_expand(
+                    self.state, self.expansion_level, dims
+                )
             for state in self.state_objs:
                 state.expansion_level = ExpansionLevel.Matrix
 
@@ -128,6 +147,54 @@ class ProductState:
             if success:
                 for state in self.state_objs:
                     state.expansion_level = ExpansionLevel.Vector
+
+    def prepare_meta(
+        self, *target_states: BaseState
+    ) -> shape_planning.DimsMeta:
+        """
+        Prepare static dimension metadata for this product state.
+
+        If no targets are provided, all state_objs are targets.
+        """
+        targets: Tuple[BaseState, ...] = (
+            tuple(target_states) if target_states else tuple(self.state_objs)
+        )
+        dims_key = tuple(s.dimensions for s in self.state_objs)
+        meta_key = (dims_key, tuple(id(t) for t in targets))
+        if self._meta_cache is None or self._meta_key != meta_key:
+            self._meta_cache = shape_planning.build_meta(
+                self.state_objs, targets
+            )
+            self._meta_key = meta_key
+        assert self._meta_cache is not None
+        return self._meta_cache
+
+    def prepare_plan(self, *target_states: BaseState) -> ShapePlan:
+        """
+        Prepare a ShapePlan for this composite product state.
+        """
+        targets: Tuple[BaseState, ...] = (
+            tuple(target_states) if target_states else tuple(self.state_objs)
+        )
+        plan_key = (
+            tuple(s.dimensions for s in self.state_objs),
+            tuple(id(s) for s in self.state_objs),
+            tuple(id(t) for t in targets),
+        )
+        if plan_key not in self._plan_cache:
+            self._plan_cache[plan_key] = shape_planning.build_plan(
+                self.state_objs, targets
+            )
+        return self._plan_cache[plan_key]
+
+    def compiled_kernels(self, *target_states: BaseState):
+        """
+        Return meta-bound, jitted kernels for this product state.
+
+        If no target states are provided, all state_objs are targets.
+        """
+        plan = self.prepare_plan(*target_states)
+        return compiled_kernels(plan)
 
     @property
     def size(self) -> int:
@@ -164,7 +231,7 @@ class ProductState:
             einsum = ESC.reorder_vector(self.state_objs, list(ordered_states))
 
             # Perform the reordering
-            state = jnp.einsum(einsum, state)
+            state = oe.contract(einsum, state, backend="jax")
 
             # Reshape and store the state
             self.state = state.reshape(-1, 1)
@@ -180,7 +247,7 @@ class ProductState:
             einsum = ESC.reorder_matrix(self.state_objs, list(ordered_states))
 
             # Perform reordering
-            state = jnp.einsum(einsum, state)
+            state = oe.contract(einsum, state, backend="jax")
 
             # Reshape and reorder self.state_objs to reflect the new order
             new_dims = jnp.prod(
@@ -197,7 +264,9 @@ class ProductState:
         *states: "BaseState",
         separate_measurement: bool = False,
         destructive: bool = True,
-    ) -> Dict["BaseState", int]:
+        key: jnp.ndarray | None = None,
+        return_key: bool = False,
+    ) -> Tuple[Dict["BaseState", int], jnp.ndarray | None]:
         """
         Measures this subspace. If the state is measured partially, then the state
         are moved to their respective spaces. If the measurement is destructive, then
@@ -219,35 +288,51 @@ class ProductState:
         Dict[BaseState,int]
             Dictionary of outcomes, where the state is key and its outcome measurement
         is the value (int)
+        jnp.ndarray or None
+            Next key after measurement (if provided and `return_key` is True).
         """
-        from photon_weave.state.polarization import (
-            Polarization,
-            PolarizationLabel,
-        )
-
+        if key is None:
+            raise ValueError(
+                "PRNG key is required when measuring a composite product state"
+            )
         assert all(
             so in self.state_objs for so in states
         ), "All state objects need to be in product state"
 
+        plan = self.prepare_plan(*states)
+        use_key, _ = borrow_key(key)
         match self.expansion_level:
             case ExpansionLevel.Vector:
-                outcomes, self.state = measure_vector(
-                    self.state_objs, states, self.state
+                outcomes, self.state, next_key = measure_vector_jit(
+                    self.state_objs,
+                    states,
+                    self.state,
+                    use_key,
+                    meta=plan,
                 )
             case ExpansionLevel.Matrix:
-                outcomes, self.state = measure_matrix(
-                    self.state_objs, states, self.state
+                outcomes, self.state, next_key = measure_matrix_jit(
+                    self.state_objs,
+                    states,
+                    self.state,
+                    use_key,
+                    meta=plan,
                 )
         # Handle post measurement processes
         for state in states:
             if destructive:
                 state._set_measured()
             else:
-                if isinstance(state, Polarization):
-                    if outcomes[state] == 0:
-                        state.state = PolarizationLabel.H
+                if _is_polarization(state):
+                    label_cls = getattr(state.state, "__class__", None)
+                    if label_cls is not None and hasattr(label_cls, "H"):
+                        state.state = (
+                            label_cls.H
+                            if outcomes[state] == 0
+                            else label_cls.V
+                        )
                     else:
-                        state.state = PolarizationLabel.V
+                        state.state = outcomes[state]
                 else:
                     state.state = outcomes[state]
                 state.expansion_level = ExpansionLevel.Label
@@ -257,13 +342,40 @@ class ProductState:
         C = Config()
         if C.contractions and len(self.state_objs) > 0:
             self.contract()
+        if return_key:
+            return outcomes, next_key
         return outcomes
+
+    def measure_expectation(
+        self, *states: "BaseState"
+    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        """
+        Differentiable expectation of measuring the given subsystems.
+        Returns (probabilities, expected post-measurement density matrix).
+        """
+        assert all(
+            so in self.state_objs for so in states
+        ), "All state objects need to be in product state"
+        plan = self.prepare_plan(*states)
+        match self.expansion_level:
+            case ExpansionLevel.Vector:
+                return measure_vector_expectation(
+                    self.state_objs, states, self.state, meta=plan
+                )
+            case ExpansionLevel.Matrix:
+                return measure_matrix_expectation(
+                    self.state_objs, states, self.state, meta=plan
+                )
+        raise ValueError(
+            "Unsupported expansion level for expectation measurement"
+        )
 
     def measure_POVM(
         self,
         operators: List[jnp.ndarray],
         *states: "BaseState",
         destructive: bool = True,
+        key: jnp.ndarray | None = None,
     ) -> Tuple[int, Dict["BaseState", int]]:
         """
         Perform a POVM measurement.
@@ -289,21 +401,25 @@ class ProductState:
             POVM operator measurements.
         """
 
-        from photon_weave.state.custom_state import CustomState
-
         # Expand to matrix form if not already in matrix form
         if self.expansion_level == ExpansionLevel.Vector:
             self.expand()
 
+        plan = self.prepare_plan(*states)
         outcome, self.state = measure_POVM_matrix(
-            self.state_objs, states, operators, self.state
+            self.state_objs,
+            states,
+            operators,
+            self.state,
+            key,
+            meta=plan.meta,
         )
 
         other_outcomes = {}
         if destructive:
             # Custom State cannot be destroyed
             for s in states:
-                if isinstance(s, CustomState):
+                if _is_custom_state(s):
                     s.state = trace_out_matrix(
                         self.state_objs, [s], self.state
                     )
@@ -317,7 +433,7 @@ class ProductState:
             ):
                 other_outcomes = CompositeEnvelope._instances[
                     self.container.composite_uid
-                ][0].measure(*states)
+                ][0].measure(*states, key=key)
                 for s in states:
                     del other_outcomes[s]
             self.state_objs = remaining_states
@@ -347,7 +463,11 @@ class ProductState:
         while self.expansion_level < ExpansionLevel.Matrix:
             self.expand()
         self.state = apply_kraus_matrix(
-            self.state_objs, states, self.state, operators
+            self.state_objs,
+            states,
+            self.state,
+            operators,
+            use_contraction=Config().contractions,
         )
         C = Config()
         if C.contractions:
@@ -394,7 +514,7 @@ class ProductState:
             return True
         return False
 
-    def resize_fock(self, new_dimensions: int, fock: "Fock") -> bool:
+    def resize_fock(self, new_dimensions: int, fock: BaseState) -> bool:
         """
         Resizes the space to the new dimensions.
         If the dimensions are more, than the current dimensions, then
@@ -516,33 +636,47 @@ class ProductState:
             The states in the correct order to which the operation
             will be applied
         """
-        from photon_weave.operation import CompositeOperationType
-        from photon_weave.state.custom_state import CustomState
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
-
         if not jnp.any(jnp.abs(self.state) > 0):
             raise ValueError("The state is invalid" "State 0")
 
         C = Config()
+        if C.use_jit and C.dynamic_dimensions:
+            raise ValueError(
+                "JIT mode does not support dynamic dimension resizing; "
+                "pre-size states or disable use_jit."
+            )
         if isinstance(operation._operation_type, FockOperationType):
-            assert isinstance(states[0], Fock)
+            if not _is_fock(states[0]):
+                raise ValueError("Fock operation requires a Fock state")
             assert len(states) == 1
             if C.dynamic_dimensions:
                 to = states[0].trace_out()
                 assert isinstance(to, jnp.ndarray)
                 operation.compute_dimensions(states[0]._num_quanta, to)
-                states[0].resize(operation.dimensions[0])
+                target_dim = operation.dimensions[0]
+                if C.use_jit and target_dim != states[0].dimensions:
+                    raise ValueError(
+                        "JIT mode requires static Fock dimensions; "
+                        f"expected {states[0].dimensions}, got {target_dim}. "
+                        "Pre-size the state or disable use_jit."
+                    )
+                states[0].resize(target_dim)
             else:
                 operation.dimensions = [states[0].dimensions]
 
         elif isinstance(operation._operation_type, PolarizationOperationType):
-            assert isinstance(states[0], Polarization)
+            if not _is_polarization(states[0]):
+                raise ValueError(
+                    "Polarization operation requires a Polarization state"
+                )
             assert len(states) == 1
             # Parameters doesn't have any effect
             operation.compute_dimensions(0, jnp.array([0]))
         elif isinstance(operation._operation_type, CustomStateOperationType):
-            assert isinstance(states[0], CustomState)
+            if not _is_custom_state(states[0]):
+                raise ValueError(
+                    "CustomState operation requires a CustomState"
+                )
             assert len(states) == 1
             to = states[0].trace_out()
             assert isinstance(to, jnp.ndarray)
@@ -556,28 +690,39 @@ class ProductState:
                 assert isinstance(
                     s, op_type.expected_base_state_types[i]  # type: ignore
                 )
+            if C.use_jit and C.dynamic_dimensions:
+                raise ValueError(
+                    "JIT mode does not support dynamic dimension resizing; "
+                    "pre-size states or disable use_jit."
+                )
             if C.dynamic_dimensions:
                 operation.compute_dimensions(
                     [
-                        s._num_quanta if isinstance(s, Fock) else s.dimensions
+                        s._num_quanta if _is_fock(s) else s.dimensions
                         for s in states
                     ],
                     [s.trace_out() for s in states],  # type: ignore
                 )
                 for i, s in enumerate(states):
-                    if isinstance(s, Fock):
+                    if _is_fock(s):
                         s.resize(operation._dimensions[i])
             else:
                 operation.dimensions = [s.dimensions for s in states]
 
+        # plan = self.prepare_plan(*states)
+        kernels = self.compiled_kernels(*states)
         match self.expansion_level:
             case ExpansionLevel.Vector:
-                self.state = apply_operation_vector(
-                    self.state_objs, states, self.state, operation.operator
+                self.state = kernels.apply_op_vector(
+                    self.state,
+                    operation.operator,
+                    use_contraction=C.contractions,
                 )
             case ExpansionLevel.Matrix:
-                self.state = apply_operation_matrix(
-                    self.state_objs, states, self.state, operation.operator
+                self.state = kernels.apply_op_matrix(
+                    self.state,
+                    operation.operator,
+                    use_contraction=C.contractions,
                 )
         if not jnp.any(jnp.abs(self.state) > 0):
             raise ValueError(
@@ -589,7 +734,7 @@ class ProductState:
 
         # Reduce unneeded dimensionality of Fock spaces
         for so in self.state_objs:
-            if isinstance(so, Fock):
+            if _is_fock(so):
                 match so.expansion_level:
                     case ExpansionLevel.Vector:
                         num_quanta = max(1, num_quanta_vector(so.trace_out()))
@@ -653,39 +798,26 @@ class CompositeEnvelope:
     _instances: Dict[Union["str", uuid.UUID], List["CompositeEnvelope"]] = {}
 
     def __init__(
-        self, *states: Union["CompositeEnvelope", "Envelope", "CustomState"]
+        self, *states: Union["CompositeEnvelope", Envelope, BaseState]
     ):
-        from photon_weave.state.base_state import BaseState
-        from photon_weave.state.custom_state import CustomState
-        from photon_weave.state.envelope import Envelope
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
-
         self.uid = uuid.uuid4()
         # Check if there are composite envelopes in the argument list
         composite_envelopes: List[CompositeEnvelope] = [
             e for e in states if isinstance(e, CompositeEnvelope)
         ]
-        envelopes: List[Envelope] = [
-            e for e in states if isinstance(e, Envelope)
-        ]
-        state_objs: List[Union[CustomState, Fock, Polarization, BaseState]] = (
-            []
-        )
+        envelopes = [e for e in states if _is_envelope(e)]
+        state_objs: List[BaseState] = []
         for e in states:
-            if isinstance(e, CustomState):
-                state_objs.append(e)
-            elif isinstance(e, Envelope):
-                state_objs.append(e.fock)
-                state_objs.append(e.polarization)
+            if _is_custom_state(e):
+                state_objs.append(cast(BaseState, e))
+            elif _is_envelope(e):
+                state_objs.append(cast(BaseState, e.fock))
+                state_objs.append(cast(BaseState, e.polarization))
         for e in envelopes:
             if (
                 e.composite_envelope is not None
                 and e.composite_envelope not in composite_envelopes
             ):
-                assert isinstance(
-                    e.composite_envelope, CompositeEnvelope
-                ), "e.composite_envelope should be CompositeEnvelope type"
                 composite_envelopes.append(e.composite_envelope)
 
         ce_container = None
@@ -706,7 +838,8 @@ class CompositeEnvelope:
         for e in envelopes:
             if e not in ce_container.envelopes:
                 assert e is not None, "Envelope e should not be None"
-                assert isinstance(e, Envelope), "e should be of type Envelope"
+                if not _is_envelope(e):
+                    raise TypeError("Expected an Envelope-like object")
                 ce_container.envelopes.append(e)
         for s in state_objs:
             if s.uid not in [x.uid for x in ce_container.state_objs]:
@@ -719,10 +852,11 @@ class CompositeEnvelope:
         self.update_composite_envelope_pointers()
 
     def __repr__(self) -> str:
+        envelopes_repr = [e.uid for e in self.envelopes]
+        states_repr = [s.uid for s in self.state_objs]
         return (
             f"CompositeEnvelope(uid={self.uid}, "
-            f"envelopes={[e.uid for e in self.envelopes]}, "
-            f"state_objects={[s.uid for s in self.state_objs]})"
+            f"envelopes={envelopes_repr},state_objects={states_repr})"
         )
 
     @property
@@ -772,8 +906,6 @@ class CompositeEnvelope:
         state_objs: BaseState
            Accepts many state_objs
         """
-        from photon_weave.state.envelope import Envelope
-
         # stack = inspect.stack()
         # caller_frame = stack[1]
         # TODO
@@ -825,7 +957,6 @@ class CompositeEnvelope:
             elif isinstance(obj.index, int) and hasattr(obj, "envelope"):
                 assert isinstance(obj.expansion_level, ExpansionLevel)
                 while obj.expansion_level < minimum_expansion_level:
-                    assert isinstance(obj.envelope, Envelope)
                     obj.expand()
         """
         Assemble all of the density matrices,
@@ -939,7 +1070,9 @@ class CompositeEnvelope:
         *states: "BaseState",
         separate_measurement: bool = True,
         destructive: bool = True,
-    ) -> Dict["BaseState", int]:
+        key: jnp.ndarray | None = None,
+        return_key: bool = False,
+    ) -> Dict["BaseState", int] | Tuple[Dict["BaseState", int], jnp.ndarray | None]:
         """
         Measures subspace in this composite envelope. If the state is measured
         partially, then the state are moved to their respective spaces. If the
@@ -963,57 +1096,72 @@ class CompositeEnvelope:
         Dict[BaseState,int]
             Dictionary of outcomes, where the state is key and its outcome measurement
             is the value (int)
+        jnp.ndarray or None
+            Next key after measurement (if provided and `return_key` is True).
         """
-        from photon_weave.state.envelope import Envelope
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
-
+        C = Config()
+        if key is None and C.use_jit:
+            raise ValueError(
+                "PRNG key is required when Config.use_jit is True for composite"
+                "measurements"
+            )
+        if key is None:
+            key = C.random_key
         outcomes: Dict["BaseState", int]
         outcomes = {}
+        current_key = key
+        next_key: jnp.ndarray | None = None
 
         # Compile the complete list of states
         state_list = list(states)
         if not separate_measurement:
             for s in state_list:
-                if hasattr(s, "envelope"):
-                    assert isinstance(s.envelope, Envelope)
-                    os: Union[Fock, Polarization]
-                    if isinstance(s, Fock):
-                        os = s.envelope.polarization
-                    elif isinstance(s, Polarization):
-                        os = s.envelope.fock
-                    if os not in state_list:
+                env = getattr(s, "envelope", None)
+                if env is not None and _is_envelope(env):
+                    os: BaseState | None = None
+                    if _is_fock(s):
+                        os = cast(BaseState, env.polarization)
+                    elif _is_polarization(s):
+                        os = cast(BaseState, env.fock)
+                    if os is not None and os not in state_list:
                         state_list.append(os)
 
         # If the state resides in the BaseState or Envelope measure there
         for s in state_list:
             if isinstance(s.index, int) and hasattr(s, "envelope"):
-                assert isinstance(s.envelope, Envelope)
+                env = s.envelope
+                if env is None or not _is_envelope(env):
+                    raise ValueError(
+                        "State is missing envelope for measurement"
+                    )
+                use_key, current_key = borrow_key(current_key)
                 if separate_measurement:
-                    out = s.envelope.measure(
+                    out, current_key = env.measure(
                         s,
                         separate_measurement=separate_measurement,
                         destructive=destructive,
+                        key=use_key,
+                        return_key=True,
                     )
                 else:
-                    os = (
-                        s.envelope.fock
-                        if isinstance(s, Polarization)
-                        else s.envelope.polarization
-                    )
-                    out = s.envelope.measure(
+                    os = env.fock if _is_polarization(s) else env.polarization
+                    out, current_key = env.measure(
                         s,
                         os,
                         separate_measurement=separate_measurement,
                         destructive=destructive,
+                        key=use_key,
+                        return_key=True,
                     )
                 for k, o in out.items():
                     outcomes[k] = o
             elif s.index is None:
                 if not s.measured:
+                    use_key, current_key = borrow_key(current_key)
                     out = s.measure(
                         separate_measurement=separate_measurement,
                         destructive=destructive,
+                        key=use_key,
                     )
                     for k, o in out.items():
                         outcomes[k] = o
@@ -1027,28 +1175,79 @@ class CompositeEnvelope:
 
         for ps in product_states:
             ps_states = [so for so in state_list if so in ps.state_objs]
-            out = ps.measure(
+            use_key, current_key = borrow_key(current_key)
+            out, ps_next_key = ps.measure(
                 *ps_states,
                 separate_measurement=separate_measurement,
                 destructive=destructive,
+                key=use_key,
+                return_key=True,
             )
+            next_key = ps_next_key
             for key, item in out.items():
                 outcomes[key] = item
 
         if destructive:
             for s in state_list:
-                if isinstance(s.envelope, Envelope):
-                    s.envelope._set_measured()
+                env = getattr(s, "envelope", None)
+                if env is not None and _is_envelope(env):
+                    env._set_measured()
 
         self._containers[self.uid].update_all_indices()
         self._containers[self.uid].remove_empty_product_states()
+        if return_key:
+            return outcomes, next_key
         return outcomes
+
+    def measure_expectation(
+        self,
+        *states: "BaseState",
+    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        """
+        Differentiable expectation of measuring the given subsystems across the
+        composite envelope. Returns (probabilities, expected post-measurement
+        density matrix).
+        """
+        # Get product states containing targets
+        if len(states) == 0:
+            assert len(self.product_states) > 0
+            ps = self.product_states[0]
+            targets: Tuple[BaseState, ...] = tuple(ps.state_objs)
+        else:
+            product_states = [
+                p
+                for p in self.states
+                if any(so in p.state_objs for so in states)
+            ]
+            if len(product_states) > 1:
+                all_states: List[BaseState] = list(states)
+                for p in product_states:
+                    all_states.extend([s for s in p.state_objs])
+                self.combine(*all_states)
+                product_states = [
+                    p
+                    for p in self.states
+                    if any(so in p.state_objs for so in states)
+                ]
+            if len(product_states) == 0:
+                self.combine(*states)
+                product_states = [
+                    p
+                    for p in self.states
+                    if any(so in p.state_objs for so in states)
+                ]
+            assert len(product_states) > 0
+            ps = product_states[0]
+            targets = tuple(states)
+
+        return ps.measure_expectation(*targets)
 
     def measure_POVM(
         self,
         operators: List[jnp.ndarray],
         *states: "BaseState",
         destructive: bool = True,
+        key: jnp.ndarray | None = None,
     ) -> Tuple[int, Dict["BaseState", int]]:
         """
         Perform a POVM measurement.
@@ -1079,6 +1278,7 @@ class CompositeEnvelope:
                     f"{op.shape}, expected({dim},{dim})"
                 )
 
+        current_key = key
         # Get product states
         product_states = [
             p for p in self.states if any(so in p.state_objs for so in states)
@@ -1106,7 +1306,9 @@ class CompositeEnvelope:
         # Make sure the order of the states in tensoring is correct
         self.reorder(*states)
 
-        outcome = ps.measure_POVM(operators, *states, destructive=destructive)
+        outcome = ps.measure_POVM(
+            operators, *states, destructive=destructive, key=current_key
+        )
         return outcome
 
     def apply_kraus(
@@ -1131,10 +1333,6 @@ class CompositeEnvelope:
         identity_check: bool
             True by default, if true the method checks if kraus condition holds
         """
-
-        from photon_weave.state.envelope import Envelope
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
 
         # Check the uniqueness of the states
         if len(states) != len(list(set(states))):
@@ -1179,11 +1377,10 @@ class CompositeEnvelope:
                     states[1], "envelope"
                 ):
                     if states[0].envelope == states[1].envelope:
-                        assert isinstance(states[0].envelope, Envelope)
-                        for s in states:
-                            assert isinstance(s, (Fock, Polarization))
-                        states[0].envelope.apply_kraus(operators, *states)
-                        return
+                        env = states[0].envelope
+                        if env is not None and _is_envelope(env):
+                            env.apply_kraus(operators, *states)
+                            return
             self.combine(*states)
             ps = [
                 p
@@ -1240,7 +1437,7 @@ class CompositeEnvelope:
 
         return to
 
-    def resize_fock(self, new_dimensions: int, fock: "Fock") -> bool:
+    def resize_fock(self, new_dimensions: int, fock: BaseState) -> bool:
         """
         Resizes the space to the new dimensions.
         If the dimensions are more, than the current dimensions, then
@@ -1260,10 +1457,8 @@ class CompositeEnvelope:
         bool
             True if the resizing was succesfull
         """
-        from photon_weave.state.fock import Fock
-
         # Check if fock is Fock type
-        if not isinstance(fock, Fock):
+        if not _is_fock(fock):
             raise ValueError("Only Fock spaces can be resized")
 
         # Check if fock is in this composite envelope
@@ -1283,9 +1478,7 @@ class CompositeEnvelope:
         self.reorder(fock)
         return new_ps.resize_fock(new_dimensions, fock)
 
-    def apply_operation(
-        self, operator: Operation, *states: Union["BaseState", "CustomState"]
-    ) -> None:
+    def apply_operation(self, operator: Operation, *states: BaseState) -> None:
         """
         Applies the operation to the correct product space. If operator
         has type CompositeOperator, then the product states are joined if
@@ -1335,3 +1528,31 @@ class CompositeEnvelope:
 
         assert isinstance(ps, ProductState)
         ps.apply_operation(operator, *states)
+
+    def prepare_meta(
+        self, product_state_index: int = 0, *target_states: BaseState
+    ) -> shape_planning.DimsMeta:
+        r"""
+        Prepare static dimension metadata for a product state in this composite
+        envelope.
+
+        If no target states are provided, all states in the selected product state are
+        targets.
+        """
+        return shape_planning.composite_meta(
+            self, product_state_index, *target_states
+        )
+
+    def compiled_kernels(
+        self, product_state_index: int = 0, *target_states: BaseState
+    ):
+        """
+        Return meta-bound, jitted kernels for a product state in this composite
+        envelope.
+
+        If no target states are provided, all states in the selected product state
+        are targets.
+        """
+        return shape_planning.compiled_kernels(
+            self.prepare_meta(product_state_index, *target_states)
+        )

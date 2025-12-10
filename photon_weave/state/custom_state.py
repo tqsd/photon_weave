@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 This module implements Custom State
 
@@ -6,20 +8,31 @@ such as qubits or quantum dots
 """
 
 import uuid
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import jax
 import jax.numpy as jnp
 
-from photon_weave._math.ops import apply_kraus, kraus_identity_check
+from photon_weave.core.ops import apply_kraus, kraus_identity_check
+from photon_weave.core.rng import borrow_key
 from photon_weave.operation import CustomStateOperationType, Operation
 from photon_weave.photon_weave import Config
 from photon_weave.state.base_state import BaseState
-from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.expansion_levels import ExpansionLevel
 
-from .utils.measurements import measure_matrix, measure_vector
+if TYPE_CHECKING:
+    from photon_weave.state.composite_envelope import CompositeEnvelope
+
+from .utils.measurements import (
+    measure_matrix,
+    measure_matrix_expectation,
+    measure_matrix_jit,
+    measure_vector,
+    measure_vector_expectation,
+    measure_vector_jit,
+)
 from .utils.operations import apply_operation_matrix, apply_operation_vector
+from .utils.shape_planning import build_plan
 from .utils.routing import route_operation
 from .utils.state_transform import state_contract, state_expand
 
@@ -139,7 +152,10 @@ class CustomState(BaseState):
 
     @route_operation()
     def measure(
-        self, separate_measurement: bool = False, destructive: bool = True
+        self,
+        separate_measurement: bool = False,
+        destructive: bool = True,
+        key: jnp.ndarray | None = None,
     ) -> Dict[BaseState, int]:
         """
         Measures the state and returns an outcome in a dict
@@ -165,31 +181,64 @@ class CustomState(BaseState):
         will be executed in the state container, which contains this
         stat.
         """
+        C = Config()
+        if C.use_jit and key is None:
+            raise ValueError("PRNG key is required when use_jit is enabled")
+        plan = build_plan([self], [self]) if C.use_jit else None
         match self.expansion_level:
             case ExpansionLevel.Label:
                 assert isinstance(self.state, int)
                 return {self: self.state}
             case ExpansionLevel.Vector:
                 assert isinstance(self.state, jnp.ndarray)
-                outcomes, post_measurement_state = measure_vector(
-                    [self], [self], self.state
-                )
+                if plan is not None:
+                    outcomes, post_measurement_state, _ = measure_vector_jit(
+                        [self], [self], self.state, key, meta=plan
+                    )
+                else:
+                    outcomes, post_measurement_state = measure_vector(
+                        [self], [self], self.state, key=key
+                    )
             case ExpansionLevel.Matrix:
                 assert isinstance(self.state, jnp.ndarray)
-                outcomes, post_measurement_state = measure_matrix(
-                    [self], [self], self.state
-                )
+                if plan is not None:
+                    outcomes, post_measurement_state, _ = measure_matrix_jit(
+                        [self], [self], self.state, key, meta=plan
+                    )
+                else:
+                    outcomes, post_measurement_state = measure_matrix(
+                        [self], [self], self.state, key=key
+                    )
 
         self.state = outcomes[self]
         self.expansion_level = ExpansionLevel.Label
 
         return outcomes
 
+    @route_operation()
+    def measure_expectation(self) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        """
+        Differentiable expectation of measuring this custom state.
+        """
+        if self.expansion_level == ExpansionLevel.Label:
+            self.expand()
+        assert isinstance(self.state, jnp.ndarray)
+        C = Config()
+        plan = build_plan([self], [self]) if C.use_jit else None
+        if self.expansion_level == ExpansionLevel.Vector:
+            return measure_vector_expectation(
+                [self], [self], self.state, meta=plan
+            )
+        return measure_matrix_expectation(
+            [self], [self], self.state, meta=plan
+        )
+
     def measure_POVM(
         self,
         operators: List[jnp.ndarray],
         destructive: bool = True,
         partial: bool = False,
+        key: jnp.ndarray | None = None,
     ) -> Tuple[int, Dict[BaseState, int]]:
         """
         Positive Operation-Valued Measurement
@@ -212,7 +261,12 @@ class CustomState(BaseState):
             second is empty, used when envelope parts are measured
         """
         if self.index is not None:
-            assert isinstance(self.composite_envelope, CompositeEnvelope)
+            if self.composite_envelope is None or not hasattr(
+                self.composite_envelope, "measure_POVM"
+            ):
+                raise ValueError(
+                    "Composite envelope not attached for measurement"
+                )
             return self.composite_envelope.measure_POVM(operators, self)
 
         for op in operators:
@@ -222,18 +276,18 @@ class CustomState(BaseState):
         while self.expansion_level < ExpansionLevel.Matrix:
             self.expand()
 
-        C = Config()
-
         assert isinstance(self.state, jnp.ndarray)
         probabilities = jnp.array(
             [jnp.trace(jnp.matmul(op, self.state)).real for op in operators]
         )
         probabilities = probabilities / jnp.sum(probabilities)
 
-        key = C.random_key
+        if key is None:
+            key = Config().random_key
+        use_key, _ = borrow_key(key)
         outcome = int(
             jax.random.choice(
-                key, a=jnp.arange(len(operators)), p=probabilities
+                use_key, a=jnp.arange(len(operators)), p=probabilities
             )
         )
         self.state = jnp.matmul(
@@ -242,6 +296,7 @@ class CustomState(BaseState):
         )
         self.state = self.state / jnp.trace(self.state)
 
+        C = Config()
         if C.contractions:
             self.contract()
         return (outcome, {})
@@ -318,15 +373,27 @@ class CustomState(BaseState):
 
         assert operation.operator.shape == (self.dimensions, self.dimensions)
         assert isinstance(self.state, jnp.ndarray)
+        C = Config()
+        plan = build_plan([self], [self]) if C.use_jit else None
 
         match self.expansion_level:
             case ExpansionLevel.Vector:
                 self.state = apply_operation_vector(
-                    [self], [self], self.state, operation.operator
+                    [self],
+                    [self],
+                    self.state,
+                    operation.operator,
+                    meta=plan,
+                    use_contraction=C.contractions,
                 )
             case ExpansionLevel.Matrix:
                 self.state = apply_operation_matrix(
-                    [self], [self], self.state, operation.operator
+                    [self],
+                    [self],
+                    self.state,
+                    operation.operator,
+                    meta=plan,
+                    use_contraction=C.contractions,
                 )
 
         if not jnp.any(jnp.abs(self.state) > 0):

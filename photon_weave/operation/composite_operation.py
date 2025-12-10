@@ -1,11 +1,11 @@
 import importlib
 from enum import Enum
-from typing import Any, List, Sequence, Union, Type, TYPE_CHECKING
+from typing import Any, List, Sequence, Type, Union
 
 import jax.numpy as jnp
 from jax.scipy.linalg import expm
 
-from photon_weave._math.ops import (
+from photon_weave.core.ops import (
     annihilation_operator,
     controlled_not_operator,
     controlled_swap_operator,
@@ -13,12 +13,9 @@ from photon_weave._math.ops import (
     creation_operator,
     swap_operator,
 )
-
-from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.extra import interpreter
-
-if TYPE_CHECKING:
-    from photon_weave.state.base_state import BaseState
+from photon_weave.state.base_state import BaseState
+from photon_weave.state.expansion_levels import ExpansionLevel
 
 
 class CompositeOperationType(Enum):
@@ -272,9 +269,9 @@ class CompositeOperationType(Enum):
             self is CompositeOperationType.Expression
             and "state_types" in kwargs
         ):
+            from photon_weave.state.custom_state import CustomState
             from photon_weave.state.fock import Fock
             from photon_weave.state.polarization import Polarization
-            from photon_weave.state.custom_state import CustomState
 
             resolved = []
             for st in kwargs["state_types"]:

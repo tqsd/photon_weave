@@ -7,7 +7,7 @@ Overview
 --------
 
 Time Bin Encoding Setup
-^^^^^^^^
+-----------------------
 The time bin encoding process involves:
     * Four Beam Splitters
     * Two Phase Shifters
@@ -26,8 +26,9 @@ The time bin encoding process involves:
 The goal is to simulate the interaction of photons through these components and measure the outcomes at various points in time.
 
 Function Description
-^^^^^^^^
-.. code: python
+--------------------
+
+.. code:: python
    def time_bin_encoding(alpha:float, beta:float) -> List[List[int]]
 
 Parameters:
@@ -39,7 +40,7 @@ Returns:
 
 
 Implementation Steps
------------
+--------------------
 
 1. Imports
 ^^^^^^^^^^
@@ -61,8 +62,8 @@ First import all of the needed libraries and objects in the top of the file.
 
 
 
-2. Define MZI 
-^^^^^^^^^^
+2. Define MZI
+-------------
 
 We create the class, which handles our MZI transformations.
 
@@ -241,7 +242,7 @@ We create the class, which handles our MZI transformations.
 
   
 3. Single run for Time-Bin Encoding
-^^^^^^^^^^
+-----------------------------------
 
 We define single run for Time-Bin Encoding, so that we may run it in a loop to generate the plots.
 We also define ``run_tbe`` in order to enable parallelization.
@@ -336,7 +337,7 @@ We also define ``run_tbe`` in order to enable parallelization.
 
     
 4. Define Plotting Logic
-^^^^^^^^^^
+------------------------
 
 We define the plotting logic
 
@@ -377,7 +378,7 @@ We define the plotting logic
         s2 = Operation(FockOperationType.PhaseShift, phi=beta)
 
 5. Main block
-^^^^^^^^^^
+-------------
 
 Lastly we tie it all together in the ``__main__`` block, enabling different ways or running the example (parallelization, measuring).
 .. code:: python
@@ -482,8 +483,9 @@ Execution
 Now we can execute our function, which simulates the time bin encoding.
 
 .. code:: bash
-	  python time_bin_encoding.py
+
+    python time_bin_encoding.py
 		
 .. image:: https://raw.githubusercontent.com/tqsd/photon_weave/master/examples/plots/time_bin_encoding.png
    :alt: Time-Bin Encoding Diagram
-   :width: 600px  # Adjust size if needed
+   :width: 600px

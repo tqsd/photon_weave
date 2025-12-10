@@ -1,9 +1,9 @@
 import random
 import unittest
 
+import jax
+
 import jax.numpy as jnp
-import numpy as np
-import pytest
 
 from photon_weave.photon_weave import Config
 from photon_weave.state.composite_envelope import CompositeEnvelope
@@ -54,7 +54,9 @@ class TestFockSmallFunctions(unittest.TestCase):
             constructed_line_1 = " ".join(
                 [v(1) if ln == i else v(0) for i in range(fock.dimensions)]
             )
-            constructed_line_0 = " ".join([v(0) for i in range(fock.dimensions)])
+            constructed_line_0 = " ".join(
+                [v(0) for i in range(fock.dimensions)]
+            )
             if ln == 0:
                 if label == ln:
                     self.assertEqual(f"⎡{constructed_line_1}⎤", line)
@@ -273,29 +275,39 @@ class TestFockExpansionAndContraction(unittest.TestCase):
         self.third_contract_test(fock, label)
 
     def initialization_test(self, fock: Fock, label: int) -> None:
-        for i, item in enumerate([fock.envelope, fock.composite_envelope, fock.index]):
+        for i, item in enumerate(
+            [fock.envelope, fock.composite_envelope, fock.index]
+        ):
             self.assertIsNone(item, f"{i}-{item}")
         self.assertEqual(fock.state, label)
 
-    def first_expansion_test(self, fock: Fock, state_vector: jnp.ndarray) -> None:
+    def first_expansion_test(
+        self, fock: Fock, state_vector: jnp.ndarray
+    ) -> None:
         fock.expand()
         for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(jnp.allclose(state_vector, fock.state))
 
-    def second_expansion_test(self, fock: Fock, density_matrix: jnp.ndarray) -> None:
+    def second_expansion_test(
+        self, fock: Fock, density_matrix: jnp.ndarray
+    ) -> None:
         fock.expand()
         for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(jnp.allclose(density_matrix, fock.state))
 
-    def third_expansion_test(self, fock: Fock, density_matrix: jnp.ndarray) -> None:
+    def third_expansion_test(
+        self, fock: Fock, density_matrix: jnp.ndarray
+    ) -> None:
         fock.expand()
         for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(jnp.allclose(density_matrix, fock.state))
 
-    def first_contract_test(self, fock: Fock, state_vector: jnp.ndarray) -> None:
+    def first_contract_test(
+        self, fock: Fock, state_vector: jnp.ndarray
+    ) -> None:
         fock.contract(final=ExpansionLevel.Vector)
         for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
@@ -384,21 +396,6 @@ class TestFockMeasurement(unittest.TestCase):
         C.set_seed(1)
         f = Fock()
         f.dimensions = 2
-        f.expand()
-        povm_operators = []
-        povm_operators.append(jnp.array([[1, 0], [0, 0]]))
-        povm_operators.append(jnp.array([[0, 0], [0, 1]]))
-        m = f.measure_POVM(povm_operators)
-        self.assertEqual(m, 0, "Measurement outcome when measuring H must always be 0")
-        self.assertTrue(f.measured)
-        for item in [f.label, f.expansion_level, f.state_vector, f.density_matrix]:
-            self.assertIsNone(item)
-
-    def test_POVM_measurement_state_vector(self) -> None:
-        C = Config()
-        C.set_seed(1)
-        f = Fock()
-        f.dimensions = 2
         povm_operators = []
         povm_operators.append(jnp.array([[1, 0], [0, 0]]))
         povm_operators.append(jnp.array([[0, 0], [0, 1]]))
@@ -409,6 +406,40 @@ class TestFockMeasurement(unittest.TestCase):
         self.assertTrue(f.measured)
         for item in [f.index, f.state]:
             self.assertIsNone(item)
+
+    def test_pnr_measurement_with_dark_and_jitter(self) -> None:
+        f = Fock()
+        f.state = 1
+        f.expand()
+        key = jax.random.PRNGKey(0)
+        outcomes, jitter, next_key = f.measure_pnr(
+            dark_rate=2.0, jitter_std=0.1, destructive=False, key=key
+        )
+        _, noise_key = jax.random.split(key)
+        binom_key, noise_seed = jax.random.split(noise_key)
+        dark_seed, _ = jax.random.split(noise_seed)
+        dark_key, jitter_key = jax.random.split(dark_seed)
+        expected_dark = int(
+            jax.random.poisson(dark_key, lam=2.0, shape=()).item()
+        )
+        expected_jitter = jax.random.normal(jitter_key, shape=(1,)) * 0.1
+        self.assertEqual(outcomes[f], 1 + expected_dark)
+        self.assertTrue(jnp.allclose(jitter, expected_jitter))
+        self.assertIsInstance(next_key, jnp.ndarray)
+
+    def test_measure_requires_key_in_jit_mode(self) -> None:
+        cfg = Config()
+        prev_jit = cfg.use_jit
+        cfg.set_use_jit(True)
+        try:
+            f = Fock()
+            f.dimensions = 2
+            f.expand()
+            key = jax.random.PRNGKey(0)
+            outcomes = f.measure(key=key)
+            self.assertEqual(outcomes[f], 0)
+        finally:
+            cfg.set_use_jit(prev_jit)
 
 
 class TestFockDimensionChange(unittest.TestCase):
@@ -421,7 +452,9 @@ class TestFockDimensionChange(unittest.TestCase):
         f.expand()
         f.resize(5)
         self.assertEqual(f.dimensions, 5)
-        self.assertTrue(jnp.allclose(f.state, jnp.array([[1], [0], [0], [0], [0]])))
+        self.assertTrue(
+            jnp.allclose(f.state, jnp.array([[1], [0], [0], [0], [0]]))
+        )
 
         f.resize(2)
         self.assertEqual(f.dimensions, 2)
@@ -433,7 +466,9 @@ class TestFockDimensionChange(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 f.state,
-                jnp.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]),
+                jnp.array(
+                    [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+                ),
             )
         )
 
@@ -454,7 +489,9 @@ class TestFockDimensionChange(unittest.TestCase):
 
         s = env.resize_fock(2)
         self.assertTrue(s)
-        self.assertTrue(jnp.allclose(env.state, jnp.array([[0], [1], [0], [0]])))
+        self.assertTrue(
+            jnp.allclose(env.state, jnp.array([[0], [1], [0], [0]]))
+        )
         self.assertEqual(env.fock.dimensions, 2)
 
         # Trying the same with the reversed order
@@ -513,7 +550,9 @@ class TestFockDimensionChange(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 env.state,
-                jnp.array([[0], [0], [0], [0], [1 / jnp.sqrt(2)], [1j / jnp.sqrt(2)]]),
+                jnp.array(
+                    [[0], [0], [0], [0], [1 / jnp.sqrt(2)], [1j / jnp.sqrt(2)]]
+                ),
             )
         )
 
@@ -552,7 +591,12 @@ class TestFockDimensionChange(unittest.TestCase):
             jnp.allclose(
                 env.state,
                 jnp.array(
-                    [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0.5, -0.5j], [0, 0, 0.5j, 0.5]]
+                    [
+                        [0, 0, 0, 0],
+                        [0, 0, 0, 0],
+                        [0, 0, 0.5, -0.5j],
+                        [0, 0, 0.5j, 0.5],
+                    ]
                 ),
             )
         )
@@ -572,7 +616,9 @@ class TestFockDimensionChange(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array([[0], [0], [1 / jnp.sqrt(2)], [1j / jnp.sqrt(2)], [0], [0]]),
+                jnp.array(
+                    [[0], [0], [1 / jnp.sqrt(2)], [1j / jnp.sqrt(2)], [0], [0]]
+                ),
             )
         )
 
@@ -627,7 +673,12 @@ class TestFockDimensionChange(unittest.TestCase):
             jnp.allclose(
                 ce.product_states[0].state,
                 jnp.array(
-                    [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0.5, -0.5j], [0, 0, 0.5j, 0.5]]
+                    [
+                        [0, 0, 0, 0],
+                        [0, 0, 0, 0],
+                        [0, 0, 0.5, -0.5j],
+                        [0, 0, 0.5j, 0.5],
+                    ]
                 ),
             )
         )

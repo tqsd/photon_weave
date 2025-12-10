@@ -182,14 +182,17 @@ Finally, we can put the implemented components together into a working super den
 We start by importing all of the needed classes and modules:
 
 .. code:: python
+
     from random import randint
-    
+
     from photon_weave.state.envelope import Envelope
-    
+
     from interoperable_devices import (
-        DenseDecoder, DenseEncoder,
-        EntangledPhotonSource, EnvelopeBuffer
-        )
+        DenseDecoder,
+        DenseEncoder,
+        EntangledPhotonSource,
+        EnvelopeBuffer,
+    )
 
 Then we build the sender class. The sender class will create the entangled pairs. It will store one envelope in its buffer and send the other half of the pair to the receiver. When sending the message, it will use `DenseEncoder` in order to encode the two bit message and then send its envelope to the receiver.
 
@@ -220,15 +223,16 @@ Then we build the sender class. The sender class will create the entangled pairs
 In the same way we can define the receiving party.
 
 .. code:: python
+
     class DenseReceiver:
         def __init__(self):
             self.buffer = EnvelopeBuffer()
             self.decoder = DenseDecoder()
             self.received_messages = []
-    
+
         def receive_epr(self, env: Envelope):
             self.buffer.store(env)
-    
+
         def receive_message(self, env: Envelope) -> tuple[int, int]:
             env_stored = self.buffer.get()
             ce = env.composite_envelope

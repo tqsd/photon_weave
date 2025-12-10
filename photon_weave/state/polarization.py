@@ -4,29 +4,30 @@ Polarization State
 
 from __future__ import annotations
 
-import logging
-import uuid
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 
 from photon_weave.photon_weave import Config
+from photon_weave.state.interfaces import EnvelopeLike as Envelope
 
 from .base_state import BaseState
 from .expansion_levels import ExpansionLevel
-from .utils.measurements import measure_matrix, measure_vector
+from .utils.measurements import (
+    measure_matrix,
+    measure_matrix_expectation,
+    measure_matrix_jit,
+    measure_vector,
+    measure_vector_expectation,
+    measure_vector_jit,
+)
 from .utils.operations import apply_operation_matrix, apply_operation_vector
+from .utils.shape_planning import build_plan
 from .utils.routing import route_operation
 from .utils.state_transform import state_contract, state_expand
 
-if TYPE_CHECKING:
-    from photon_weave.operation import Operation
-    from photon_weave.operation import PolarizationOperationType
-    from .composite_envelope import CompositeEnvelope
-    from .envelope import Envelope
-
-logger = logging.getLogger()
+Operation = Any
 
 
 class PolarizationLabel(Enum):
@@ -259,8 +260,30 @@ class Polarization(BaseState):
         self.expansion_level = None
 
     @route_operation()
+    def measure_expectation(self) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        """
+        Differentiable expectation of measuring this polarization state.
+        """
+        if self.expansion_level == ExpansionLevel.Label:
+            self.expand()
+        assert isinstance(self.expansion_level, ExpansionLevel)
+        assert isinstance(self.state, jnp.ndarray)
+        C = Config()
+        plan = build_plan([self], [self]) if C.use_jit else None
+        if self.expansion_level == ExpansionLevel.Vector:
+            return measure_vector_expectation(
+                [self], [self], self.state, meta=plan
+            )
+        return measure_matrix_expectation(
+            [self], [self], self.state, meta=plan
+        )
+
+    @route_operation()
     def measure(
-        self, separate_measurement: bool = False, destructive: bool = True
+        self,
+        separate_measurement: bool = False,
+        destructive: bool = True,
+        key: jnp.ndarray | None = None,
     ) -> Dict[BaseState, int]:
         """
         Measures this state. If the state is not in a product state it will
@@ -282,20 +305,34 @@ class Polarization(BaseState):
         will be executed in the state container, which contains this
         state.
         """
+        C = Config()
+        if C.use_jit and key is None:
+            raise ValueError("PRNG key is required when use_jit is enabled")
+        plan = build_plan([self], [self]) if C.use_jit else None
         if self.expansion_level == ExpansionLevel.Label:
             self.expand()
 
         match self.expansion_level:
             case ExpansionLevel.Vector:
                 assert isinstance(self.state, jnp.ndarray)
-                outcomes, post_measurement_state = measure_vector(
-                    [self], [self], self.state
-                )
+                if plan is not None:
+                    outcomes, post_measurement_state, _ = measure_vector_jit(
+                        [self], [self], self.state, key, meta=plan
+                    )
+                else:
+                    outcomes, post_measurement_state = measure_vector(
+                        [self], [self], self.state, key=key
+                    )
             case ExpansionLevel.Matrix:
                 assert isinstance(self.state, jnp.ndarray)
-                outcomes, post_measurement_state = measure_matrix(
-                    [self], [self], self.state
-                )
+                if plan is not None:
+                    outcomes, post_measurement_state, _ = measure_matrix_jit(
+                        [self], [self], self.state, key, meta=plan
+                    )
+                else:
+                    outcomes, post_measurement_state = measure_matrix(
+                        [self], [self], self.state, key=key
+                    )
         # Reconstruct the state post measurement
         if outcomes[self] == 0:
             self.state = PolarizationLabel.H
@@ -332,17 +369,29 @@ class Polarization(BaseState):
             self.expand()
 
         operation.compute_dimensions(0, jnp.array([0]))
+        C = Config()
+        plan = build_plan([self], [self]) if C.use_jit else None
 
         match self.expansion_level:
             case ExpansionLevel.Vector:
                 assert isinstance(self.state, jnp.ndarray)
                 self.state = apply_operation_vector(
-                    [self], [self], self.state, operation.operator
+                    [self],
+                    [self],
+                    self.state,
+                    operation.operator,
+                    meta=plan,
+                    use_contraction=C.contractions,
                 )
             case ExpansionLevel.Matrix:
                 assert isinstance(self.state, jnp.ndarray)
                 self.state = apply_operation_matrix(
-                    [self], [self], self.state, operation.operator
+                    [self],
+                    [self],
+                    self.state,
+                    operation.operator,
+                    meta=plan,
+                    use_contraction=C.contractions,
                 )
 
         assert isinstance(self.state, jnp.ndarray)

@@ -155,8 +155,7 @@ class Operation:
         for param in operation_type.required_params:
             if param not in kwargs:
                 raise KeyError(
-                    f"The '{param}' argument is required for {
-                        operation_type.name}"
+                    f"The '{param}' argument is required for {operation_type.name}"
                 )
 
     def __repr__(self) -> str:
@@ -165,8 +164,10 @@ class Operation:
         operator matrix for custom operations.
         """
         if self._operator is None:
-            repr_string = f"{self._operation_type.__class__.__name__}.{
-                self._operation_type.name}"
+            repr_string = (
+                f"{self._operation_type.__class__.__name__}."
+                f"{self._operation_type.name}"
+            )
         else:
             repr_string = f"{self._operation_type.__class__.__name__}"
             repr_string += f".{self._operation_type.name}\n"

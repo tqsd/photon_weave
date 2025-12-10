@@ -2,9 +2,21 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.DS_Store
+.vscode/
+.idea/
+.pytest_cache/
 
 # C extensions
 *.so
+*.pyd
+*.dll
+*.dylib
+*.lib
+*.obj
+*.pyo
+*.pyc
+
 
 # Distribution / packaging
 .Python
@@ -25,6 +37,9 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+*.manifest
+*.spec
+pip-wheel-metadata/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
