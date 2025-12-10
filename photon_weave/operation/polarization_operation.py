@@ -1,9 +1,9 @@
 from enum import Enum
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Union
 
 import jax.numpy as jnp
 
-from photon_weave._math.ops import (
+from photon_weave.core.ops import (
     hadamard_operator,
     identity_operator,
     rx_operator,

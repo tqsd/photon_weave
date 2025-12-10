@@ -4,17 +4,22 @@ Simple Jaynes-Cummings Model example
 Here we demonstrate how complex a Hamiltonian can be
 turned into an operator using PhotonWeave Expressions
 """
+
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 
-from photon_weave.state.envelope import Envelope
-from photon_weave.state.fock import Fock
+from photon_weave.extra.expression_interpreter import interpreter
+from photon_weave.operation import (
+    CompositeOperationType,
+    FockOperationType,
+    Operation,
+)
+from photon_weave.photon_weave import Config
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.custom_state import CustomState
-from photon_weave.operation import Operation, CompositeOperationType, FockOperationType
-from photon_weave.photon_weave import Config
-from photon_weave.extra.expression_interpreter import interpreter
+from photon_weave.state.envelope import Envelope
+from photon_weave.state.fock import Fock
 
 # Create an envelope with one photon |1>
 env = Envelope()
@@ -32,8 +37,12 @@ h_bar = 1.054571817e-34  # Reduced Planck's constant (Joule * seconds)
 h_bar = 1
 
 # System parameters
-w_field = 1 * jnp.pi  # Angular frequency of the field (radians per second, e.g., 5 GHz)
-w_qubit = 1 * jnp.pi  # Angular frequency of the qubit (radians per second, e.g., 5 GHz)
+w_field = (
+    1 * jnp.pi
+)  # Angular frequency of the field (radians per second, e.g., 5 GHz)
+w_qubit = (
+    1 * jnp.pi
+)  # Angular frequency of the qubit (radians per second, e.g., 5 GHz)
 g = (
     1 * jnp.pi
 )  # Coupling strength between the qubit and field (radians per second, e.g., 100 MHz)
@@ -87,7 +96,7 @@ H_field = (
 )
 
 # Qubit Hamiltonian
-H_qubit = ("s_mult", h_bar, w_qubit / 2, ("kron", "i_p", "s_z"))
+H_qubit = ("s_mult", h_bar, -w_qubit / 2, ("kron", "i_p", "s_z"))
 
 # Interaction Hamiltonian
 H_interaction = (
@@ -100,7 +109,13 @@ H_interaction = (
 # Unitary evolution Hamiltonian
 expr = (
     "expm",
-    ("s_mult", -1j, ("add", H_field, H_qubit, H_interaction), t_delta, 1 / h_bar),
+    (
+        "s_mult",
+        -1j,
+        ("add", H_field, H_qubit, H_interaction),
+        t_delta,
+        1 / h_bar,
+    ),
 )
 
 ce.combine(env.fock, qubit)
@@ -113,22 +128,34 @@ jc_interraction = Operation(
     state_types=[Fock, CustomState],
 )
 C = Config()
-C.set_contraction(False)
+C.set_contraction(True)
+C.set_dynamic_dimensions(True)
 qubit_excited_populations = []
 for i, step in enumerate(interractions):
     ce.apply_operation(jc_interraction, env.fock, qubit)
     combined_state = ce.states[0].state
-    qubit_reduced = qubit.trace_out()
+    qubit_reduced = jnp.asarray(qubit.trace_out())
     qubit_reduced = qubit_reduced / jnp.linalg.norm(qubit_reduced)
     print(qubit_reduced)
-    qubit_excited_populations.append(jnp.abs(qubit_reduced[1][0]) ** 2)
+    # Handle either density matrix (preferred) or state vector shape
+    if qubit_reduced.ndim == 2 and qubit_reduced.shape[1] == 1:
+        prob_excited = jnp.abs(qubit_reduced[1, 0]) ** 2
+    else:
+        prob_excited = jnp.real(qubit_reduced[1, 1])
+    qubit_excited_populations.append(prob_excited)
 
-# plt.figure(figsize=(6, 3.375))
-# plt.plot(interractions, qubit_excited_populations, label="Qubit Excited State Population")
-# plt.xlabel("Time (s)")
-# plt.ylabel("Population")
-# plt.title("Rabi Oscillations")
-# plt.legend()
-# plt.grid()
-# #plt.show()
-# plt.savefig("plots/jc.png", dpi=1000, bbox_inches="tight")  # Save as a high-quality PNG
+plt.figure(figsize=(6, 3.375))
+plt.plot(
+    interractions,
+    qubit_excited_populations,
+    label="Qubit Excited State Population",
+)
+plt.xlabel("Time (s)")
+plt.ylabel("Population")
+plt.title("Rabi Oscillations")
+plt.legend()
+plt.grid()
+plt.show()
+plt.savefig(
+    "plots/jc.png", dpi=1000, bbox_inches="tight"
+)  # Save as a high-quality PNG

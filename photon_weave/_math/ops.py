@@ -1,8 +1,10 @@
+from functools import partial
 from typing import List, Union
 
 import jax
 import jax.numpy as jnp
 import numpy as np
+import opt_einsum as oe
 from jax import jit
 from jax.scipy.linalg import expm
 
@@ -274,7 +276,9 @@ def squeezing_operator(cutoff: int, zeta: complex) -> jnp.ndarray:
     """
     create = creation_operator(cutoff=cutoff)
     destroy = annihilation_operator(cutoff=cutoff)
-    operator = 0.5 * (jnp.conj(zeta) * (destroy @ destroy) - zeta * (create @ create))
+    operator = 0.5 * (
+        jnp.conj(zeta) * (destroy @ destroy) - zeta * (create @ create)
+    )
 
     return jitted_exp(operator)
 
@@ -331,8 +335,7 @@ def phase_operator(cutoff: int, theta: float) -> jnp.ndarray:
     return jnp.diag(phases)
 
 
-# to do: implement beamsplitter here
-@jit
+@partial(jit, static_argnames=("einsum_str",))
 def compute_einsum(
     einsum_str: str, *operands: Union[jax.Array, np.ndarray]
 ) -> jax.Array:
@@ -350,13 +353,31 @@ def compute_einsum(
     jax.Array
         resulting matrix after eintein sum
     """
-    return jnp.einsum(einsum_str, *operands)
+    return oe.contract(einsum_str, *operands, backend="jax")
+
+
+def _stack_kraus_operators(
+    operators: Union[
+        jnp.ndarray, np.ndarray, List[Union[np.ndarray, jnp.ndarray]]
+    ],
+) -> jnp.ndarray:
+    ops = jnp.asarray(operators)
+    if ops.ndim == 2:
+        ops = ops[None, ...]
+    if ops.ndim != 3:
+        raise ValueError(
+            "Kraus operators must have shape (k, d, d) or (d, d); "
+            f"got {ops.shape}"
+        )
+    return ops
 
 
 @jit
 def apply_kraus(
     density_matrix: Union[np.ndarray, jnp.ndarray],
-    kraus_operators: List[Union[np.ndarray, jnp.ndarray]],
+    kraus_operators: Union[
+        jnp.ndarray, np.ndarray, List[Union[np.ndarray, jnp.ndarray]]
+    ],
 ) -> jnp.ndarray:
     """
     Apply Kraus operators to the density matrix.
@@ -370,15 +391,29 @@ def apply_kraus(
     jnp.ndarray
         density matrix after applying Kraus operators
     """
-    new_density_matrix = jnp.zeros_like(density_matrix)
-    for K in kraus_operators:
-        new_density_matrix += K @ density_matrix @ jnp.conjugate(K).T
-    return new_density_matrix
+    operators = _stack_kraus_operators(kraus_operators)
 
-    # return sum(K @ density_matrix @ jnp.conjugate((K)).T for K in kraus_operators)
+    if density_matrix.shape != operators.shape[-2:]:
+        raise ValueError(
+            f"Density matrix shape {density_matrix.shape} does not match "
+            f"Kraus operator dims {operators.shape[-2:]}"
+        )
+
+    rho = jnp.asarray(density_matrix)
+    ops_dag = jnp.swapaxes(jnp.conj(operators), -1, -2)
+
+    # Vectorized K ρ K† over stacked operators to keep shapes static/jittable.
+    k_rho = oe.contract("kij,jl->kil", operators, rho, backend="jax")
+    evolved = oe.contract("kil,klj->kij", k_rho, ops_dag, backend="jax")
+    return jnp.sum(evolved, axis=0)
 
 
-def kraus_identity_check(operators: List[jnp.ndarray], tol: float = 1e-6) -> bool:
+def kraus_identity_check(
+    operators: Union[
+        jnp.ndarray, np.ndarray, List[Union[np.ndarray, jnp.ndarray]]
+    ],
+    tol: float = 1e-6,
+) -> bool:
     """
     Check if Kraus operator sum is less or equal to identity,
     thus representing a valid Kraus Channel
@@ -395,14 +430,13 @@ def kraus_identity_check(operators: List[jnp.ndarray], tol: float = 1e-6) -> boo
     bool
         True if the Kraus operators sum to identity within the tolerance
     """
-    # TODO check if we need dim and identity matrix
-    # dim = operators[0].shape[0]
-    # identity_matrix = jnp.eye(dim)
+    ops = _stack_kraus_operators(operators)
 
-    kraus_sum = sum(jnp.matmul(jnp.conjugate(K.T), K) for K in operators)
-    identity = jnp.eye(kraus_sum.shape[0])  # type: ignore
-    is_valid = jnp.all(jnp.real(jnp.linalg.eigvals(identity - kraus_sum)) >= 0)
-    return bool(is_valid)
+    # Sum_k K_k^\dagger K_k
+    kraus_sum = oe.contract("kia,kib->ab", jnp.conj(ops), ops, backend="jax")
+    identity = jnp.eye(kraus_sum.shape[0], dtype=kraus_sum.dtype)
+    eigvals = jnp.linalg.eigvalsh(identity - kraus_sum)
+    return bool(jnp.all(eigvals >= -tol))
 
 
 @jit
@@ -471,13 +505,21 @@ def num_quanta_matrix(matrix: jnp.ndarray) -> jnp.int64:
     non_zero_cols = jnp.any(matrix != 0, axis=0)
 
     highest_non_zero_index_row = (
-        jnp.where(non_zero_rows)[0][-1].item() if jnp.any(non_zero_rows) else None
+        jnp.where(non_zero_rows)[0][-1].item()
+        if jnp.any(non_zero_rows)
+        else None
     )
     highest_non_zero_index_col = (
-        jnp.where(non_zero_cols)[0][-1].item() if jnp.any(non_zero_cols) else None
+        jnp.where(non_zero_cols)[0][-1].item()
+        if jnp.any(non_zero_cols)
+        else None
     )
-    assert highest_non_zero_index_row is not None  # for mypy but needs to be checked
-    assert highest_non_zero_index_col is not None  # for mypy but needs to be checked
+    assert (
+        highest_non_zero_index_row is not None
+    )  # for mypy but needs to be checked
+    assert (
+        highest_non_zero_index_col is not None
+    )  # for mypy but needs to be checked
     # Determine the overall highest index
     highest_non_zero_index_matrix = max(
         highest_non_zero_index_row, highest_non_zero_index_col

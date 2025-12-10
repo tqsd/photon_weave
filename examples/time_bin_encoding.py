@@ -5,20 +5,37 @@ from tqdm import tqdm
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
-from photon_weave.operation import CompositeOperationType, FockOperationType, Operation
+from photon_weave.operation import (
+    CompositeOperationType,
+    FockOperationType,
+    Operation,
+)
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.envelope import Envelope
 from photon_weave.photon_weave import Config
 
 
-def get_probability(env:Envelope):
-    state = env.fock.trace_out()
-    one=jnp.abs(state[1][0])**2
-    return float(one)
+def get_probability(env: Envelope) -> float:
+    """
+    Probability that the envelope's Fock state is in |1>.
+
+    ``trace_out`` now returns a density matrix even when the underlying product
+    state is stored as a vector, so we read the diagonal element when a matrix
+    is returned and fall back to the vector amplitude when applicable.
+    """
+    state = jnp.asarray(env.fock.trace_out())
+    if state.ndim == 2:
+        # Density matrix case (or column vector shaped (n, 1))
+        if state.shape[1] == 1:
+            return float(jnp.abs(state[1, 0]) ** 2)
+        return float(jnp.real(state[1, 1]))
+    if state.ndim == 1:
+        return float(jnp.real(state[1]))
+    raise ValueError(f"Unexpected state shape {state.shape}")
 
 
 def plotting(prob0t=0, prob0b=0, prob1t=0, prob1b=0, prob2t=0, prob2b=0):
-    labels = ['t0', 't1', 't2']
+    labels = ["t0", "t1", "t2"]
     top_probs = [prob0t, prob1t, prob2t]
     bottom_probs = [prob0b, prob1b, prob2b]
 
@@ -27,33 +44,32 @@ def plotting(prob0t=0, prob0b=0, prob1t=0, prob1b=0, prob2t=0, prob2b=0):
     fig, axs = plt.subplots(2, 1, sharex=True, figsize=(6, 6))
 
     # Top bar chart
-    axs[0].bar(x, top_probs, color='blue', alpha=0.7)
-    axs[0].set_ylabel('Top Probabilities')
-    axs[0].set_title('Top and Bottom Probabilities')
+    axs[0].bar(x, top_probs, color="blue", alpha=0.7)
+    axs[0].set_ylabel("Top Probabilities")
+    axs[0].set_title("Top and Bottom Probabilities")
 
     # Bottom bar chart
-    axs[1].bar(x, bottom_probs, color='red', alpha=0.7)
-    axs[1].set_ylabel('Bottom Probabilities')
-    axs[1].set_xlabel('Time Steps')
+    axs[1].bar(x, bottom_probs, color="red", alpha=0.7)
+    axs[1].set_ylabel("Bottom Probabilities")
+    axs[1].set_xlabel("Time Steps")
     axs[1].set_xticks(x)
     axs[1].set_xticklabels(labels)
 
     plt.tight_layout()
     plt.show()
-    
+
+
 class MZI:
     def __init__(self, phase_shift_angle, name, debug=False):
-        self.name=name
+        self.name = name
         self.debug = debug
         self.debug_probabilities_top = []
         self.debug_probabilities_bot = []
         self.phase_shift = Operation(
-            FockOperationType.PhaseShift,
-            phi=phase_shift_angle
+            FockOperationType.PhaseShift, phi=phase_shift_angle
         )
         self.beam_splitter = Operation(
-            CompositeOperationType.NonPolarizingBeamSplitter,
-            eta=jnp.pi/4
+            CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4
         )
 
     def _empty_env(self, name):
@@ -73,28 +89,28 @@ class MZI:
         self.debug_probabilities_bot.append(prob_bot)
 
     def show_debug_plot(self):
-        labels = ['After BS1', 'Before BS2 1', 'Before BS2 2']
+        labels = ["After BS1", "Before BS2 1", "Before BS2 2"]
 
         x = jnp.arange(len(labels))  # X-axis positions
 
         fig, axs = plt.subplots(2, 1, sharex=True, figsize=(6, 6))
 
         # Top bar chart
-        axs[0].bar(x, self.debug_probabilities_top, color='blue', alpha=0.7)
-        axs[0].set_ylabel('Top Probabilities')
-        axs[0].set_title('Top and Bottom Probabilities')
+        axs[0].bar(x, self.debug_probabilities_top, color="blue", alpha=0.7)
+        axs[0].set_ylabel("Top Probabilities")
+        axs[0].set_title("Top and Bottom Probabilities")
 
         # Bottom bar chart
-        axs[1].bar(x, self.debug_probabilities_bot, color='red', alpha=0.7)
-        axs[1].set_ylabel('Bottom Probabilities')
-        axs[1].set_xlabel('Time Steps')
+        axs[1].bar(x, self.debug_probabilities_bot, color="red", alpha=0.7)
+        axs[1].set_ylabel("Bottom Probabilities")
+        axs[1].set_xlabel("Time Steps")
         axs[1].set_xticks(x)
         axs[1].set_xticklabels(labels)
 
         plt.tight_layout()
         plt.show()
 
-    def apply_ps(self, env:Envelope) -> Envelope:
+    def apply_ps(self, env: Envelope) -> Envelope:
         env.fock.apply_operation(self.phase_shift)
         return env
 
@@ -135,7 +151,7 @@ class MZI:
                 env_t1, env02
             )
             env_top_second_pulse = self.apply_ps(env_top_second_pulse)
-        
+
         """
         First pulse (taking shorter path) will always arrive alone.
         we apply the second beam_splitter and append it to the results
@@ -146,12 +162,7 @@ class MZI:
         )
 
         self.debug_log_probabilities(env_top_first_out, env_bot_first_out)
-        results.append(
-            {
-                "top": env_top_first_out,
-                "bot": env_bot_first_out
-            }
-        )
+        results.append({"top": env_top_first_out, "bot": env_bot_first_out})
 
         if env_t1 is None:
             """
@@ -162,15 +173,14 @@ class MZI:
             # There is no interaction with the second pulse
             env12 = self._empty_env(12)
             env_top_second_out, env_bot_second_out = self.apply_bs(
-                env_top_first_pulse, env12 
+                env_top_first_pulse, env12
             )
             results.append(
-                {
-                    "top": env_top_second_out,
-                    "bot": env_bot_second_out
-                }
+                {"top": env_top_second_out, "bot": env_bot_second_out}
             )
-            self.debug_log_probabilities(env_top_second_out, env_bot_second_out)
+            self.debug_log_probabilities(
+                env_top_second_out, env_bot_second_out
+            )
         else:
             """
             In case there is second pulse entering MZI, we have simulate interaction
@@ -178,14 +188,10 @@ class MZI:
             the short way from the second pulse.
             """
             env_top_second_out, env_bot_second_out = self.apply_bs(
-                env_top_first_pulse,
-                env_bot_second_pulse
+                env_top_first_pulse, env_bot_second_pulse
             )
             results.append(
-                {
-                    "top": env_top_second_out,
-                    "bot": env_bot_second_out
-                }
+                {"top": env_top_second_out, "bot": env_bot_second_out}
             )
 
             """
@@ -194,22 +200,17 @@ class MZI:
             at the last beam-splitter
             """
             env_top_third_out, env_bot_third_out = self.apply_bs(
-                env_top_second_pulse,
-                self._empty_env("last")
+                env_top_second_pulse, self._empty_env("last")
             )
             results.append(
-                {
-                    "top":env_top_third_out,
-                    "bot":env_bot_third_out
-                }
+                {"top": env_top_third_out, "bot": env_bot_third_out}
             )
         if self.debug:
             self.show_debug_plot()
         return results
 
 
-
-def tbe(alpha:float, beta:float, runs:int=1):
+def tbe(alpha: float, beta: float, runs: int = 1):
     """
     Simulates time bin encoding
 
@@ -242,17 +243,17 @@ def tbe(alpha:float, beta:float, runs:int=1):
 
     mzi_1 = MZI(alpha, "first", debug=False)
     mzi_2 = MZI(beta, "second")
-    
 
     for i in range(runs):
         # Set the initial pulses
-        env1=Envelope()
-        env1.fock.state=1
-        env1.fock.dimensions=2
-
+        env1 = Envelope()
+        env1.fock.state = 1
+        env1.fock.dimensions = 2
 
         first_pulse, second_pulse = mzi_1.process(env1)
-        first_pulse, second_pulse, third_pulse = mzi_2.process(first_pulse["top"], second_pulse["top"])
+        first_pulse, second_pulse, third_pulse = mzi_2.process(
+            first_pulse["top"], second_pulse["top"]
+        )
         if runs == 1:
             probs_top_0.append(get_probability(first_pulse["top"]))
             probs_bot_0.append(get_probability(first_pulse["bot"]))
@@ -261,17 +262,27 @@ def tbe(alpha:float, beta:float, runs:int=1):
             probs_top_2.append(get_probability(third_pulse["top"]))
             probs_bot_2.append(get_probability(third_pulse["bot"]))
         else:
-            probs_top_0.append(first_pulse["top"].measure()[first_pulse["top"].fock])
-            probs_bot_0.append(first_pulse["bot"].measure()[first_pulse["bot"].fock])
+            probs_top_0.append(
+                first_pulse["top"].measure()[first_pulse["top"].fock]
+            )
+            probs_bot_0.append(
+                first_pulse["bot"].measure()[first_pulse["bot"].fock]
+            )
 
-            probs_top_1.append(second_pulse["top"].measure()[second_pulse["top"].fock])
-            probs_bot_1.append(second_pulse["bot"].measure()[second_pulse["bot"].fock])
+            probs_top_1.append(
+                second_pulse["top"].measure()[second_pulse["top"].fock]
+            )
+            probs_bot_1.append(
+                second_pulse["bot"].measure()[second_pulse["bot"].fock]
+            )
 
-            probs_top_2.append(third_pulse["top"].measure()[third_pulse["top"].fock])
-            probs_bot_2.append(third_pulse["bot"].measure()[third_pulse["bot"].fock])
+            probs_top_2.append(
+                third_pulse["top"].measure()[third_pulse["top"].fock]
+            )
+            probs_bot_2.append(
+                third_pulse["bot"].measure()[third_pulse["bot"].fock]
+            )
 
-
-    
     probs_top_0 = jnp.array(probs_top_0)
     probs_bot_0 = jnp.array(probs_bot_0)
     probs_top_1 = jnp.array(probs_top_1)
@@ -279,23 +290,25 @@ def tbe(alpha:float, beta:float, runs:int=1):
     probs_top_2 = jnp.array(probs_top_2)
     probs_bot_2 = jnp.array(probs_bot_2)
 
-
-
-    all_probabilities = [probs_top_0, probs_bot_0, probs_top_1, probs_bot_1, probs_top_2, probs_bot_2]
+    all_probabilities = [
+        probs_top_0,
+        probs_bot_0,
+        probs_top_1,
+        probs_bot_1,
+        probs_top_2,
+        probs_bot_2,
+    ]
     all_averages = [jnp.mean(p) for p in all_probabilities]
     return all_averages
 
 
-
-def run_tbe(alpha:float, beta:float, runs:int):
+def run_tbe(alpha: float, beta: float, runs: int):
     """
     Top level function to run the tbe
     used for parallelization
     """
     return tbe(float(alpha), float(beta), runs=runs)
 
-
-        
 
 if __name__ == "__main__":
     """
@@ -321,22 +334,25 @@ if __name__ == "__main__":
     be executed
 
     PLOT_FILE_NAME = the name of the resulting plot
-    
+
     """
     RUNS = 1
     PARALLEL = False
     BETA = 0
-    alpha_values = jnp.linspace(0, 2*jnp.pi, 100)
+    alpha_values = jnp.linspace(0, 2 * jnp.pi, 100)
     PLOT_FILE_NAME = "plots/time_bin_encoding.png"
 
     if PARALLEL:
         ctx = mp.get_context("spawn")
         with ctx.Pool(processes=mp.cpu_count()) as pool:
             run_tbe_partial = partial(run_tbe, beta=BETA, runs=RUNS)
-            results = list(tqdm(
-                pool.imap(run_tbe_partial, alpha_values),
-                total=len(alpha_values),
-                desc="Computing probabilities"))
+            results = list(
+                tqdm(
+                    pool.imap(run_tbe_partial, alpha_values),
+                    total=len(alpha_values),
+                    desc="Computing probabilities",
+                )
+            )
     else:
         results = []
         for alpha in tqdm(alpha_values, desc="Computing probabilities"):
@@ -344,9 +360,12 @@ if __name__ == "__main__":
 
     # Unpack the results and prepare them for the plotting
     (
-        probabilities_top_0, probabilities_bot_0, 
-        probabilities_top_1, probabilities_bot_1, 
-        probabilities_top_2, probabilities_bot_2
+        probabilities_top_0,
+        probabilities_bot_0,
+        probabilities_top_1,
+        probabilities_bot_1,
+        probabilities_top_2,
+        probabilities_bot_2,
     ) = zip(*results)
     probabilities_all = [
         [jnp.array(probabilities_top_0), jnp.array(probabilities_bot_0)],
@@ -359,11 +378,15 @@ if __name__ == "__main__":
     titles = ["t-1", "t", "t+1"]
     divisions = 11
     xticks = jnp.linspace(0, 2 * jnp.pi, divisions)  # 5 divisions from 0 to 2π
-    xtick_labels = [f"{i:.1f}π" if i > 0 else "0" for i in jnp.linspace(0, 2, divisions)]
-    ylims = [(0,0.1), (0,0.3), (0,0.1)]
+    xtick_labels = [
+        f"{i:.1f}π" if i > 0 else "0" for i in jnp.linspace(0, 2, divisions)
+    ]
+    ylims = [(0, 0.1), (0, 0.3), (0, 0.1)]
     for i, ax in enumerate(axes):
         ax.plot(alpha_values, probabilities_all[i][0], label="Top Probability")
-        ax.plot(alpha_values, probabilities_all[i][1], label="Bottom Probability")
+        ax.plot(
+            alpha_values, probabilities_all[i][1], label="Bottom Probability"
+        )
         ax.set_ylabel(f"Probability {titles[i]}")
         ax.legend()
         ax.set_xticks(xticks)
@@ -380,4 +403,3 @@ if __name__ == "__main__":
         plt.savefig(PLOT_FILE_NAME, dpi=600, bbox_inches="tight")
     else:
         plt.show()
-

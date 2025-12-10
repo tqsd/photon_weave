@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple, Union
+from typing import List, Tuple, Union
 
 import jax.numpy as jnp
 
-import photon_weave.extra.einsum_constructor as ESC
+from photon_weave.core import adapters
+from photon_weave.core.linear import trace_out_matrix as core_trace_out_matrix
+from photon_weave.core.meta import DimsMeta
+from photon_weave.photon_weave import Config
+from photon_weave.state.base_state import BaseState
 from photon_weave.state.expansion_levels import ExpansionLevel
-from .state_transform import state_expand
 
-if TYPE_CHECKING:
-    from photon_weave.state.base_state import BaseState
+from .state_transform import state_expand
 
 
 def trace_out_vector(
@@ -17,33 +19,7 @@ def trace_out_vector(
     target_states: Union[List[BaseState], Tuple[BaseState, ...]],
     product_state: jnp.ndarray,
 ) -> jnp.ndarray:
-    """(DEPRECATED)
-    Traces out the system, returning only the space of given target states
-
-    Parameters
-    ----------
-    state_objs: Union[List[BaseState],Tuple[BaseState, ...]]
-        List of the state objects in the product space
-    target_states: Union[List[BaseState],Tuple[BaseState, ...]]
-        List of the target states, which should be included
-        in the resulting subspace
-    product_state: jnp.ndarray
-        Product state in the vector form
-
-    Returns
-    -------
-    jnp.ndarray
-        Traced out subspace including only the states given as
-        target_states. The tensoring of thes spaces in the
-        traced out subspace reflects the order of the spaces
-        in the target_states.
-
-    Notes
-    -----
-        Tensoring order in the product space must reflect the order
-        of the states given in the state_objs argument.
-    """
-
+    """(DEPRECATED) Trace out everything but the target states from a vector."""
     dims = int(jnp.prod(jnp.array([s.dimensions for s in state_objs])))
     product_state, _ = state_expand(product_state, ExpansionLevel.Vector, dims)
     return trace_out_matrix(state_objs, target_states, product_state)
@@ -53,49 +29,44 @@ def trace_out_matrix(
     state_objs: Union[List[BaseState], Tuple[BaseState, ...]],
     target_states: Union[List[BaseState], Tuple[BaseState, ...]],
     product_state: jnp.ndarray,
+    meta: DimsMeta | None = None,
+    use_contraction: bool | None = None,
 ) -> jnp.ndarray:
     """
-    Traces out the system, returning only the space of given target states
-
-    Parameters
-    ----------
-    state_objs: Union[List[BaseState],Tuple[BaseState, ...]]
-        List of the state objects in the product space
-    target_states: Union[List[BaseState],Tuple[BaseState, ...]]
-        List of the target states, which should be included
-        in the resulting subspace
-    product_state: jnp.ndarray
-        Product state in the vector form
-
-    Returns
-    -------
-    jnp.ndarray
-        Traced out subspace including only the states given as
-        target_states. The tensoring of thes spaces in the
-        traced out subspace reflects the order of the spaces
-        in the target_states.
-
-    Notes
-    -----
-        Tensoring order in the product space must reflect the order
-        of the states given in the state_objs argument.
+    Trace out everything but the target states from a density matrix.
     """
+    if use_contraction is None:
+        use_contraction = Config().contractions
+    if meta is None:
+        dims = [s.dimensions for s in state_objs]
+        target_indices = [state_objs.index(s) for s in target_states]
+        return core_trace_out_matrix(
+            dims,
+            target_indices,
+            product_state,
+            use_contraction=bool(use_contraction),
+        )
+    return adapters.trace_out_matrix_jit_meta(
+        meta, product_state, use_contraction=bool(use_contraction)
+    )
 
-    state_objs = list(state_objs)
-    target_states = list(target_states)
 
-    total_dimensions = jnp.prod(jnp.array([s.dimensions for s in state_objs]))
-    shape_dimensions = [s.dimensions for s in state_objs] * 2
-    new_dimensions = [
-        jnp.prod(jnp.array([s.dimensions for s in target_states]))
-    ] * 2
-
-    assert product_state.shape == (total_dimensions, total_dimensions)
-
-    product_state = product_state.reshape(shape_dimensions)
-
-    einsum = ESC.trace_out_matrix(state_objs, target_states)
-
-    traced_out_state = jnp.einsum(einsum, product_state)
-
-    return traced_out_state.reshape(new_dimensions)
+def trace_out_matrix_jit(
+    state_objs: Union[List[BaseState], Tuple[BaseState, ...]],
+    target_states: Union[List[BaseState], Tuple[BaseState, ...]],
+    product_state: jnp.ndarray,
+    use_contraction: bool | None = None,
+) -> jnp.ndarray:
+    """
+    JIT-friendly trace-out wrapper using core adapters/kernels.
+    """
+    if use_contraction is None:
+        use_contraction = Config().contractions
+    dims = [s.dimensions for s in state_objs]
+    target_indices = [state_objs.index(s) for s in target_states]
+    return adapters.trace_out_matrix(
+        dims,
+        target_indices,
+        product_state,
+        use_contraction=bool(use_contraction),
+    )

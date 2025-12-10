@@ -3,6 +3,7 @@ import unittest
 from photon_weave.state.fock import Fock
 import photon_weave.extra.einsum_constructor as ESC
 
+
 class TestTraceOut(unittest.TestCase):
     def test_trace_out_matrix(self) -> None:
         """

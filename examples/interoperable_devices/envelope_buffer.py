@@ -1,6 +1,7 @@
 """
 Envelope buffer stores preshared entangled photons
 """
+
 import queue
 from photon_weave.state.envelope import Envelope
 

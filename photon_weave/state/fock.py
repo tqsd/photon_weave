@@ -4,25 +4,34 @@ Fock state
 
 from __future__ import annotations
 
-import uuid
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import jax.numpy as jnp
+from jax.core import Tracer
 
-from photon_weave._math.ops import num_quanta_matrix, num_quanta_vector
+from photon_weave.core.ops import num_quanta_matrix, num_quanta_vector
 from photon_weave.photon_weave import Config
 
-# from photon_weave.state.composite_envelope import CompositeEnvelope
 from .base_state import BaseState
 from .expansion_levels import ExpansionLevel
-from .utils.measurements import measure_matrix, measure_vector
+from .utils.measurements import (
+    measure_matrix,
+    measure_matrix_expectation,
+    measure_matrix_jit,
+    measure_pnr_matrix,
+    measure_pnr_vector,
+    measure_vector,
+    measure_vector_expectation,
+    measure_vector_jit,
+)
 from .utils.operations import apply_operation_matrix, apply_operation_vector
+from .utils.shape_planning import build_plan
 from .utils.routing import route_operation
 from .utils.state_transform import state_contract, state_expand
 
-if TYPE_CHECKING:
-    from .envelope import Envelope
-    from photon_weave.operation import Operation
+Operation = Any
+# Envelope is only used for type hints; alias to avoid import cycles.
+Envelope = Any
 
 
 class Fock(BaseState):
@@ -194,7 +203,10 @@ class Fock(BaseState):
 
     @route_operation()
     def measure(
-        self, separate_measurement: bool = False, destructive: bool = True
+        self,
+        separate_measurement: bool = False,
+        destructive: bool = True,
+        key: jnp.ndarray | None = None,
     ) -> Dict[BaseState, int]:
         """
         Measures the state in the number basis. This Method can be used if the
@@ -215,6 +227,11 @@ class Fock(BaseState):
             Dictionary of outcomes
         """
 
+        C = Config()
+        if C.use_jit and key is None:
+            raise ValueError("PRNG key is required when use_jit is enabled")
+        plan = build_plan([self], [self]) if C.use_jit else None
+
         outcomes: Dict[BaseState, int]
         match self.expansion_level:
             case ExpansionLevel.Label:
@@ -222,14 +239,24 @@ class Fock(BaseState):
                 outcomes = {self: self.state}
             case ExpansionLevel.Vector:
                 assert isinstance(self.state, jnp.ndarray)
-                outcomes, post_measurement_state = measure_vector(
-                    [self], [self], self.state
-                )
+                if plan is not None:
+                    outcomes, post_measurement_state, _ = measure_vector_jit(
+                        [self], [self], self.state, key, meta=plan
+                    )
+                else:
+                    outcomes, post_measurement_state = measure_vector(
+                        [self], [self], self.state, key=key
+                    )
             case ExpansionLevel.Matrix:
                 assert isinstance(self.state, jnp.ndarray)
-                outcomes, post_measurement_state = measure_matrix(
-                    [self], [self], self.state
-                )
+                if plan is not None:
+                    outcomes, post_measurement_state, _ = measure_matrix_jit(
+                        [self], [self], self.state, key, meta=plan
+                    )
+                else:
+                    outcomes, post_measurement_state = measure_matrix(
+                        [self], [self], self.state, key=key
+                    )
 
         self.state = outcomes[self]
         self.expansion_level = ExpansionLevel.Label
@@ -256,6 +283,80 @@ class Fock(BaseState):
         self.state = None
         self.index = None
         self.expansion_level = None
+
+    @route_operation()
+    def measure_expectation(self) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        """
+        Differentiable expectation of number measurement on this Fock state.
+        """
+        if self.expansion_level == ExpansionLevel.Label:
+            self.expand()
+        assert isinstance(self.expansion_level, ExpansionLevel)
+        assert isinstance(self.state, jnp.ndarray)
+        C = Config()
+        plan = build_plan([self], [self]) if C.use_jit else None
+        if self.expansion_level == ExpansionLevel.Vector:
+            return measure_vector_expectation(
+                [self], [self], self.state, meta=plan
+            )
+        return measure_matrix_expectation(
+            [self], [self], self.state, meta=plan
+        )
+
+    @route_operation()
+    def measure_pnr(
+        self,
+        dark_rate: float = 0.0,
+        efficiency: float = 1.0,
+        detection_window: float = 1.0,
+        jitter_std: float = 0.0,
+        destructive: bool = True,
+        key: jnp.ndarray | None = None,
+    ) -> Tuple[Dict[BaseState, int], jnp.ndarray, jnp.ndarray]:
+        """
+        Photon-number-resolving measurement with optional dark counts and timing jitter.
+        """
+        if self.expansion_level == ExpansionLevel.Label:
+            self.expand()
+        assert isinstance(self.expansion_level, ExpansionLevel)
+        assert isinstance(self.state, jnp.ndarray)
+        C = Config()
+        if C.use_jit and key is None:
+            raise ValueError("PRNG key is required when use_jit is enabled")
+        plan = build_plan([self], [self]) if C.use_jit else None
+        next_key: jnp.ndarray | None = None
+        if self.expansion_level == ExpansionLevel.Vector:
+            outcomes, post, jitter, next_key = measure_pnr_vector(
+                [self],
+                [self],
+                self.state,
+                efficiency=efficiency,
+                dark_rate=dark_rate,
+                detection_window=detection_window,
+                jitter_std=jitter_std,
+                key=key,
+                meta=plan,
+            )
+        else:
+            outcomes, post, jitter, next_key = measure_pnr_matrix(
+                [self],
+                [self],
+                self.state,
+                efficiency=efficiency,
+                dark_rate=dark_rate,
+                detection_window=detection_window,
+                jitter_std=jitter_std,
+                key=key,
+                meta=plan,
+            )
+        if next_key is None:
+            next_key = key
+        self.state = outcomes[self]
+        self.expansion_level = ExpansionLevel.Label
+        if destructive:
+            self._set_measured()
+        assert next_key is not None
+        return outcomes, jitter, next_key
 
     @route_operation()
     def resize(self, new_dimensions: int) -> bool:
@@ -355,6 +456,11 @@ class Fock(BaseState):
 
         # Consolidate the dimensions
         C = Config()
+        if C.use_jit and C.dynamic_dimensions:
+            raise ValueError(
+                "Dynamic dimension resizing is not supported when use_jit=True; "
+                "precompute cutoffs before compiling."
+            )
         if C.dynamic_dimensions:
             to = self.trace_out()
             operation.compute_dimensions(self._num_quanta, to)
@@ -363,22 +469,34 @@ class Fock(BaseState):
             operation._dimensions = [self.dimensions]
 
         assert isinstance(self.state, jnp.ndarray)
+        plan = build_plan([self], [self]) if C.use_jit else None
 
         match self.expansion_level:
             case ExpansionLevel.Vector:
                 self.state = apply_operation_vector(
-                    [self], [self], self.state, operation.operator
+                    [self],
+                    [self],
+                    self.state,
+                    operation.operator,
+                    meta=plan,
+                    use_contraction=C.contractions,
                 )
             case ExpansionLevel.Matrix:
                 self.state = apply_operation_matrix(
-                    [self], [self], self.state, operation.operator
+                    [self],
+                    [self],
+                    self.state,
+                    operation.operator,
+                    meta=plan,
+                    use_contraction=C.contractions,
                 )
 
-        if not jnp.any(jnp.abs(self.state) > 0):
-            raise ValueError(
-                "The state is entirely composed of zeros, is |0⟩"
-                " attempted to be annihilated?"
-            )
+        if not isinstance(self.state, Tracer):
+            if not jnp.any(jnp.abs(self.state) > 0):
+                raise ValueError(
+                    "The state is entirely composed of zeros, is |0⟩"
+                    " attempted to be annihilated?"
+                )
         if operation.renormalize:
             self.state = self.state / jnp.linalg.norm(self.state)
 

@@ -3,7 +3,11 @@ import jax
 import numpy as np
 from photon_weave.state.envelope import Envelope
 from photon_weave.state.composite_envelope import CompositeEnvelope
-from photon_weave.operation import Operation, FockOperationType, CompositeOperationType
+from photon_weave.operation import (
+    Operation,
+    FockOperationType,
+    CompositeOperationType,
+)
 import argparse
 import json
 from array_memory_usage_tracker import ArrayMemoryUsageTracker
@@ -50,7 +54,9 @@ def lossy_bs_circuit(initial_state, lossy):
 
     ce = CompositeEnvelope(env1, env2, env3, env4)
 
-    bs = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
+    bs = Operation(
+        CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4
+    )
 
     context = {"a": lambda dims: conditional_annihilation(dims[0])}
     loss = Operation(
@@ -102,7 +108,10 @@ def lossy_bs_circuit(initial_state, lossy):
         AMUT.record_operator_size(bs)
     AMUT.record_state_size(ce.product_states[0])
 
-    output = {"state_sizes": AMUT.state_sizes, "operator_sizes": AMUT.operator_sizes}
+    output = {
+        "state_sizes": AMUT.state_sizes,
+        "operator_sizes": AMUT.operator_sizes,
+    }
 
     print(json.dumps(output))
 

@@ -13,7 +13,16 @@ def run_mprof(file_list):
 
         # Run mprof and save the output file
         subprocess.run(
-            ["mprof", "run", "--interval", "0.01", "-o", output_file, "python", script],
+            [
+                "mprof",
+                "run",
+                "--interval",
+                "0.01",
+                "-o",
+                output_file,
+                "python",
+                script,
+            ],
             check=True,
         )
         data_files.append(output_file)

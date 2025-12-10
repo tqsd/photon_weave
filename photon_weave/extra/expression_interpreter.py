@@ -9,70 +9,40 @@ def interpreter(
     context: Dict[str, Callable[[List[int]], jnp.ndarray]],
     dimensions: List[int],
 ) -> jnp.ndarray:
-    r"""
-        Recursively compute an operator from an expression, context and dimensions
+    """
+    Recursively build an operator from a lisp-style expression, a context,
+    and subsystem dimensions.
 
     Parameters
     ----------
-        expr: tuple
-            Expression defined in a lisp style tuples
-        context: Dict[str, Callable[[List[int]], jnp.ndarray]]
-            Context is a dictionary of callables (lambda functions)
-            Every lambda should accept list of integers (dimensions)
-            and return a jnp.ndarray operator matrix
-        dimensions: List[int]
-            List of dimensions, ordered in the same way as the states
-            operated on
+    expr : tuple
+        Expression in the form ``("command", arg1, arg2, ...)``.
+    context : Dict[str, Callable[[List[int]], jnp.ndarray]]
+        Mapping from placeholder names to callables that generate operators
+        given dimensions.
+    dimensions : List[int]
+        Dimensions of the target subsystems (in order).
 
     Returns
     -------
-        jnp.ndarray
-            Correctly computed operator
+    jnp.ndarray
+        The computed operator.
 
     Notes
     -----
-        When constructing operator which acts on multiple spaces, be
-        carefull that you correctly kron the operators. Wrong order
-        will not result in correct operator, but no exceptions will
-        be produced.
+    Supported commands:
 
-    Usage
-    -----
-        Tuples are evaluated from the inner most tuple to the outer most
-        one. The first element in a tuple is a `command`, followed by
-        `arguments˙. There can be multiple arguments for some commands.
-        Interpreter understands the following commands:
-            - add: adds all arguments together, accepts any number of arguments
-            >>> ('add', 1, 2, 3) -> Sums the arguments and is evaluated to 6
-            - sub: substracts the arguments, accepts 2 arguments
-            >>> ('sub', 3, 2) -> 1
-            - s_mult: Scalar multiplication, accepts any number of arguments
-            >>> ('s_mult', 1,2,A) -> 2*A, where A is a matrix
-            - m_mult: Matrix multiplication, accepts and number of arguments
-            >>> ('m_mult', A,B,C) -> A@B@C
-            - div: Divides the values, accpets two arguments
-            >>> ('div', A, B) -> A/B
-            - kron: Kronecker multiplication, accepts and number of arguments
-            >>> ('kron', A,B,C) -> jnp.kron(A,jnp.kron(B,C))
-            - expm: Exponentiate matrix term, accepts one argument
-            >>> ('expm', A) -> e^A
+    - ``add``: sums all arguments.
+    - ``sub``: subtracts the second argument from the first.
+    - ``s_mult``: scalar multiplication.
+    - ``m_mult``: matrix multiplication.
+    - ``div``: division of two arguments.
+    - ``kron``: Kronecker product of all arguments.
+    - ``expm``: matrix exponential of a single argument.
 
-            Expressions can be nested to produce complex expressions:
-            >>> ('expm', ('s_mult', 1j, jnp.pi, 'n'))
-
-        Arguments can be numbers, arrays or matrices. Arguments can also
-        be string types. If an argument is a string type, like in example 'n',
-        then its value will be computed from the context.
-            >>> context = {
-            >>>    'n': lambda dims: number_operator(dims[0])
-            >>>}
-            In this case
-            'n' will be computed as:
-            >>> context['n'](dims)
-        The index 0 tells the interpreter the which state this operator should
-        correspond to. The list `dims` is passed by the interpreter and it contains, the
-        list of dimensions of the state we wish to operate on.
-
+    Arguments may be numbers, arrays, or strings referencing entries in
+    ``context`` (e.g., ``"n"`` resolved via ``context["n"](dimensions)``). Ensure
+    the Kronecker order matches the intended subsystem order.
     """
     if isinstance(expr, tuple):
         op, *args = expr
@@ -83,7 +53,9 @@ def interpreter(
             return result
         if op == "sub":
             result = interpreter(args[0], context, dimensions)
-            result = jnp.subtract(result, interpreter(args[1], context, dimensions))
+            result = jnp.subtract(
+                result, interpreter(args[1], context, dimensions)
+            )
             return result
         elif op == "s_mult":
             result = interpreter(args[0], context, dimensions)
@@ -98,7 +70,9 @@ def interpreter(
         elif op == "kron":
             result = interpreter(args[0], context, dimensions)
             for arg in args[1:]:
-                result = jnp.kron(result, interpreter(arg, context, dimensions))
+                result = jnp.kron(
+                    result, interpreter(arg, context, dimensions)
+                )
             return result
         elif op == "expm":
             return expm(interpreter(args[0], context, dimensions))
@@ -112,4 +86,6 @@ def interpreter(
     else:
         # Grab literal value
         return expr
-    raise ValueError("Something went wrong in the expression interpreter!", expr)
+    raise ValueError(
+        "Something went wrong in the expression interpreter!", expr
+    )

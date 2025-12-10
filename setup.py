@@ -1,4 +1,5 @@
 """fock envelope simulator"""
+
 from pathlib import Path
 
 from setuptools import find_packages, setup
@@ -26,7 +27,5 @@ setup(
         "Topic :: Scientific/Engineering :: Physics",
     ],
     packages=find_packages(where="."),
-    install_requires=[
-        "jax==0.5.0",
-        "jaxlib==0.5.0"],
+    install_requires=["jax==0.5.0", "jaxlib==0.5.0"],
 )

@@ -1,5 +1,5 @@
 Contributing to Photon Weave
-====================
+============================
 
 We love your input! We want to make contributing to this project as easy and transparent as possible, whether it's:
 - Reporting a bug
@@ -12,7 +12,7 @@ We love your input! We want to make contributing to this project as easy and tra
 
 We use github to host code, to track issues and feature requests, as well as accept pull requests.
 
-we use `Github Flow <https://guides.github.com/introduction/flow/index.html>`_, All Code Changes Happen Through Pull Requests
+We use `Github Flow <https://guides.github.com/introduction/flow/index.html>`_, all code changes happen through pull requests.
 Pull requests are the best way to propose changes to the codebase (we use Github Flow). We actively welcome your pull requests:
 
 1. Fork the repo and create your branch from `master`.
@@ -27,16 +27,19 @@ Pull requests are the best way to propose changes to the codebase (we use Github
 
 6. Issue the pull request.
 
-Any Contribution you make will be under the Apache-2.0 License
+Any contribution you make will be under the Apache-2.0 License
 
-In short, when you submit code changes, your submissions are understood to bu under the same `Apache-2.0 Licens <https://www.apache.org/licenses/LICENSE-2.0>`_ that covers the project. Feel free to contact the maintainers if that's a concern.
+In short, when you submit code changes, your submissions are understood to be under the same `Apache-2.0 License <https://www.apache.org/licenses/LICENSE-2.0>`_ that covers the project. Feel free to contact the maintainers if that's a concern.
 
 Report bugs using Github's `issues <https://github.com/tqsd/photon_weave/issues>`_
 
 We use GitHub issues to track public bugs. Report a bug by opening a new issue.
 
 Write bug reports with detail, background and sample code
+--------------------------------------------------------
+
 **Great Bug Reports** tend to have:
+
 - A quick summary and/or background
 - Steps to reproduce
   - Be specific!
@@ -45,7 +48,9 @@ Write bug reports with detail, background and sample code
 - What actually happens.
 - Notes (possibly including why you think this might be happening, or stuff you tried that didn't work)
 
-Use a Consistent Coding Stype
+Use a Consistent Coding Style
+-----------------------------
+
 We aim to be consistent with PEP8.
 
 **License**

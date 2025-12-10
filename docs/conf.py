@@ -24,6 +24,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",  # links to the source code
     "sphinx.ext.autosummary",  # summary tables for documentation
+    "myst_parser",  # markdown support
 ]
 source_suffix = {
     ".rst": "restructuredtext",
@@ -31,12 +32,29 @@ source_suffix = {
 }
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "examples/time_bin_encoding.rst",
+    "examples/jaynes_cummings_model.rst",
+    "examples/super_dense_coding.rst",
+]
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
-autodoc_mock_imports = ["jax", "scipy", "numpy"]
+autodoc_mock_imports = [
+    "jax",
+    "scipy",
+    "numpy",
+    "photon_weave.state.custom_state",
+    "photon_weave.extra.expression_interpreter",
+    "photon_weave.extra.einsum_constructor",
+    "photon_weave.operation.fock_operation",
+    "photon_weave.operation.polarization_operation",
+    "photon_weave.operation.helpers.fock_dimension_esitmation",
+]
 
 html_theme = "sphinx_rtd_theme"
 

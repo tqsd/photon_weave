@@ -1,7 +1,6 @@
 import unittest
 
 import jax.numpy as jnp
-import pytest
 
 from photon_weave._math.ops import number_operator
 from photon_weave.operation import CompositeOperationType, Operation
@@ -9,7 +8,7 @@ from photon_weave.photon_weave import Config
 from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.envelope import Envelope
 from photon_weave.state.fock import Fock
-from photon_weave.state.polarization import Polarization, PolarizationLabel
+from photon_weave.state.polarization import PolarizationLabel
 
 
 class TestNonPolarizingBeamSplitter(unittest.TestCase):
@@ -241,7 +240,7 @@ class TestCSWAPOperator(unittest.TestCase):
             )
         )
 
-    def test_CSWAP_vector(self) -> None:
+    def test_CSWAP_vector_expanded(self) -> None:
         env1 = Envelope()
         env1.polarization.state = PolarizationLabel.V
         env2 = Envelope()
