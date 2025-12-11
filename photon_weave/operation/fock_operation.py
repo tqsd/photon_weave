@@ -7,7 +7,7 @@ from typing import Any, List, Union
 
 import jax.numpy as jnp
 
-from photon_weave._math.ops import (
+from photon_weave.core.ops import (
     annihilation_operator,
     creation_operator,
     displacement_operator,

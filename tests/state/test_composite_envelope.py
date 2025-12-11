@@ -1,22 +1,20 @@
 import unittest
-from typing import List, Union
+from typing import List
 
 import jax
 import jax.numpy as jnp
 import numpy as np
-import pytest
 
+from photon_weave.operation import FockOperationType, Operation
 from photon_weave.photon_weave import Config
 from photon_weave.state.composite_envelope import (
     CompositeEnvelope,
-    CompositeEnvelopeContainer,
 )
 from photon_weave.state.custom_state import CustomState
 from photon_weave.state.envelope import Envelope
 from photon_weave.state.expansion_levels import ExpansionLevel
-from photon_weave.state.fock import Fock
+from photon_weave.state.polarization import PolarizationLabel
 from photon_weave.state.utils.state_transform import state_expand
-from photon_weave.state.polarization import Polarization, PolarizationLabel
 
 
 class TestCompositeEnvelopeInitialization(unittest.TestCase):
@@ -59,7 +57,7 @@ class TestCompositeEnvelopeInitialization(unittest.TestCase):
         env2 = Envelope()
         cs1 = CustomState(2)
         cs2 = CustomState(2)
-        ce = CompositeEnvelope(env1, env2, cs1, cs2)
+        CompositeEnvelope(env1, env2, cs1, cs2)
 
     def test_initialization_three_envelopes_two_composite_envelopes(
         self,
@@ -117,7 +115,7 @@ class TestCompositeEnvelopeInitialization(unittest.TestCase):
         env4 = Envelope()
         ce2 = CompositeEnvelope(env3, env4)
 
-        ce3 = CompositeEnvelope(ce1, ce2)
+        CompositeEnvelope(ce1, ce2)
         for env in [env1, env2, env3, env4]:
             self.assertTrue(env in ce1.envelopes)
             self.assertTrue(env in ce2.envelopes)
@@ -363,8 +361,8 @@ class TestRepresentationMethod(unittest.TestCase):
         env2.polarization.uid = "p2"
         ce = CompositeEnvelope(env1, env2)
         self.assertEqual(
-            f"CompositeEnvelope(uid={
-                ce.uid}, envelopes=['e1', 'e2'], state_objects=['f1', 'p1', 'f2', 'p2'])",
+            f"CompositeEnvelope(uid={ce.uid}, envelopes=['e1', 'e2'],"
+            "state_objects=['f1', 'p1', 'f2', 'p2'])",
             ce.__repr__(),
         )
 
@@ -378,8 +376,11 @@ class TestRepresentationMethod(unittest.TestCase):
         ce = CompositeEnvelope(env1, cs)
         self.assertEqual(
             ce.__repr__(),
-            f"CompositeEnvelope(uid={ce.uid}, envelopes=['{
-                env1.uid}'], state_objects=['f', 'p', 'c'])",
+            (
+                "CompositeEnvelope("
+                f"uid={ce.uid}, envelopes=['{env1.uid}'],"
+                "state_objects=['f', 'p', 'c'])"
+            ),
         )
 
 
@@ -465,6 +466,30 @@ class TestProductStateReordering(unittest.TestCase):
         )
         self.assertEqual(env1.polarization.index, (0, 1))
         self.assertEqual(env2.polarization.index, (0, 0))
+
+
+class TestCompositeMeasurementOrdering(unittest.TestCase):
+    def test_reorder_then_measure_with_key_preserves_outcomes(self) -> None:
+        env1 = Envelope()
+        env2 = Envelope()
+        env1.fock.dimensions = 2
+        env2.fock.dimensions = 2
+        env1.fock.state = 0
+        env2.fock.state = 1
+
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.fock, env2.fock)
+        ce.reorder(env2.fock, env1.fock)
+
+        key = jax.random.PRNGKey(0)
+        outcomes = ce.measure(env2.fock, env1.fock, destructive=False, key=key)
+
+        self.assertEqual(outcomes[env2.fock], 1)
+        self.assertEqual(outcomes[env1.fock], 0)
+        # Post-measurement bookkeeping removes the emptied product state
+        self.assertEqual(len(ce.product_states), 0)
+        self.assertIsNone(env1.fock.index)
+        self.assertIsNone(env2.fock.index)
 
 
 class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
@@ -714,7 +739,13 @@ class TestKrausApply(unittest.TestCase):
 
         remaining = identity - sum_operators
         assert jnp.all(jnp.linalg.eigvals(remaining) >= 0)
-        last_kraus = jax.scipy.linalg.sqrtm(remaining)
+        eigvals, eigvecs = jnp.linalg.eigh(remaining)
+        eigvals = jnp.clip(eigvals, min=0.0)
+        sqrt_vals = jnp.sqrt(eigvals)
+        # Use the true inverse (not Hermitian shortcut) for robustness if eigenvectors
+        # are not unitary due to numerical issues.
+        inv_vecs = jnp.linalg.inv(eigvecs)
+        last_kraus = eigvecs @ jnp.diag(sqrt_vals) @ inv_vecs
         return last_kraus
 
     def test_kraus_apply_vector_full(self) -> None:
@@ -999,7 +1030,7 @@ class TestKrausApply(unittest.TestCase):
         C = Config()
         C.set_contraction(False)
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             ce.apply_kraus([op], env1.fock, env2.fock)
 
     def test_kraus_exception_identity(self) -> None:
@@ -1024,7 +1055,7 @@ class TestKrausApply(unittest.TestCase):
         C = Config()
         C.set_contraction(False)
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             ce.apply_kraus([op], env1.fock, env2.fock)
 
 
@@ -1202,7 +1233,7 @@ class TestPOVMMeasurement(unittest.TestCase):
         C = Config()
         C.set_seed(100)
         C.set_contraction(False)
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             ce.measure_POVM(operators, env1.fock, destructive=False)
 
     def test_POVM_measurement_in_envelope(self) -> None:
@@ -1277,6 +1308,87 @@ class TestCompositeMatrixTrace(unittest.TestCase):
         expected = jnp.array([[0], [1 / jnp.sqrt(2)], [0], [1j / jnp.sqrt(2)]])
         expected, _ = state_expand(expected, ExpansionLevel.Vector, 4)
         self.assertTrue(jnp.allclose(to, expected), (to, expected))
+
+    def test_expectation_is_differentiable(self) -> None:
+        prev = Config().use_jit
+        Config().set_use_jit(True)
+        try:
+
+            def prob(theta: float) -> jnp.ndarray:
+                env1 = Envelope()
+                env1.fock.dimensions = 2
+                env1.fock.state = jnp.array(
+                    [[jnp.cos(theta)], [jnp.sin(theta)]]
+                )
+                env1.fock.expansion_level = ExpansionLevel.Vector
+                env2 = Envelope()
+                env2.fock.dimensions = 2
+                env2.fock.state = jnp.array([[1.0], [0.0]])
+                env2.fock.expansion_level = ExpansionLevel.Vector
+                ce = CompositeEnvelope(env1, env2)
+                ce.combine(env1.fock, env2.fock)
+                probs, _ = ce.measure_expectation(env1.fock)
+                return probs[0]
+
+            theta = 0.4
+            g = jax.grad(prob)(theta)
+            self.assertTrue(jnp.allclose(g, -jnp.sin(2 * theta), atol=1e-5))
+        finally:
+            Config().set_use_jit(prev)
+
+    def test_apply_operation_raises_when_dynamic_dims_with_use_jit(
+        self,
+    ) -> None:
+        env1 = Envelope()
+        env2 = Envelope()
+        env1.fock.dimensions = 2
+        env2.fock.dimensions = 2
+        ce = CompositeEnvelope(env1, env2)
+        ce.combine(env1.fock, env2.fock)
+        op = Operation(FockOperationType.Annihilation)
+
+        cfg = Config()
+        prev_dyn = cfg.dynamic_dimensions
+        prev_jit = cfg.use_jit
+        cfg.set_dynamic_dimensions(True)
+        cfg.set_use_jit(True)
+        try:
+            with self.assertRaises(ValueError):
+                ce.apply_operation(op, env1.fock)
+        finally:
+            cfg.set_dynamic_dimensions(prev_dyn)
+            cfg.set_use_jit(prev_jit)
+
+    def test_measure_requires_key_when_use_jit_enabled(self) -> None:
+        env = Envelope()
+        env.fock.state = 0
+        env.fock.dimensions = 2
+        env.combine()
+        cfg = Config()
+        prev = cfg.use_jit
+        cfg.set_use_jit(True)
+        try:
+            with self.assertRaises(ValueError):
+                env.measure(env.fock)
+        finally:
+            cfg.set_use_jit(prev)
+
+    def test_measure_with_key_in_jit_mode_succeeds(self) -> None:
+        cfg = Config()
+        prev = cfg.use_jit
+        cfg.set_use_jit(True)
+        try:
+            env1 = Envelope()
+            env2 = Envelope()
+            env1.fock.state = 0
+            env2.fock.state = 0
+            ce = CompositeEnvelope(env1, env2)
+            ce.combine(env1.fock, env2.fock)
+            key = jax.random.PRNGKey(0)
+            outcomes = ce.measure(env1.fock, key=key)
+            self.assertEqual(outcomes[env1.fock], 0)
+        finally:
+            cfg.set_use_jit(prev)
 
     def test_trace_matrix(self) -> None:
         np.set_printoptions(linewidth=300)

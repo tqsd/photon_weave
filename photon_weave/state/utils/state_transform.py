@@ -1,6 +1,9 @@
+from functools import partial
 from typing import Tuple, Union
 
+import jax
 import jax.numpy as jnp
+from jax.core import Tracer
 
 from photon_weave.state.expansion_levels import ExpansionLevel
 
@@ -36,15 +39,18 @@ def state_expand(
     -----
     In the case of Polarization, it can expand from State Vector onward
     """
-    assert isinstance(dimensions, int)
-    assert isinstance(current_expansion_level, ExpansionLevel)
+    dimensions = int(dimensions)
+    if not isinstance(current_expansion_level, ExpansionLevel):
+        current_expansion_level = ExpansionLevel(current_expansion_level)
     if dimensions < 0:
         raise ValueError("Dimensions must be larger than 0")
     new_state: Union[jnp.ndarray]
     match current_expansion_level:
         case ExpansionLevel.Label:
             if not isinstance(state, int):
-                raise ValueError("Could not expand state, where label is not int type")
+                raise ValueError(
+                    "Could not expand state, where label is not int type"
+                )
             assert state >= 0
             new_state = jnp.zeros(dimensions, dtype=jnp.complex128)
             new_state = new_state.at[state].set(1)
@@ -64,6 +70,15 @@ def state_expand(
         case _:
             raise ValueError("Something went wrong")
     return new_state, new_expansion_level
+
+
+@partial(jax.jit, static_argnames=("dimensions",))
+def state_expand_jit(
+    state: Union[jnp.ndarray, int],
+    current_expansion_level: ExpansionLevel,
+    dimensions: int,
+) -> Tuple[jnp.ndarray, ExpansionLevel]:
+    return state_expand(state, current_expansion_level, dimensions)
 
 
 def state_contract(
@@ -96,6 +111,11 @@ def state_contract(
     """
 
     assert isinstance(current_expansion_level, ExpansionLevel)
+
+    # Traced JAX values cannot be contracted with Python control flow; bail early
+    # so gradient/JIT transformations can proceed without concretization errors.
+    if isinstance(state, Tracer):
+        return state, current_expansion_level, False
 
     success = False
     new_state = state

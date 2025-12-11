@@ -4,10 +4,10 @@ Jaynes-Cummings Model
 The Jaynes-Cummings model is a cornerstone of quantum optics, describing the interaction between a two-level atom (qubit) and a quantized electromagnetic field (mode of a cavity). This tutorial deminstrates how to implement and simulate the Jaynes-Cummings model using the PhotonWeave package.
 
 Implementation
----------
+--------------
 
 1. Imports
-^^^^^^^^^^
+----------
 First import all of the needed libraries and objects in the top of the file.
 
 .. code:: python
@@ -29,7 +29,7 @@ First import all of the needed libraries and objects in the top of the file.
     from photon_weave.extra.expression_interpreter import interpreter
 
 2. Interacting States
-^^^^^^^^^^
+---------------------
 Create the two states, which will be interacting in the simulation. We represent the light state with the `Envelope` and the atom state with the `CustomState`. Since the two systems will be interacting, we put them into one `CompositeEnvelope`.
 
 .. code:: python
@@ -40,8 +40,8 @@ Create the two states, which will be interacting in the simulation. We represent
     qubit.state = 0
     ce = CompositeEnvelope(env, qubit)
 
-2. Hamiltonian Construction
-^^^^^^^^^^
+3. Hamiltonian Construction
+---------------------------
 
 Create the parameters, which define the Hamiltonian
 
@@ -153,8 +153,8 @@ With the context defined, we can define our operator based on the well known Ham
         ]
     )
 
-3. Interacting States
-^^^^^^^^^^
+4. Interacting States
+---------------------
 
 Now we can execute the simulations with capturing the populations after each application of the created unitary operator.
 
@@ -176,8 +176,8 @@ Now we can execute the simulations with capturing the populations after each app
         qubit_excited_populations.append(jnp.abs(qubit_reduced[1][0])**2)
 
 	
-3. Plot the interaction
-^^^^^^^^^^
+5. Plot the interaction
+-----------------------
 
 Using the stored populations we can plot the interactions.
 

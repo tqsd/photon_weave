@@ -3,19 +3,22 @@ Benchmarks
 All benchmarks were carried out on the Thinkpad X1 Carbon 6th Gen:
 
 .. list-table:: Benchmarking Machine
-  * - Parameter
-    - Value
-  * - Operating System
-    - Linux 6.12.7-arch1-1
-  * - Processor
-    - Intel(R) Core(TM) i7-8550U CPU @ 1.80 GHz
-  * - Python Version
-    - 3.13.1
-  * - Total Ram
-    - 15.39 GB
-  * - Total SWAP
-    - 16.93 GB
-    
+   :widths: 30 70
+   :header-rows: 0
+
+   * - Parameter
+     - Value
+   * - Operating System
+     - Linux 6.12.7-arch1-1
+   * - Processor
+     - Intel(R) Core(TM) i7-8550U CPU @ 1.80 GHz
+   * - Python Version
+     - 3.13.1
+   * - Total Ram
+     - 15.39 GB
+   * - Total SWAP
+     - 16.93 GB
+
 
 Lossy Beam Splitter Circuit
 ---------------------------
@@ -33,6 +36,7 @@ Results
    :alt: Lossy Circuit Benchmar results
    :width: 600px
    :align: center
+
 Comments
 ^^^^^^^^
 - **Memory Efficiency:** Photon Weave's dimension-adjustment feature leads to lower memory consumption for states, a capability not currently available in Skit or QuTiP.

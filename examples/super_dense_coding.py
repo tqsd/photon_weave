@@ -2,6 +2,7 @@
 Example of using Reusable components in order to
 create super dense coding protocol
 """
+
 from random import randint
 
 from photon_weave.state.envelope import Envelope
@@ -59,7 +60,9 @@ if __name__ == "__main__":
     sender.register_receiver(receiver)
 
     # Generate message list
-    messages = [(randint(0, 1), randint(0, 1)) for _ in range(NUMBER_OF_MESSAGES)]
+    messages = [
+        (randint(0, 1), randint(0, 1)) for _ in range(NUMBER_OF_MESSAGES)
+    ]
 
     # Preshare the entanglement
     sender.share_entanglement(NUMBER_OF_MESSAGES)

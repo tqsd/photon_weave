@@ -8,45 +8,55 @@ from __future__ import annotations
 
 import uuid
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import jax.numpy as jnp
 import numpy as np
 from jax import jit
 from scipy.integrate import quad
 
-from photon_weave._math.ops import (
+from photon_weave.constants import C0, gaussian
+from photon_weave.core.ops import (
     kraus_identity_check,
     num_quanta_matrix,
     num_quanta_vector,
 )
-from photon_weave.constants import C0, gaussian
+from photon_weave.core.rng import borrow_key
 from photon_weave.operation import (
     FockOperationType,
     Operation,
     PolarizationOperationType,
 )
 from photon_weave.photon_weave import Config
+from photon_weave.state.base_state import BaseState
+from photon_weave.state.composite_envelope import CompositeEnvelope
 from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.state.fock import Fock
-from photon_weave.state.polarization import Polarization
+from photon_weave.state.polarization import Polarization, PolarizationLabel
 
-from .utils.measurements import measure_matrix, measure_POVM_matrix, measure_vector
+from .utils import shape_planning
+from .utils.measurements import (
+    measure_matrix,
+    measure_matrix_expectation,
+    measure_matrix_jit,
+    measure_POVM_matrix,
+    measure_vector,
+    measure_vector_expectation,
+    measure_vector_jit,
+)
 from .utils.operations import (
     apply_kraus_matrix,
     apply_operation_matrix,
     apply_operation_vector,
 )
 from .utils.representation import representation_matrix, representation_vector
-from .utils.state_transform import state_contract, state_expand
+from .utils.shape_planning import ShapePlan, compiled_kernels, envelope_plan
+from .utils.state_transform import (
+    state_contract,
+    state_expand,
+    state_expand_jit,
+)
 from .utils.trace_out import trace_out_matrix, trace_out_vector
-
-if TYPE_CHECKING:
-    # from photon_weave.operation import Operation
-    from photon_weave.state.composite_envelope import CompositeEnvelope
-    from photon_weave.state.polarization import PolarizationLabel
-
-    from .base_state import BaseState
 
 jitted_kron = jit(jnp.kron)
 
@@ -101,13 +111,12 @@ class Envelope:
         polarization: Optional["Polarization"] = None,
         temporal_profile: TemporalProfileInstance = default_temporal_profile,
     ):
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
-
         self.uid: uuid.UUID = uuid.uuid4()
         self.fock = Fock() if fock is None else fock
         self.fock.envelope = self
-        self.polarization = Polarization() if polarization is None else polarization
+        self.polarization = (
+            Polarization() if polarization is None else polarization
+        )
         self.polarization.envelope = self
         self._expansion_level: Optional[ExpansionLevel] = None
         self.composite_envelope_id: Optional[uuid.UUID] = None
@@ -115,6 +124,9 @@ class Envelope:
         self.measured = False
         self.wavelength = wavelength
         self.temporal_profile = temporal_profile
+        self._plan_cache: Dict[
+            Tuple[Tuple[int, int], Tuple[int, int]], ShapePlan
+        ] = {}
 
     @property
     def expansion_level(self) -> Optional[ExpansionLevel]:
@@ -149,10 +161,18 @@ class Envelope:
             fock_repr.extend([" " * max_length] * (max_lines - len(fock_repr)))
             pol_repr.extend([""] * (max_lines - len(pol_repr)))
             zipped_lines = zip(fock_repr, pol_repr)
-            return "\n".join(f"{f_line} ⊗ {p_line}" for f_line, p_line in zipped_lines)
-        elif self.state is not None and self.expansion_level == ExpansionLevel.Vector:
+            return "\n".join(
+                f"{f_line} ⊗ {p_line}" for f_line, p_line in zipped_lines
+            )
+        elif (
+            self.state is not None
+            and self.expansion_level == ExpansionLevel.Vector
+        ):
             return representation_vector(self.state)
-        elif self.state is not None and self.expansion_level == ExpansionLevel.Matrix:
+        elif (
+            self.state is not None
+            and self.expansion_level == ExpansionLevel.Matrix
+        ):
             return representation_matrix(self.state)
         return str(self.uid)  # pragme: no cover
 
@@ -161,9 +181,6 @@ class Envelope:
         Combines the fock and polarization into one vector or matrix and
         stores it under self.composite_vector or self.composite_matrix appropriately
         """
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
-
         for s in [self.fock, self.polarization]:
             if s.measured:
                 raise ValueError(
@@ -219,8 +236,6 @@ class Envelope:
         """
         Property, which return appropriate composite envelope
         """
-        from photon_weave.state.composite_envelope import CompositeEnvelope
-
         if self.composite_envelope_id is not None:
             ce = CompositeEnvelope._instances[self.composite_envelope_id][0]
             assert ce is not None, "Composite Envelope should exist"
@@ -249,20 +264,45 @@ class Envelope:
             self.polarization.expand()
         else:
             assert isinstance(self.expansion_level, ExpansionLevel)
-            self.state, self.expansion_level = state_expand(
-                self.state, self.expansion_level, self.dimensions
-            )
+            if Config().use_jit:
+                self.state, self.expansion_level = state_expand_jit(
+                    self.state, self.expansion_level, self.dimensions
+                )
+            else:
+                self.state, self.expansion_level = state_expand(
+                    self.state, self.expansion_level, self.dimensions
+                )
 
     def measure(
         self,
         *states: "BaseState",
         separate_measurement: bool = False,
         destructive: bool = True,
-    ) -> Dict["BaseState", int]:
+        key: jnp.ndarray | None = None,
+        return_key: bool = False,
+    ) -> Tuple[Dict["BaseState", int], jnp.ndarray | None]:
         """
-        Measures the envelope. If the state is measured partially, then the state are
-        moved to their respective spaces. If the measurement is destructive, then the
-        state is destroyed post measurement.
+        Measure one or both subsystems and collapse the envelope.
+
+        If the state is stored jointly (combined), targets are reordered, measured,
+        and the result is contracted back onto the surviving subsystems. When
+        `separate_measurement` is True, unmeasured subsystems are retained and
+        contracted once (plus an extra contraction if `Config().contractions` is
+        enabled) to restore their standalone representation even when the global
+        contraction flag was previously off.
+
+        Parameters
+        ----------
+        *states : BaseState, optional
+            Subsystems to measure; defaults to both fock and polarization.
+        separate_measurement : bool, optional
+            When True, leave unmeasured subsystems intact; otherwise measure all
+            provided targets together. Defaults to False.
+        destructive : bool, optional
+            When True (default), marks measured subsystems as destroyed.
+        key : jnp.ndarray or None, optional
+            Optional PRNG key. Required when JIT is enabled; otherwise a key is
+            drawn from ``Config`` if not supplied.
 
         Parameter
         ---------
@@ -280,6 +320,9 @@ class Envelope:
         Dict[BaseState,int]
             Dictionary of outcomes, where the state is key and its outcome measurement
             is the value (int)
+        jnp.ndarray or None
+            Next key after measurement (if `return_key` is True and a key was
+            provided).
         """
         if self.measured:
             raise ValueError("Envelope has already been destroyed")
@@ -290,12 +333,25 @@ class Envelope:
         if len(states) == 0:
             states = (self.fock, self.polarization)
 
-        outcomes = {}
+        C = Config()
+        if C.use_jit and key is None:
+            raise ValueError("PRNG key is required when use_jit is enabled")
+        if key is None:
+            key = C.random_key
+
+        outcomes: Dict["BaseState", int] = {}
+        next_key: jnp.ndarray | None = key
         if self.state is None:
             for s in [self.polarization, self.fock]:
-                out = s.measure()
+                use_key, key = borrow_key(key)
+                out = s.measure(
+                    separate_measurement=separate_measurement,
+                    destructive=destructive,
+                    key=use_key,
+                )
                 for k, v in out.items():
                     outcomes[k] = v
+            next_key = key
         else:
             self.reorder(self.fock, self.polarization)
             if not separate_measurement and len(states) == 1:
@@ -305,15 +361,42 @@ class Envelope:
 
             assert all(isinstance(s.index, int) for s in states)
 
-            match self.expansion_level:
-                case ExpansionLevel.Vector:
-                    outcomes, self.state = measure_vector(
-                        [self.fock, self.polarization], list(states), self.state
-                    )
-                case ExpansionLevel.Matrix:
-                    outcomes, self.state = measure_matrix(
-                        [self.fock, self.polarization], list(states), self.state
-                    )
+            plan = self._plan_for_states(tuple(states)) if C.use_jit else None
+            if C.use_jit:
+                use_key, _ = borrow_key(key)
+                match self.expansion_level:
+                    case ExpansionLevel.Vector:
+                        outcomes, self.state, next_key = measure_vector_jit(
+                            [self.fock, self.polarization],
+                            list(states),
+                            self.state,
+                            use_key,
+                            meta=plan,
+                        )
+                    case ExpansionLevel.Matrix:
+                        outcomes, self.state, next_key = measure_matrix_jit(
+                            [self.fock, self.polarization],
+                            list(states),
+                            self.state,
+                            use_key,
+                            meta=plan,
+                        )
+            else:
+                match self.expansion_level:
+                    case ExpansionLevel.Vector:
+                        outcomes, self.state = measure_vector(
+                            [self.fock, self.polarization],
+                            list(states),
+                            self.state,
+                            key=key,
+                        )
+                    case ExpansionLevel.Matrix:
+                        outcomes, self.state = measure_matrix(
+                            [self.fock, self.polarization],
+                            list(states),
+                            self.state,
+                            key=key,
+                        )
 
             # Post Measurement process
             C = Config()
@@ -322,9 +405,10 @@ class Envelope:
                     s.state = self.state
                     s.index = None
                     s.expansion_level = self.expansion_level
-                    # Try to contract the state twice
+                    # Always contract once to restore the standalone representation.
+                    s.contract()
+                    # Optionally contract again when enabled to reach the simplest form.
                     if C.contractions:
-                        s.contract()
                         s.contract()
                 else:
                     s.state = jnp.zeros((s.dimensions, 1))
@@ -342,13 +426,55 @@ class Envelope:
         if destructive:
             self._set_measured()
 
+        if return_key:
+            return outcomes, next_key
         return outcomes
+
+    def measure_expectation(
+        self, *states: "BaseState"
+    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        """
+        Differentiable expectation of measuring the given subsystems.
+
+        Returns (probabilities, expected post-measurement density matrix)
+        without sampling or collapsing state.
+        """
+        if self.measured:
+            raise ValueError("Envelope has already been destroyed")
+        if len(states) == 0:
+            states = (self.fock, self.polarization)
+        if self.state is None:
+            self.combine()
+
+        assert isinstance(self.state, jnp.ndarray)
+        assert isinstance(self.expansion_level, ExpansionLevel)
+        # Do not reorder to preserve the stored state; rely on meta to map axes.
+        plan = self._plan_for_states(tuple(states))
+        match self.expansion_level:
+            case ExpansionLevel.Vector:
+                return measure_vector_expectation(
+                    self._current_state_order(),
+                    list(states),
+                    self.state,
+                    meta=plan,
+                )
+            case ExpansionLevel.Matrix:
+                return measure_matrix_expectation(
+                    self._current_state_order(),
+                    list(states),
+                    self.state,
+                    meta=plan,
+                )
+        raise ValueError(
+            "Unsupported expansion level for expectation measurement"
+        )
 
     def measure_POVM(
         self,
         operators: List[jnp.ndarray],
         *states: "BaseState",
         destructive: bool = True,
+        key: jnp.ndarray | None = None,
     ) -> Tuple[int, Dict["BaseState", int]]:
         """
         Positive Operation-Valued Measurement
@@ -367,21 +493,22 @@ class Envelope:
             Order of the states must resemble order of the operator tensoring
         destructive: bool
             If True then after the measurement the density matrix is discarded
+        key : jnp.ndarray or None, optional
+            Optional PRNG key; required when JIT is enabled.
 
         Returns
         -------
         int
             The index of the measurement corresponding to the outcome
         """
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
-
         if self.measured:
             raise ValueError("This envelope was already measured")
 
         # Check the validity of the given states
         if len(states) == 2:
-            if (isinstance(states[0], Fock) and isinstance(states[1], Fock)) or (
+            if (
+                isinstance(states[0], Fock) and isinstance(states[1], Fock)
+            ) or (
                 isinstance(states[0], Polarization)
                 and isinstance(states[1], Polarization)
             ):
@@ -398,17 +525,21 @@ class Envelope:
         # Handle partial uncombined measurement
         if len(states) == 1 and self.state is None:
             if isinstance(states[0], Fock):
-                outcome = self.fock.measure_POVM(operators, destructive=destructive)
+                outcome = self.fock.measure_POVM(
+                    operators, destructive=destructive, key=key
+                )
             elif isinstance(states[0], Polarization):
                 outcome = self.polarization.measure_POVM(
-                    operators, destructive=destructive
+                    operators, destructive=destructive, key=key
                 )
             return outcome
 
         # Handle the measurement if the state is in composite envelope product state
         if self.composite_envelope_id is not None:
             assert self.composite_envelope is not None
-            return self.composite_envelope.measure_POVM(operators, *states)
+            return self.composite_envelope.measure_POVM(
+                operators, *states, destructive=destructive, key=key
+            )
 
         # Expand to matrix state if not alreay in it
         assert isinstance(self.expansion_level, ExpansionLevel)
@@ -423,8 +554,14 @@ class Envelope:
         )
         assert isinstance(self.state, jnp.ndarray)
         self.reorder(self.fock, self.polarization)
+        plan = self._plan_for_states(tuple(states))
         outcome, self.state = measure_POVM_matrix(
-            [self.fock, self.polarization], list(states), operators, self.state
+            [self.fock, self.polarization],
+            list(states),
+            operators,
+            self.state,
+            key,
+            meta=plan.meta,
         )
         if len(states) == 2:
             if destructive:
@@ -435,7 +572,9 @@ class Envelope:
         else:
             if destructive:
                 other_state = (
-                    self.fock if states[0] is self.polarization else self.polarization
+                    self.fock
+                    if states[0] is self.polarization
+                    else self.polarization
                 )
                 other_state.state = trace_out_matrix(
                     [self.fock, self.polarization], [other_state], self.state
@@ -452,9 +591,10 @@ class Envelope:
         operators: List[jnp.ndarray],
         *states: BaseState,
         validity_check: bool = True,
+        key: jnp.ndarray | None = None,
     ) -> None:
         """
-        Apply Kraus operator to the envelope.
+        Apply a set of Kraus operators to the envelope state.
 
         Parameters
         ----------
@@ -464,23 +604,31 @@ class Envelope:
             List of states in the same order as the tensoring of operators
         validity_check: bool
             Checks if given channel is valid, True by default
-        """
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization
+        key : jnp.ndarray or None, optional
+            Optional PRNG key; required when JIT is enabled.
 
+        Notes
+        -----
+        The envelope state is always contracted once after application to restore
+        standalone representations, and a second time when global contractions
+        are enabled via ``Config().contractions``.
+        """
         if len(states) == 0:
             raise ValueError("At least one state must be defined")
 
         s_uids = [s.uid for s in states]
         if (len(states) == 2) and (
-            (self.fock.uid not in s_uids) or (self.polarization.uid not in s_uids)
+            (self.fock.uid not in s_uids)
+            or (self.polarization.uid not in s_uids)
         ):
             raise ValueError("Both given states must belong to the Envelope")
         elif len(states) > 2:
             raise ValueError("Too many states given")
 
         # If any of the states is in bigger product state apply the kraus there
-        if self.state is None and any(isinstance(s.index, tuple) for s in states):
+        if self.state is None and any(
+            isinstance(s.index, tuple) for s in states
+        ):
             assert self.composite_envelope_id is not None
             assert isinstance(self.composite_envelope, CompositeEnvelope)
             self.composite_envelope.apply_kraus(operators, *states)
@@ -516,10 +664,17 @@ class Envelope:
         while self.expansion_level < ExpansionLevel.Matrix:
             self.expand()
         self.state = apply_kraus_matrix(
-            state_objs, states, self.state, operators  # type: ignore
+            state_objs,
+            states,
+            self.state,
+            operators,  # type: ignore
+            use_contraction=Config().contractions,
         )
 
         C = Config()
+        # Always contract once to return the envelope to a standalone form,
+        # then optionally apply an extra contraction when enabled globally.
+        self.contract()
         if C.contractions:
             self.contract()
 
@@ -535,7 +690,8 @@ class Envelope:
         states_list = list(states)
         if len(states_list) == 2:
             if (
-                isinstance(states_list[0], Fock) and isinstance(states_list[1], Fock)
+                isinstance(states_list[0], Fock)
+                and isinstance(states_list[1], Fock)
             ) or (
                 isinstance(states_list[0], Polarization)
                 and isinstance(states_list[1], Polarization)
@@ -568,7 +724,10 @@ class Envelope:
         current_order[self.fock.index] = self.fock
         current_order[self.polarization.index] = self.polarization
 
-        if current_order[0] is states_list[0] and current_order[1] is states_list[1]:
+        if (
+            current_order[0] is states_list[0]
+            and current_order[1] is states_list[1]
+        ):
             return
 
         current_shape = [0, 0]
@@ -578,7 +737,9 @@ class Envelope:
         if self.expansion_level == ExpansionLevel.Vector:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, 1)
-            tmp_vector = self.state.reshape((current_shape[0], current_shape[1]))
+            tmp_vector = self.state.reshape(
+                (current_shape[0], current_shape[1])
+            )
             tmp_vector = jnp.transpose(tmp_vector, (1, 0))
             self.state = tmp_vector.reshape(-1, 1)
             self.fock.index, self.polarization.index = (
@@ -589,7 +750,10 @@ class Envelope:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, self.dimensions)
             tmp_matrix = self.state.reshape(
-                current_shape[0], current_shape[1], current_shape[0], current_shape[1]
+                current_shape[0],
+                current_shape[1],
+                current_shape[0],
+                current_shape[1],
             )
             tmp_matrix = jnp.transpose(tmp_matrix, (1, 0, 3, 2))
             self.state = tmp_matrix.reshape(
@@ -645,9 +809,6 @@ class Envelope:
             The given states will be returned in the given
             order (tensoring order), with the rest traced out
         """
-        from photon_weave.state.fock import Fock
-        from photon_weave.state.polarization import Polarization, PolarizationLabel
-
         if self.composite_envelope is not None:
             assert isinstance(self.composite_envelope, CompositeEnvelope)
             return self.composite_envelope.trace_out(*states)
@@ -679,7 +840,34 @@ class Envelope:
                 )
         return jnp.ndarray([[1]])  # pragma: no cover
 
-    def overlap_integral(self, other: Envelope, delay: float, n: float = 1) -> float:
+    def _current_state_order(self) -> List[BaseState]:
+        """
+        Return the current tensor order of the envelope subsystems.
+        """
+        if isinstance(self.fock.index, int) and isinstance(
+            self.polarization.index, int
+        ):
+            ordered: List[Optional[BaseState]] = [None, None]
+            ordered[self.fock.index] = self.fock
+            ordered[self.polarization.index] = self.polarization
+            return [s for s in ordered if s is not None]
+        return [self.fock, self.polarization]
+
+    def _plan_for_states(self, targets: Tuple[BaseState, ...]) -> ShapePlan:
+        order = tuple(self._current_state_order())
+        target_ids = tuple(id(t) for t in targets)
+        key = (
+            tuple(s.dimensions for s in order),
+            tuple(id(s) for s in order),
+            target_ids,
+        )
+        if key not in self._plan_cache:
+            self._plan_cache[key] = shape_planning.build_plan(order, targets)
+        return self._plan_cache[key]
+
+    def overlap_integral(
+        self, other: Envelope, delay: float, n: float = 1
+    ) -> float:
         r"""
         Given delay in [seconds] this method computes overlap of temporal
         profiles between this envelope and other envelope.
@@ -702,7 +890,28 @@ class Envelope:
 
         return result
 
-    def resize_fock(self, new_dimensions: int, state: Optional[Fock] = None) -> bool:
+    def prepare_meta(
+        self, *target_states: BaseState
+    ) -> shape_planning.DimsMeta:
+        """
+        Prepare static dimension metadata for this envelope.
+
+        If no target states are provided, both fock and polarization are targets.
+        """
+        return envelope_plan(self, *target_states).meta
+
+    def compiled_kernels(self, *target_states: BaseState):
+        """
+        Return meta-bound, jitted kernels for this envelope.
+
+        If no target states are provided, both fock and polarization are targets.
+        """
+        plan = envelope_plan(self, *target_states)
+        return compiled_kernels(plan)
+
+    def resize_fock(
+        self, new_dimensions: int, state: Optional[Fock] = None
+    ) -> bool:
         """
         Adjusts the dimension of the fock in the envelope. The dimensions are adjusted
         also when the fock space is in the product state.
@@ -742,7 +951,9 @@ class Envelope:
                 padding = new_dimensions - self.fock.dimensions
                 pad_config = [(0, 0) for _ in range(ps.ndim)]
                 pad_config[self.fock.index] = (0, padding)
-                ps = jnp.pad(ps, pad_config, mode="constant", constant_values=0)
+                ps = jnp.pad(
+                    ps, pad_config, mode="constant", constant_values=0
+                )
                 self.state = ps.reshape(-1, 1)
                 self.fock.dimensions = new_dimensions
                 return True
@@ -762,16 +973,18 @@ class Envelope:
         if self.expansion_level == ExpansionLevel.Matrix:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, self.dimensions)
-            ps = self.state.reshape([*reshape_shape, *reshape_shape]).transpose(
-                [0, 2, 1, 3]
-            )
+            ps = self.state.reshape(
+                [*reshape_shape, *reshape_shape]
+            ).transpose([0, 2, 1, 3])
             if new_dimensions > self.fock.dimensions:
                 padding = new_dimensions - self.fock.dimensions
                 pad_config = [(0, 0) for _ in range(ps.ndim)]
                 pad_config[self.fock.index * 2] = (0, padding)
                 pad_config[self.fock.index * 2 + 1] = (0, padding)
 
-                ps = jnp.pad(ps, pad_config, mode="constant", constant_values=0)
+                ps = jnp.pad(
+                    ps, pad_config, mode="constant", constant_values=0
+                )
                 self.fock.dimensions = new_dimensions
                 ps = ps.transpose([0, 2, 1, 3])
                 self.state = ps.reshape((self.dimensions, self.dimensions))
@@ -828,16 +1041,33 @@ class Envelope:
             return
 
         if not jnp.any(jnp.abs(self.state) > 0):
-            raise ValueError("The state is invalid." "The state only consists of 0s.")
+            raise ValueError(
+                "The state is invalid." "The state only consists of 0s."
+            )
 
-        # Compute the operator
-        if isinstance(operation._operation_type, FockOperationType) and isinstance(
-            states[0], Fock
-        ):
+        C = Config()
+        if C.use_jit and C.dynamic_dimensions:
+            raise ValueError(
+                "JIT mode does not support dynamic dimension resizing; "
+                "pre-size states or disable use_jit."
+            )
+
+        # Compute the operator (no dynamic resizing allowed in jit mode)
+        if isinstance(
+            operation._operation_type, FockOperationType
+        ) and isinstance(states[0], Fock):
             to = self.fock.trace_out()
             assert isinstance(to, jnp.ndarray)
             operation.compute_dimensions(states[0]._num_quanta, to)
-            states[0].resize(operation.dimensions[0])
+            target_dim = operation.dimensions[0]
+            if C.use_jit and target_dim != states[0].dimensions:
+                raise ValueError(
+                    "JIT mode requires static Fock dimensions; "
+                    f"expected {states[0].dimensions}, got {target_dim}. "
+                    "Pre-size the state or disable use_jit."
+                )
+            if not C.use_jit:
+                states[0].resize(target_dim)
         elif isinstance(
             operation._operation_type, PolarizationOperationType
         ) and isinstance(states[0], Polarization):
@@ -851,18 +1081,32 @@ class Envelope:
         current_order_dict: Dict[int, BaseState] = {}
         current_order_dict[self.fock.index] = self.fock
         current_order_dict[self.polarization.index] = self.polarization
-        current_order = [current_order_dict[i] for i in sorted(current_order_dict)]
+        current_order = [
+            current_order_dict[i] for i in sorted(current_order_dict)
+        ]
         # current_order: List[Optional[BaseState]] = [None, None]
         # current_order[self.fock.index] = self.fock
         # current_order[self.polarization.index] = self.polarization
+        plan = self._plan_for_states(tuple(states)) if C.use_jit else None
+
         match self.expansion_level:
             case ExpansionLevel.Vector:
                 self.state = apply_operation_vector(
-                    current_order, list(states), self.state, operation.operator
+                    current_order,
+                    list(states),
+                    self.state,
+                    operation.operator,
+                    meta=plan,
+                    use_contraction=C.contractions,
                 )
             case ExpansionLevel.Matrix:
                 self.state = apply_operation_matrix(
-                    current_order, list(states), self.state, operation.operator
+                    current_order,
+                    list(states),
+                    self.state,
+                    operation.operator,
+                    meta=plan,
+                    use_contraction=C.contractions,
                 )
 
         if not jnp.any(jnp.abs(self.state) > 0):

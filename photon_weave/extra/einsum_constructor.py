@@ -1,8 +1,7 @@
 import itertools
-from typing import TYPE_CHECKING, Dict, List
+from typing import Dict, List
 
-if TYPE_CHECKING:
-    from photon_weave.state.base_state import BaseState
+from photon_weave.state.interfaces import BaseStateLike as BaseState
 
 
 def apply_operator_vector(state_objs: list, operator_objs: list) -> str:
@@ -99,7 +98,9 @@ def apply_operator_matrix(state_objs: list, operator_objs: list) -> str:
 
     >>> state = original_state.reshape(dims)
     >>> einsum = trace_out(state_objs, operator_objs)
-    >>> new_state = jnp.einsum(einsum, operator, state, jnp.conj(operator))
+    >>> new_state = oe.contract(
+    ...     einsum, operator, state, jnp.conj(operator), backend="jax"
+    ... )
     >>> new_state = new_state.reshape(new_dims)
 
     In this example:

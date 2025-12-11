@@ -1,24 +1,36 @@
+from __future__ import annotations
+
 import sys
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
 import jax.numpy as jnp
 
-from photon_weave._math.ops import kraus_identity_check
+from photon_weave.core.ops import kraus_identity_check
 from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
+from photon_weave.state.interfaces import (
+    CompositeEnvelopeLike as CompositeEnvelope,
+)
+from photon_weave.state.interfaces import EnvelopeLike as Envelope
+
+if TYPE_CHECKING:
+    from photon_weave.state.polarization import PolarizationLabel
 
 from .utils.measurements import measure_POVM_matrix
 from .utils.operations import apply_kraus_matrix
 from .utils.representation import representation_matrix, representation_vector
 from .utils.routing import route_operation
 
-if TYPE_CHECKING:
-    from photon_weave.state.composite_envelope import CompositeEnvelope
-    from photon_weave.state.envelope import Envelope
-    from photon_weave.state.polarization import PolarizationLabel
+
+def _is_envelope(obj: object) -> bool:
+    return hasattr(obj, "fock") and hasattr(obj, "polarization")
+
+
+def _is_polarization(obj: object) -> bool:
+    return obj.__class__.__name__ == "Polarization"
 
 
 class BaseState(ABC):
@@ -39,9 +51,9 @@ class BaseState(ABC):
         self._expansion_level: ExpansionLevel = ExpansionLevel.Label
         self._index: Optional[Union[int, Tuple[int, int]]] = None
         self._dimensions: int = -1
-        self._composite_envelope: Optional[CompositeEnvelope] = None
-        self._envelope: Optional[Envelope] = None
-        self.state: Optional[Union[int, PolarizationLabel, jnp.ndarray]] = None
+        self._composite_envelope: Optional[Any] = None
+        self._envelope: Optional[Any] = None
+        self.state: Optional[Union[int, Any, jnp.ndarray]] = None
 
     @property
     def size(self) -> int:
@@ -168,7 +180,13 @@ class BaseState(ABC):
             self.expand()
 
         assert isinstance(self.state, jnp.ndarray)
-        self.state = apply_kraus_matrix([self], [self], self.state, operators)
+        self.state = apply_kraus_matrix(
+            [self],
+            [self],
+            self.state,
+            operators,
+            use_contraction=Config().contractions,
+        )
 
         C = Config()
         if C.contractions:
@@ -199,6 +217,9 @@ class BaseState(ABC):
         tol: float
             Tolerance when comparing matrices
         """
+        raise NotImplementedError(
+            "contract must be implemented by concrete state classes"
+        )
 
     @route_operation()
     def measure_POVM(
@@ -206,6 +227,7 @@ class BaseState(ABC):
         operators: List[jnp.ndarray],
         destructive: bool = True,
         partial: bool = False,
+        key: jnp.ndarray | None = None,
     ) -> Tuple[int, Dict["BaseState", int]]:
         """
         Positive Operation-Valued Measurement
@@ -233,9 +255,6 @@ class BaseState(ABC):
         will be executed in the state container, which contains this
         stat.
         """
-        from photon_weave.state.envelope import Envelope
-        from photon_weave.state.polarization import Polarization
-
         assert isinstance(self.expansion_level, ExpansionLevel)
         while self.expansion_level < ExpansionLevel.Matrix:
             self.expand()
@@ -244,7 +263,7 @@ class BaseState(ABC):
         assert self.state.shape == (self.dimensions, self.dimensions)
 
         outcome, self.state = measure_POVM_matrix(
-            [self], [self], operators, self.state
+            [self], [self], operators, self.state, key
         )
 
         result: Tuple[int, Dict["BaseState", int]] = (outcome, {})
@@ -252,13 +271,12 @@ class BaseState(ABC):
             self._set_measured()
 
         if not partial:
-            if isinstance(self.envelope, Envelope):
+            env = self.envelope
+            if env is not None and _is_envelope(env):
                 state = (
-                    self.envelope.fock
-                    if isinstance(self, Polarization)
-                    else self.envelope.polarization
+                    env.fock if _is_polarization(self) else env.polarization
                 )
-                out = state.measure()
+                out = state.measure(destructive=destructive, key=key)
                 for k, v in out.items():
                     result[1][k] = v
 
@@ -293,6 +311,19 @@ class BaseState(ABC):
 
     @abstractmethod
     def measure(
-        self, separate_measurement: bool = False, destructive: bool = True
+        self,
+        separate_measurement: bool = False,
+        destructive: bool = True,
+        key: jnp.ndarray | None = None,
     ) -> Dict["BaseState", int]:
+        pass
+
+    @abstractmethod
+    def measure_expectation(self) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        """
+        Differentiable expectation of measuring this subsystem.
+
+        Returns probabilities and expected post-measurement density
+        for the unmeasured remainder (empty in the single-state case).
+        """
         pass

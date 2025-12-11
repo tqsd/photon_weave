@@ -16,7 +16,9 @@ class TestCustomStateExpansionContraction(unittest.TestCase):
         cs.expand()
         self.assertEqual(cs.expansion_level, ExpansionLevel.Matrix)
         self.assertTrue(
-            jnp.allclose(jnp.array([[1, 0, 0], [0, 0, 0], [0, 0, 0]]), cs.state)
+            jnp.allclose(
+                jnp.array([[1, 0, 0], [0, 0, 0], [0, 0, 0]]), cs.state
+            )
         )
         cs.contract(final=ExpansionLevel.Vector)
         self.assertEqual(cs.expansion_level, ExpansionLevel.Vector)
@@ -86,12 +88,12 @@ class TestCustomStateKrauApply(unittest.TestCase):
         cs = CustomState(2)
         op1 = jnp.array([[0, 0, 0], [1, 0, 0]])
         op2 = jnp.array([[0, 0], [0, 1]])
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             cs.apply_kraus([op1, op2])
 
     def test_kraus_apply_exception_identity(self) -> None:
         cs = CustomState(2)
         op1 = jnp.array([[0, 0], [1, 0]])
         op2 = jnp.array([[1, 0], [0, 0]])
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             cs.apply_kraus([op1, op2])

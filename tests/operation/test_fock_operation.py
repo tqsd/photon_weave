@@ -1,8 +1,8 @@
 import unittest
 import traceback
+from contextlib import contextmanager
 
 import jax.numpy as jnp
-import pytest
 
 from photon_weave._math.ops import (
     annihilation_operator,
@@ -18,121 +18,129 @@ from photon_weave.state.expansion_levels import ExpansionLevel
 from photon_weave.state.utils.state_transform import state_expand
 
 
+@contextmanager
+def _config(contraction=None, dynamic_dimensions=None):
+    cfg = Config()
+    prev_contraction = cfg.contractions
+    prev_dynamic = cfg.dynamic_dimensions
+    try:
+        if contraction is not None:
+            cfg.set_contraction(contraction)
+        if dynamic_dimensions is not None:
+            cfg.set_dynamic_dimensions(dynamic_dimensions)
+        yield
+    finally:
+        cfg.set_contraction(prev_contraction)
+        cfg.set_dynamic_dimensions(prev_dynamic)
+
+
+def _assert_number_repr(state, expected_index: int):
+    if isinstance(state, int):
+        assert state == expected_index
+        return
+    arr = jnp.asarray(state)
+    flat = arr.reshape(-1)
+    basis = jnp.zeros_like(flat)
+    basis = basis.at[expected_index].set(1)
+    if arr.ndim == 1 or (arr.ndim == 2 and arr.shape[1] == 1):
+        assert jnp.allclose(flat, basis)
+        return
+    if arr.ndim == 2:
+        diag = jnp.diag(arr)
+        assert jnp.allclose(diag, basis[: diag.shape[0]])
+        assert jnp.allclose(arr, jnp.diag(diag))
+        return
+    raise AssertionError(f"Unexpected state representation ndim={arr.ndim}")
+
+
 class TestFockOperationIdentity(unittest.TestCase):
     def test_identity_operation_vector(self) -> None:
-        fo = Fock()
-        fo.state = 2
-        fo.dimensions = 3
         op = Operation(FockOperationType.Identity)
-        fo.apply_operation(op)
-        self.assertEqual(fo.state, 2)
+        for contraction in (False, True):
+            with _config(contraction=contraction):
+                fo = Fock()
+                fo.state = 2
+                fo.dimensions = 3
+                fo.apply_operation(op)
+                _assert_number_repr(fo.state, 2)
 
 
 class TestFockOperationCreation(unittest.TestCase):
     def test_creation_operation_label(self) -> None:
-        C = Config()
-        C.set_contraction(True)
-        C.set_dynamic_dimensions(True)
-        f = Fock()
         op = Operation(FockOperationType.Creation)
-        for i in range(20):
-            f.apply_operation(op)
-            self.assertEqual(f.state, i + 1)
-        C.set_dynamic_dimensions(False)
+        with _config(contraction=True, dynamic_dimensions=True):
+            f = Fock()
+            for i in range(20):
+                f.apply_operation(op)
+                self.assertEqual(f.state, i + 1)
 
     def test_creation_operation_vector(self) -> None:
-        C = Config()
-        C.set_contraction(False)
-        C.set_dynamic_dimensions(True)
-
-        f = Fock()
-        f.expand()
         op = Operation(FockOperationType.Creation)
-        for i in range(10):
-            f.apply_operation(op)
-            expected_state = jnp.zeros((i + 2, 1))
-            expected_state = expected_state.at[i + 1, 0].set(1)
-            self.assertTrue(jnp.allclose(f.state, expected_state))
-
-        C.set_contraction(True)
-
-        f = Fock()
-        f.expand()
-
-        for i in range(10):
-            f.apply_operation(op)
-            expected_state = jnp.zeros((i + 2, 1))
-            expected_state = expected_state.at[i + 1, 0].set(1)
-            self.assertEqual(f.state, i + 1)
-
-        C.set_dynamic_dimensions(False)
+        for contraction in (False, True):
+            with _config(contraction=contraction, dynamic_dimensions=True):
+                f = Fock()
+                f.expand()
+                for i in range(10):
+                    f.apply_operation(op)
+                    _assert_number_repr(f.state, i + 1)
 
     def test_creation_operation_matrix(self) -> None:
-        C = Config()
-        C.set_contraction(False)
-        C.set_dynamic_dimensions(True)
-
-        f = Fock()
-        f.expand()
-        f.expand()
         op = Operation(FockOperationType.Creation)
-        for i in range(10):
-            f.apply_operation(op)
-            expected_state = jnp.zeros((i + 2, i + 2))
-            expected_state = expected_state.at[i + 1, i + 1].set(1)
-            self.assertTrue(jnp.allclose(f.state, expected_state))
-        C.set_dynamic_dimensions(False)
+        for contraction in (False, True):
+            with _config(contraction=contraction, dynamic_dimensions=True):
+                f = Fock()
+                f.expand()
+                f.expand()
+                for i in range(10):
+                    f.apply_operation(op)
+                    _assert_number_repr(f.state, i + 1)
 
     def test_creation_operation_envelope_vector(self) -> None:
-        C = Config()
-        C.set_contraction(False)
-        env = Envelope()
-        env.fock.expand()
-        env.polarization.expand()
-        env.combine()
         op = Operation(FockOperationType.Creation)
-        for i in range(5):
-            env.apply_operation(op, env.fock)
-            expected_state = jnp.zeros(((i + 2) * 2, 1))
-            expected_state = expected_state.at[(i + 1) * 2, 0].set(1)
-            self.assertTrue(jnp.allclose(env.state, expected_state))
+        for contraction in (False, True):
+            with _config(contraction=contraction):
+                env = Envelope()
+                env.fock.expand()
+                env.polarization.expand()
+                env.combine()
+                for i in range(5):
+                    env.apply_operation(op, env.fock)
+                    _assert_number_repr(env.state, (i + 1) * 2)
 
     def test_creation_operation_envelope_matrix(self) -> None:
-        C = Config()
-        C.set_contraction(True)
-        env = Envelope()
-        env.fock.expand()
-        env.polarization.expand()
-        env.combine()
-        env.expand()
         op = Operation(FockOperationType.Creation)
-        for i in range(5):
-            env.apply_operation(op, env.fock)
-            expected_state = jnp.zeros(((i + 2) * 2, 1))
-            expected_state = expected_state.at[(i + 1) * 2, 0].set(1)
-            self.assertTrue(jnp.allclose(env.state, expected_state))
-            env.expand()
+        for contraction in (False, True):
+            with _config(contraction=contraction):
+                env = Envelope()
+                env.fock.expand()
+                env.polarization.expand()
+                env.combine()
+                env.expand()
+                for i in range(5):
+                    env.apply_operation(op, env.fock)
+                    _assert_number_repr(env.state, (i + 1) * 2)
+                    env.expand()
 
     def test_creation_operation_composite_envelope_envelope(self) -> None:
-        C = Config()
-        C.set_contraction(True)
-        C.set_dynamic_dimensions(True)
-        env1 = Envelope()
-        env1.fock.expand()
-        env1.polarization.expand()
-        env1.combine()
-        env2 = Envelope()
-        ce = CompositeEnvelope(env1, env2)
-        ce.combine(env1.fock, env2.polarization)
         op = Operation(FockOperationType.Creation)
-        for i in range(5):
-            env1.apply_operation(op, env1.fock)
-            expected_state = jnp.zeros(((i + 2) * 2 * 2, 1))
-            expected_state = expected_state.at[(i + 1) * 4, 0].set(1)
-            self.assertTrue(
-                jnp.allclose(ce.product_states[0].state, expected_state)
-            )
-        C.set_dynamic_dimensions(False)
+        for contraction in (False, True):
+            with _config(contraction=contraction, dynamic_dimensions=True):
+                env1 = Envelope()
+                env1.fock.expand()
+                env1.polarization.expand()
+                env1.combine()
+                env2 = Envelope()
+                ce = CompositeEnvelope(env1, env2)
+                ce.combine(env1.fock, env2.polarization)
+                for i in range(5):
+                    env1.apply_operation(op, env1.fock)
+                    expected_state = jnp.zeros(((i + 2) * 2 * 2, 1))
+                    expected_state = expected_state.at[(i + 1) * 4, 0].set(1)
+                    self.assertTrue(
+                        jnp.allclose(
+                            ce.product_states[0].state, expected_state
+                        )
+                    )
 
 
 class TestFockOperationAnnihilation(unittest.TestCase):

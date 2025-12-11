@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import jax.numpy as jnp
 
 if TYPE_CHECKING:
-    from photon_weave.operation import Operation
+    from photon_weave.operation.operation import Operation
 
 
 class FockDimensions:
@@ -60,7 +60,8 @@ class FockDimensions:
 
         if self.operation._operation_type is FockOperationType.Displace:
             cutoff = int(
-                self.num_quanta + 3 * jnp.abs(self.operation.kwargs["alpha"]) ** 2
+                self.num_quanta
+                + 3 * jnp.abs(self.operation.kwargs["alpha"]) ** 2
             )
             if cutoff > self.dimensions:
                 self._increase_dimensions(amount=int(cutoff) - self.dimensions)
@@ -130,7 +131,9 @@ class FockDimensions:
             # Update the dimensions by the amount added
             self.dimensions += amount
         if self.state.shape == (self.dimensions, self.dimensions):
-            pad_rows = jnp.zeros((amount, self.dimensions), dtype=self.state.dtype)
+            pad_rows = jnp.zeros(
+                (amount, self.dimensions), dtype=self.state.dtype
+            )
             pad_cols = jnp.zeros(
                 (self.dimensions + amount, amount), dtype=self.state.dtype
             )

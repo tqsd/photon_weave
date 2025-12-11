@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable
+from typing import Any, Callable
 
-if TYPE_CHECKING:
-    from photon_weave.stats.base_state import BaseState
+from photon_weave.state.interfaces import BaseStateLike as BaseState
 
 
 def route_operation() -> Callable:
@@ -29,10 +28,12 @@ def route_operation() -> Callable:
                 if len(args) > 0:
                     return delegate_method(*args, self, **kwargs)
                 else:
-                    return delegate_method(self, *kwargs)
+                    return delegate_method(self, **kwargs)
             elif isinstance(self.index, tuple):
                 if not hasattr(self.composite_envelope, mn):
-                    raise AttributeError(f"CompositeEnvelope has no method {mn}")
+                    raise AttributeError(
+                        f"CompositeEnvelope has no method {mn}"
+                    )
 
                 delegate_method = getattr(self.composite_envelope, mn)
                 if len(args) > 0:
