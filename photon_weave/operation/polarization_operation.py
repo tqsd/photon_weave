@@ -170,7 +170,7 @@ class PolarizationOperationType(Enum):
         required_params: List[str],
         expansion_level: ExpansionLevel,
         op_id: int,
-    ):
+    ) -> "PolarizationOperationType":
         obj = object.__new__(cls)
         obj._value_ = op_id
         obj.renormalize = renormalize
@@ -263,9 +263,7 @@ class PolarizationOperationType(Enum):
         """
         return
 
-    def compute_operator(
-        self, dimensions: List[int], **kwargs: Any
-    ) -> jnp.ndarray:
+    def compute_operator(self, dimensions: List[int], **kwargs: Any) -> jnp.ndarray:
         """
         Computes an operator
 
@@ -305,9 +303,7 @@ class PolarizationOperationType(Enum):
             case PolarizationOperationType.RZ:
                 return rz_operator(kwargs["theta"])
             case PolarizationOperationType.U3:
-                return u3_operator(
-                    kwargs["phi"], kwargs["theta"], kwargs["omega"]
-                )
+                return u3_operator(kwargs["phi"], kwargs["theta"], kwargs["omega"])
             case PolarizationOperationType.Custom:
                 return kwargs["operator"]
         raise ValueError("Operator not recognized")

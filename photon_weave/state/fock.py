@@ -25,8 +25,8 @@ from .utils.measurements import (
     measure_vector_jit,
 )
 from .utils.operations import apply_operation_matrix, apply_operation_vector
-from .utils.shape_planning import build_plan
 from .utils.routing import route_operation
+from .utils.shape_planning import build_plan
 from .utils.state_transform import state_contract, state_expand
 
 Operation = Any
@@ -296,12 +296,8 @@ class Fock(BaseState):
         C = Config()
         plan = build_plan([self], [self]) if C.use_jit else None
         if self.expansion_level == ExpansionLevel.Vector:
-            return measure_vector_expectation(
-                [self], [self], self.state, meta=plan
-            )
-        return measure_matrix_expectation(
-            [self], [self], self.state, meta=plan
-        )
+            return measure_vector_expectation([self], [self], self.state, meta=plan)
+        return measure_matrix_expectation([self], [self], self.state, meta=plan)
 
     @route_operation()
     def measure_pnr(
@@ -403,10 +399,7 @@ class Fock(BaseState):
                     self.dimensions = new_dimensions
                     return True
                 num_quanta = num_quanta_vector(self.state)
-                if (
-                    self.dimensions > new_dimensions
-                    and num_quanta < new_dimensions + 1
-                ):
+                if self.dimensions > new_dimensions and num_quanta < new_dimensions + 1:
                     self.state = self.state[:new_dimensions]
                     self.dimensions = new_dimensions
                     return True

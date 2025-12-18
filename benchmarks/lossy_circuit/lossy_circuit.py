@@ -37,9 +37,7 @@ system_info["Total Swap"] = f"{swap_info.total / (1024 ** 3):.2f} GB"
 system_info["Used Swap"] = f"{swap_info.used / (1024 ** 3):.2f} GB"
 
 # Format system information for display
-system_info_text = "\n".join(
-    [f"{key}: {value}" for key, value in system_info.items()]
-)
+system_info_text = "\n".join([f"{key}: {value}" for key, value in system_info.items()])
 
 
 def run_benchmark(initial_state):
@@ -104,15 +102,11 @@ def create_plot(data, file_location):
     steps = list(range(1, 7))  # x-axis (steps)
     labels = list(data.keys())  # Method names
     state_sizes = [data[label]["output"]["state_sizes"] for label in labels]
-    operator_sizes = [
-        data[label]["output"]["operator_sizes"] for label in labels
-    ]
+    operator_sizes = [data[label]["output"]["operator_sizes"] for label in labels]
     execution_times = [data[label]["time"] for label in labels]
 
     # Set up the figure with two side-by-side subplots
-    fig, (ax1, ax2) = plt.subplots(
-        1, 2, figsize=(20, 5), constrained_layout=True
-    )
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5), constrained_layout=True)
 
     # Left Plot: State Sizes (Logarithmic Scale)
     for i, label in enumerate(labels):
@@ -157,9 +151,7 @@ def acreate_plot(data, file_location):
     steps = list(range(1, 7))  # x-axis (steps)
     labels = list(data.keys())  # Method names
     state_sizes = [data[label]["output"]["state_sizes"] for label in labels]
-    operator_sizes = [
-        data[label]["output"]["operator_sizes"] for label in labels
-    ]
+    operator_sizes = [data[label]["output"]["operator_sizes"] for label in labels]
     execution_times = [data[label]["time"] for label in labels]
     fig = plt.figure(figsize=(15, 20), constrained_layout=True)
 

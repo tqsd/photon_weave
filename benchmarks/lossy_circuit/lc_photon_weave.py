@@ -54,9 +54,7 @@ def lossy_bs_circuit(initial_state, lossy):
 
     ce = CompositeEnvelope(env1, env2, env3, env4)
 
-    bs = Operation(
-        CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4
-    )
+    bs = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
 
     context = {"a": lambda dims: conditional_annihilation(dims[0])}
     loss = Operation(

@@ -48,9 +48,7 @@ def state_expand(
     match current_expansion_level:
         case ExpansionLevel.Label:
             if not isinstance(state, int):
-                raise ValueError(
-                    "Could not expand state, where label is not int type"
-                )
+                raise ValueError("Could not expand state, where label is not int type")
             assert state >= 0
             new_state = jnp.zeros(dimensions, dtype=jnp.complex128)
             new_state = new_state.at[state].set(1)

@@ -1,5 +1,5 @@
-Photon Weave Core
-=================
+Core Internals
+==============
 
 Low-level tensor helpers that back the state and operation APIs.
 

@@ -32,9 +32,7 @@ from photon_weave.state.envelope import Envelope
 SPACE_DIMENSIONS = 14
 
 
-def photon_number_expectation(
-    params: jnp.ndarray, feature: float
-) -> jnp.ndarray:
+def photon_number_expectation(params: jnp.ndarray, feature: float) -> jnp.ndarray:
     """
     Prepare a small circuit, then use the library's measurement pipeline
     to obtain the photon-number expectation of the Fock mode.

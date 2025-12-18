@@ -67,9 +67,7 @@ def lossy_bs_circuit(initial_state, lossy):
 
     composite_state_1 = (BS * tensor(env1, env2)).unit()
     if lossy:
-        LOSS = tensor(
-            conditional_annihilation(dim), conditional_annihilation(dim)
-        )
+        LOSS = tensor(conditional_annihilation(dim), conditional_annihilation(dim))
         composite_state_1 = (LOSS * composite_state_1).unit()
         AMUT.record_operator_size(BS.full(), LOSS.full())
     else:

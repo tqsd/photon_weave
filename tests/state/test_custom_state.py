@@ -16,9 +16,7 @@ class TestCustomStateExpansionContraction(unittest.TestCase):
         cs.expand()
         self.assertEqual(cs.expansion_level, ExpansionLevel.Matrix)
         self.assertTrue(
-            jnp.allclose(
-                jnp.array([[1, 0, 0], [0, 0, 0], [0, 0, 0]]), cs.state
-            )
+            jnp.allclose(jnp.array([[1, 0, 0], [0, 0, 0], [0, 0, 0]]), cs.state)
         )
         cs.contract(final=ExpansionLevel.Vector)
         self.assertEqual(cs.expansion_level, ExpansionLevel.Vector)

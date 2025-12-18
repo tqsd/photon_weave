@@ -1,5 +1,5 @@
-photon\_weave.constants package
-===============================
+Constants
+=========
 
 Module contents
 ---------------

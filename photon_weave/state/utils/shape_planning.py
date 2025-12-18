@@ -10,10 +10,10 @@ from typing import Sequence, Tuple
 from photon_weave.core import jitted
 from photon_weave.core.meta import DimsMeta, make_meta
 from photon_weave.photon_weave import Config
+from photon_weave.state.interfaces import BaseStateLike as BaseState
+from photon_weave.state.interfaces import CompositeEnvelopeLike as CompositeEnvelope
+from photon_weave.state.interfaces import EnvelopeLike as Envelope
 from photon_weave.state.interfaces import (
-    BaseStateLike as BaseState,
-    CompositeEnvelopeLike as CompositeEnvelope,
-    EnvelopeLike as Envelope,
     OperationLike,
 )
 
@@ -119,9 +119,7 @@ def compiled_kernels(plan: ShapePlan):
         return jitted.measure_povm_matrix(plan.meta, ops, ps, key)
 
     def trace_out(ps, use_contraction=False):
-        return jitted.trace_out_matrix(
-            plan.meta, ps, use_contraction=use_contraction
-        )
+        return jitted.trace_out_matrix(plan.meta, ps, use_contraction=use_contraction)
 
     class Kernels:
         apply_op_vector = staticmethod(apply_op_vec)

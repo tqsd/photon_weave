@@ -11,9 +11,7 @@ import jax.numpy as jnp
 from photon_weave.core.ops import kraus_identity_check
 from photon_weave.photon_weave import Config
 from photon_weave.state.expansion_levels import ExpansionLevel
-from photon_weave.state.interfaces import (
-    CompositeEnvelopeLike as CompositeEnvelope,
-)
+from photon_weave.state.interfaces import CompositeEnvelopeLike as CompositeEnvelope
 from photon_weave.state.interfaces import EnvelopeLike as Envelope
 
 if TYPE_CHECKING:
@@ -119,9 +117,7 @@ class BaseState(ABC):
         return self._expansion_level
 
     @expansion_level.setter
-    def expansion_level(
-        self, expansion_level: Optional["ExpansionLevel"]
-    ) -> None:
+    def expansion_level(self, expansion_level: Optional["ExpansionLevel"]) -> None:
         self._expansion_level = expansion_level
 
     @property
@@ -273,9 +269,7 @@ class BaseState(ABC):
         if not partial:
             env = self.envelope
             if env is not None and _is_envelope(env):
-                state = (
-                    env.fock if _is_polarization(self) else env.polarization
-                )
+                state = env.fock if _is_polarization(self) else env.polarization
                 out = state.measure(destructive=destructive, key=key)
                 for k, v in out.items():
                     result[1][k] = v

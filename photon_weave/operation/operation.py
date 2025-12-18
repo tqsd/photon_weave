@@ -2,6 +2,7 @@ from typing import Any, List, Optional, Union
 
 import jax.numpy as jnp
 
+from photon_weave.core.ir import OpSpec
 from photon_weave.operation.composite_operation import CompositeOperationType
 from photon_weave.operation.custom_state_operation import (
     CustomStateOperationType,
@@ -313,7 +314,22 @@ class Operation:
         """
         assert isinstance(operator, jnp.ndarray)
         if self._operation_type is not FockOperationType.Custom:
-            raise ValueError(
-                "Operator can only be configured for the Custom types"
-            )
+            raise ValueError("Operator can only be configured for the Custom types")
         self._operator = operator
+
+    def to_spec(
+        self,
+        targets: tuple[int, ...],
+        rep: str,
+        use_contraction: bool | None = None,
+    ) -> OpSpec:
+        """
+        Convert this operation into a pure-data OpSpec for IR/runtime execution.
+        """
+        return OpSpec(
+            name=str(self._operation_type),
+            operator=self.operator,
+            targets=targets,
+            rep=rep,
+            use_contraction=use_contraction,
+        )

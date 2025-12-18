@@ -149,7 +149,5 @@ def test_compiled_kernels_kraus_and_trace_noncontiguous(use_contraction):
     batch_rho = jnp.stack([rho, rho])
     vmapped = jax.vmap(kernels.apply_kraus_matrix, in_axes=(0, None))
     vmapped_out = vmapped(batch_rho, kraus)
-    expected_vmapped = jax.vmap(lambda r: full_op @ r @ jnp.conj(full_op.T))(
-        batch_rho
-    )
+    expected_vmapped = jax.vmap(lambda r: full_op @ r @ jnp.conj(full_op.T))(batch_rho)
     assert jnp.allclose(vmapped_out, expected_vmapped)

@@ -1,5 +1,5 @@
-photon\_weave package
-=====================
+Full API (autodoc)
+==================
 
 Subpackages
 -----------

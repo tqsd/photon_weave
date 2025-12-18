@@ -1,5 +1,5 @@
-photon\_weave.operation package
-===============================
+Operation API
+=============
 
 Subpackages
 -----------

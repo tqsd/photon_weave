@@ -37,12 +37,8 @@ h_bar = 1.054571817e-34  # Reduced Planck's constant (Joule * seconds)
 h_bar = 1
 
 # System parameters
-w_field = (
-    1 * jnp.pi
-)  # Angular frequency of the field (radians per second, e.g., 5 GHz)
-w_qubit = (
-    1 * jnp.pi
-)  # Angular frequency of the qubit (radians per second, e.g., 5 GHz)
+w_field = 1 * jnp.pi  # Angular frequency of the field (radians per second, e.g., 5 GHz)
+w_qubit = 1 * jnp.pi  # Angular frequency of the qubit (radians per second, e.g., 5 GHz)
 g = (
     1 * jnp.pi
 )  # Coupling strength between the qubit and field (radians per second, e.g., 100 MHz)
@@ -156,6 +152,4 @@ plt.title("Rabi Oscillations")
 plt.legend()
 plt.grid()
 plt.show()
-plt.savefig(
-    "plots/jc.png", dpi=1000, bbox_inches="tight"
-)  # Save as a high-quality PNG
+plt.savefig("plots/jc.png", dpi=1000, bbox_inches="tight")  # Save as a high-quality PNG

@@ -52,9 +52,7 @@ def measure_vector(
     product_state: jnp.ndarray,
     key: jnp.ndarray,
 ) -> Tuple[int, jnp.ndarray, jnp.ndarray]:
-    return adapters.measure_vector(
-        state_dims, target_indices, product_state, key
-    )
+    return adapters.measure_vector(state_dims, target_indices, product_state, key)
 
 
 def measure_matrix(
@@ -63,9 +61,7 @@ def measure_matrix(
     product_state: jnp.ndarray,
     key: jnp.ndarray,
 ) -> Tuple[int, jnp.ndarray, jnp.ndarray]:
-    return adapters.measure_matrix(
-        state_dims, target_indices, product_state, key
-    )
+    return adapters.measure_matrix(state_dims, target_indices, product_state, key)
 
 
 def measure_povm_matrix(

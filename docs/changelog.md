@@ -1,4 +1,4 @@
-# Branch Change Log — feature_enhancement vs master
+# Changelog — feature_enhancement vs master
 
 This page summarizes the deltas between `feature_enhancement` and `master`, highlights breaking changes, and notes the major additions to the codebase and docs.
 

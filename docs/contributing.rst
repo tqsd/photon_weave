@@ -36,7 +36,7 @@ Report bugs using Github's `issues <https://github.com/tqsd/photon_weave/issues>
 We use GitHub issues to track public bugs. Report a bug by opening a new issue.
 
 Write bug reports with detail, background and sample code
---------------------------------------------------------
+---------------------------------------------------------
 
 **Great Bug Reports** tend to have:
 

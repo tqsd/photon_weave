@@ -9,9 +9,7 @@ from jax.scipy.special import erf, gammaln
 
 from photon_weave.core import adapters, jitted
 from photon_weave.core.linear import measure_matrix as core_measure_matrix
-from photon_weave.core.linear import (
-    measure_povm_matrix as core_measure_povm_matrix,
-)
+from photon_weave.core.linear import measure_povm_matrix as core_measure_povm_matrix
 from photon_weave.core.linear import measure_vector as core_measure_vector
 from photon_weave.core.meta import DimsMeta
 from photon_weave.core.rng import borrow_key
@@ -88,6 +86,7 @@ def measure_vector(
     product_state: jnp.ndarray,
     prob_callback: Optional[Callable[[BaseState, jnp.ndarray], None]] = None,
     key: jnp.ndarray | None = None,
+    target_indices: Optional[Tuple[int, ...]] = None,
 ) -> Tuple[Dict[BaseState, int], jnp.ndarray]:
     """
     Measure a state vector and return outcomes plus the post-measurement state.
@@ -131,13 +130,9 @@ def measure_vector(
         probs = probs / jnp.sum(probs)
         if prob_callback is not None:
             prob_callback(state, probs)
-        outcome = jax.random.choice(
-            use_key, a=jnp.arange(state.dimensions), p=probs
-        )
+        outcome = jax.random.choice(use_key, a=jnp.arange(state.dimensions), p=probs)
         outcomes[state] = int(outcome)
-        product_state = jnp.take(
-            product_state, indices=outcome, axis=state_index
-        )
+        product_state = jnp.take(product_state, indices=outcome, axis=state_index)
         state_objs.remove(state)
     product_state = product_state.reshape(-1, 1)
     return outcomes, product_state
@@ -149,6 +144,7 @@ def measure_vector_jit(
     product_state: jnp.ndarray,
     key: jnp.ndarray,
     meta: DimsMeta | ShapePlan | None = None,
+    target_indices: Optional[Tuple[int, ...]] = None,
 ) -> Tuple[Dict[BaseState, int], jnp.ndarray, jnp.ndarray]:
     """
     JIT-friendly measurement wrapper for state vectors.
@@ -183,16 +179,24 @@ def measure_vector_jit(
         meta = meta.meta
     if meta is None:
         dims = [s.dimensions for s in state_objs]
-        target_indices = [state_objs.index(s) for s in target_states]
-        outcome, post, _ = core_measure_vector(
-            dims, target_indices, product_state, use_key
+        tgt_idx = (
+            list(target_indices)
+            if target_indices is not None
+            else [i for i, s in enumerate(state_objs) if s in target_states]
         )
+        outcome, post, _ = core_measure_vector(dims, tgt_idx, product_state, use_key)
+        target_indices = tgt_idx
     else:
         dims = list(meta.state_dims)
-        target_indices = list(meta.target_indices)
+        tgt_idx = (
+            list(target_indices)
+            if target_indices is not None
+            else list(meta.target_indices)
+        )
         outcome, post, _ = adapters.measure_vector_jit_meta(
             meta, product_state, use_key
         )
+        target_indices = tgt_idx
     # Decode flattened outcome into per-target outcomes
     target_dims = [dims[i] for i in target_indices]
     decoded = []
@@ -211,6 +215,7 @@ def measure_matrix(
     product_state: jnp.ndarray,
     prob_callback: Optional[Callable[[BaseState, jnp.ndarray], None]] = None,
     key: jnp.ndarray | None = None,
+    target_indices: Optional[Tuple[int, ...]] = None,
 ) -> Tuple[Dict[BaseState, int], jnp.ndarray]:
     """
     Measure a density matrix and return outcomes plus the reduced post-state.
@@ -255,26 +260,17 @@ def measure_matrix(
         perm_cols = [i + total_states for i in perm_rows]
         reordered = jnp.transpose(product_state, perm_rows + perm_cols)
         rest_dim = int(
-            jnp.prod(
-                jnp.array([state_objs[i].dimensions for i in rest_indices])
-            )
-            or 1
+            jnp.prod(jnp.array([state_objs[i].dimensions for i in rest_indices])) or 1
         )
-        tensor = reordered.reshape(
-            (target_dim, rest_dim, target_dim, rest_dim)
-        )
+        tensor = reordered.reshape((target_dim, rest_dim, target_dim, rest_dim))
         probs = jnp.einsum("krkr->k", tensor).real
         probs = probs / jnp.sum(probs)
         if prob_callback is not None:
             prob_callback(state, probs)
-        outcome = jax.random.choice(
-            use_key, a=jnp.arange(state.dimensions), p=probs
-        )
+        outcome = jax.random.choice(use_key, a=jnp.arange(state.dimensions), p=probs)
         outcomes[state] = int(outcome)
         total_states = len(state_objs)
-        indices: List[Union[slice, int]] = [slice(None)] * len(
-            product_state.shape
-        )
+        indices: List[Union[slice, int]] = [slice(None)] * len(product_state.shape)
         indices[state_index] = outcome
         indices[state_index + total_states] = outcome
         product_state = product_state[tuple(indices)]
@@ -291,6 +287,7 @@ def measure_matrix_jit(
     product_state: jnp.ndarray,
     key: jnp.ndarray,
     meta: DimsMeta | ShapePlan | None = None,
+    target_indices: Optional[Tuple[int, ...]] = None,
 ) -> Tuple[Dict[BaseState, int], jnp.ndarray, jnp.ndarray]:
     """
     JIT-friendly measurement wrapper for density matrices.
@@ -325,16 +322,16 @@ def measure_matrix_jit(
         meta = meta.meta
     if meta is None:
         dims = [s.dimensions for s in state_objs]
-        target_indices = [state_objs.index(s) for s in target_states]
-        outcome, post, _ = core_measure_matrix(
-            dims, target_indices, product_state, use_key
-        )
+        tgt_idx = [state_objs.index(s) for s in target_states]
+        outcome, post, _ = core_measure_matrix(dims, tgt_idx, product_state, use_key)
+        target_indices = tgt_idx
     else:
         dims = list(meta.state_dims)
-        target_indices = list(meta.target_indices)
+        tgt_idx = list(meta.target_indices)
         outcome, post, _ = adapters.measure_matrix_jit_meta(
             meta, product_state, use_key
         )
+        target_indices = tgt_idx
     target_dims = [dims[i] for i in target_indices]
     decoded = []
     tmp = outcome
@@ -352,6 +349,7 @@ def measure_vector_jit_with_probs(
     product_state: jnp.ndarray,
     key: jnp.ndarray,
     meta: DimsMeta | ShapePlan | None = None,
+    target_indices: Optional[Tuple[int, ...]] = None,
 ) -> Tuple[Dict[BaseState, int], jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """
     JIT-friendly vector measurement that also returns sampled probs.
@@ -388,16 +386,26 @@ def measure_vector_jit_with_probs(
         meta = meta.meta
     if meta is None:
         dims = [s.dimensions for s in state_objs]
-        target_indices = [state_objs.index(s) for s in target_states]
-        outcome, post, probs, _ = adapters.measure_vector_with_probs(
-            dims, target_indices, product_state, use_key
+        tgt_idx = (
+            list(target_indices)
+            if target_indices is not None
+            else [i for i, s in enumerate(state_objs) if s in target_states]
         )
+        outcome, post, probs, _ = adapters.measure_vector_with_probs(
+            dims, tgt_idx, product_state, use_key
+        )
+        target_indices = tgt_idx
     else:
         dims = list(meta.state_dims)
-        target_indices = list(meta.target_indices)
-        outcome, post, probs, _ = adapters.measure_vector_with_probs(
-            meta.state_dims, meta.target_indices, product_state, use_key
+        tgt_idx = (
+            list(target_indices)
+            if target_indices is not None
+            else list(meta.target_indices)
         )
+        outcome, post, probs, _ = adapters.measure_vector_with_probs(
+            meta.state_dims, tgt_idx, product_state, use_key
+        )
+        target_indices = tgt_idx
     target_dims = [dims[i] for i in target_indices]
     decoded = []
     tmp = outcome
@@ -415,6 +423,7 @@ def measure_matrix_jit_with_probs(
     product_state: jnp.ndarray,
     key: jnp.ndarray,
     meta: DimsMeta | ShapePlan | None = None,
+    target_indices: Optional[Tuple[int, ...]] = None,
 ) -> Tuple[Dict[BaseState, int], jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """
     JIT-friendly density-matrix measurement that also returns probs.
@@ -451,16 +460,26 @@ def measure_matrix_jit_with_probs(
         meta = meta.meta
     if meta is None:
         dims = [s.dimensions for s in state_objs]
-        target_indices = [state_objs.index(s) for s in target_states]
-        outcome, post, probs, _ = adapters.measure_matrix_with_probs(
-            dims, target_indices, product_state, use_key
+        tgt_idx = (
+            list(target_indices)
+            if target_indices is not None
+            else [i for i, s in enumerate(state_objs) if s in target_states]
         )
+        outcome, post, probs, _ = adapters.measure_matrix_with_probs(
+            dims, tgt_idx, product_state, use_key
+        )
+        target_indices = tgt_idx
     else:
         dims = list(meta.state_dims)
-        target_indices = list(meta.target_indices)
-        outcome, post, probs, _ = adapters.measure_matrix_with_probs(
-            meta.state_dims, meta.target_indices, product_state, use_key
+        tgt_idx = (
+            list(target_indices)
+            if target_indices is not None
+            else list(meta.target_indices)
         )
+        outcome, post, probs, _ = adapters.measure_matrix_with_probs(
+            meta.state_dims, tgt_idx, product_state, use_key
+        )
+        target_indices = tgt_idx
     target_dims = [dims[i] for i in target_indices]
     decoded = []
     tmp = outcome
@@ -507,9 +526,7 @@ def measure_vector_expectation(
     if meta is None:
         dims = [s.dimensions for s in state_objs]
         target_indices = [state_objs.index(s) for s in target_states]
-        return adapters.measure_vector_expectation(
-            dims, target_indices, product_state
-        )
+        return adapters.measure_vector_expectation(dims, target_indices, product_state)
     if Config().use_jit:
         return jitted.measure_vector_expectation(meta, product_state)
     return adapters.measure_vector_expectation(
@@ -552,9 +569,7 @@ def measure_matrix_expectation(
     if meta is None:
         dims = [s.dimensions for s in state_objs]
         target_indices = [state_objs.index(s) for s in target_states]
-        return adapters.measure_matrix_expectation(
-            dims, target_indices, product_state
-        )
+        return adapters.measure_matrix_expectation(dims, target_indices, product_state)
     if Config().use_jit:
         return jitted.measure_matrix_expectation(meta, product_state)
     return adapters.measure_matrix_expectation(
@@ -613,8 +628,7 @@ def measure_POVM_matrix(
     ops = jnp.stack(
         [
             op.reshape(
-                (jnp.prod(jnp.array([s.dimensions for s in target_states])),)
-                * 2
+                (jnp.prod(jnp.array([s.dimensions for s in target_states])),) * 2
             )
             for op in operators
         ]
@@ -665,9 +679,7 @@ def measure_POVM_matrix_jit(
     """
     dims = [s.dimensions for s in state_objs]
     target_indices = [state_objs.index(s) for s in target_states]
-    return core_measure_povm_matrix(
-        dims, target_indices, operators, product_state, key
-    )
+    return core_measure_povm_matrix(dims, target_indices, operators, product_state, key)
 
 
 def _pnr_noise(
@@ -683,17 +695,13 @@ def _pnr_noise(
     dark_key, jitter_key = jax.random.split(key)
     dark = jax.random.poisson(dark_key, lam=dark_mean, shape=(target_count,))
     if jitter_std > 0:
-        jitter = (
-            jax.random.normal(jitter_key, shape=(target_count,)) * jitter_std
-        )
+        jitter = jax.random.normal(jitter_key, shape=(target_count,)) * jitter_std
     else:
         jitter = jnp.zeros((target_count,))
     return dark, jitter
 
 
-def _decode_flat_outcome(
-    outcome: int, target_dims: jnp.ndarray
-) -> jnp.ndarray:
+def _decode_flat_outcome(outcome: int, target_dims: jnp.ndarray) -> jnp.ndarray:
     """
     Decode flattened outcome index into per-target outcomes using JAX control flow.
     """
@@ -781,9 +789,7 @@ def measure_pnr_vector(
             dims = list(meta.state_dims)
             target_indices = list(meta.target_indices)
         if key is None:
-            raise ValueError(
-                "key is required for jitted PNR measurement (static path)"
-            )
+            raise ValueError("key is required for jitted PNR measurement (static path)")
         outcome_flat, post, key_after_meas = core_measure_vector(
             dims, target_indices, product_state, key
         )
@@ -803,9 +809,7 @@ def measure_pnr_vector(
             jitter_std,
         )
         totals = detected + dark
-        total_outcomes = {
-            ts: int(totals[i]) for i, ts in enumerate(target_states)
-        }
+        total_outcomes = {ts: int(totals[i]) for i, ts in enumerate(target_states)}
         return total_outcomes, post, jitter, next_key
 
     # Fallback (non-jitted) path
@@ -907,9 +911,7 @@ def measure_pnr_matrix(
             dims = list(meta.state_dims)
             target_indices = list(meta.target_indices)
         if key is None:
-            raise ValueError(
-                "key is required for jitted PNR measurement (static path)"
-            )
+            raise ValueError("key is required for jitted PNR measurement (static path)")
         outcome_flat, post, key_after_meas = core_measure_matrix(
             dims, target_indices, product_state, key
         )
@@ -929,9 +931,7 @@ def measure_pnr_matrix(
             jitter_std,
         )
         totals = detected + dark
-        total_outcomes = {
-            ts: int(totals[i]) for i, ts in enumerate(target_states)
-        }
+        total_outcomes = {ts: int(totals[i]) for i, ts in enumerate(target_states)}
         return total_outcomes, post, jitter, next_key
 
     base_key = _ensure_key(key)
@@ -1006,11 +1006,7 @@ def pnr_pmf_single_n(
     binom_coeffs = jnp.exp(
         gammaln(n + 1) - gammaln(m_vals + 1) - gammaln(n - m_vals + 1)
     )
-    P_sig = (
-        binom_coeffs
-        * jnp.power(eta, m_vals)
-        * jnp.power(1.0 - eta, n - m_vals)
-    )
+    P_sig = binom_coeffs * jnp.power(eta, m_vals) * jnp.power(1.0 - eta, n - m_vals)
     P_dark = poisson_pmf_direct(k_max=max_counts, mean=mu_d)
 
     m = m_vals[:, None]  # (n+1, 1)

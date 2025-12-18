@@ -17,18 +17,23 @@ pip install git+https://github.com/tqsd/photon_weave.git
 ```
 
 ### Installation for developing
-In case you want to add a feature, you can install the system with:
+In case you want to add a feature, use Poetry to keep the dependency graph consistent (Python 3.12–3.14):
 ```bash
 git clone git@github.com:tqsd/photon_weave.git
 cd photon_weave
-	pip install -e .
+poetry install --with dev
+```
+
+If you prefer a minimal pip-based setup:
+```bash
+python -m venv .venv
+source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+pip install -e ".[dev]"
 ```
 
 
 #### Testing
-The tests can simply be run with the `pytest` testing suite. Before running the tests, make sure that the `pytest` is installed in your environment.
+The tests can simply be run with the `pytest` testing suite. After installing with Poetry, run:
 ```
-pip install pytest
-# In Photon Weave root directory
-pytest
+JAX_PLATFORMS=cpu poetry run pytest
 ```

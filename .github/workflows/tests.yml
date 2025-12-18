@@ -9,46 +9,64 @@ jobs:
   test:
     if: "!contains(github.event.head_commit.message, 'Update coverage badge')"
     runs-on: ubuntu-latest
+    env:
+      JAX_PLATFORMS: cpu
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.12", "3.13", "3.14"]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # keep tags available for any tag-aware tooling
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+
+      - name: Install system dependencies (BLAS/LAPACK)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libopenblas-dev libblas-dev liblapack-dev gfortran
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.8.3
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Refresh lockfile
+        run: poetry lock --no-update
 
       - name: Install dependencies
-        run: |
-          pip install .
-          pip install tox
-          pip install coverage coverage-badge
-          pip install pytest pytest-cov
+        run: poetry install --with dev
 
       - name: Run tests
         run: |
-          coverage run -m pytest
-          coverage report
-          coverage xml
+          poetry run coverage run -m pytest
+          poetry run coverage report
+          poetry run coverage xml
 
       - name: Generate coverage badge
+        if: matrix.python-version == '3.12'
         run: |
           mkdir -p assets
-          coverage-badge -o assets/coverage.svg -f
+          poetry run coverage-badge -o assets/coverage.svg -f
 
       - name: Upload coverage badge
+        if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-badge-${{ matrix.runs-on }}
           path: assets/coverage.svg
 
       - name: Commit coverage badge to repository
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && matrix.python-version == '3.12'
         run: |
           git pull origin ${{ github.ref_name }}
           git config --local user.name "GitHub Actions"

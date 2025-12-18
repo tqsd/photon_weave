@@ -236,23 +236,17 @@ class CompositeOperationType(Enum):
         if expected_base_state_types:
             for st in expected_base_state_types:
                 if isinstance(st, str):
-                    mod_pol = importlib.import_module(
-                        "photon_weave.state.polarization"
-                    )
+                    mod_pol = importlib.import_module("photon_weave.state.polarization")
                     if st == "Polarization":
                         resolved_types.append(getattr(mod_pol, "Polarization"))
                     elif st == "Fock":
-                        mod_fock = importlib.import_module(
-                            "photon_weave.state.fock"
-                        )
+                        mod_fock = importlib.import_module("photon_weave.state.fock")
                         resolved_types.append(getattr(mod_fock, "Fock"))
                     elif st == "CustomState":
                         mod_custom = importlib.import_module(
                             "photon_weave.state.custom_state"
                         )
-                        resolved_types.append(
-                            getattr(mod_custom, "CustomState")
-                        )
+                        resolved_types.append(getattr(mod_custom, "CustomState"))
                     else:
                         raise ValueError(f"Unknown state type: {st}")
                 else:
@@ -265,10 +259,7 @@ class CompositeOperationType(Enum):
         return obj
 
     def update(self, **kwargs: Any) -> None:
-        if (
-            self is CompositeOperationType.Expression
-            and "state_types" in kwargs
-        ):
+        if self is CompositeOperationType.Expression and "state_types" in kwargs:
             from photon_weave.state.custom_state import CustomState
             from photon_weave.state.fock import Fock
             from photon_weave.state.polarization import Polarization
@@ -285,9 +276,7 @@ class CompositeOperationType(Enum):
                     resolved.append(st)  # already a class
             self.expected_base_state_types = resolved
 
-    def compute_operator(
-        self, dimensions: List[int], **kwargs: Any
-    ) -> jnp.ndarray:
+    def compute_operator(self, dimensions: List[int], **kwargs: Any) -> jnp.ndarray:
         """
         Generates the operator for this operation, given
         the dimensions
@@ -317,9 +306,7 @@ class CompositeOperationType(Enum):
             case CompositeOperationType.CZPolarization:
                 return controlled_z_operator()
             case CompositeOperationType.Expression:
-                return interpreter(
-                    kwargs["expr"], kwargs["context"], dimensions
-                )
+                return interpreter(kwargs["expr"], kwargs["context"], dimensions)
         raise ValueError("Operation Type not recognized")
 
     def compute_dimensions(

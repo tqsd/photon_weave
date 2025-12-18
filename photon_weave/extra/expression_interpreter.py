@@ -53,9 +53,7 @@ def interpreter(
             return result
         if op == "sub":
             result = interpreter(args[0], context, dimensions)
-            result = jnp.subtract(
-                result, interpreter(args[1], context, dimensions)
-            )
+            result = jnp.subtract(result, interpreter(args[1], context, dimensions))
             return result
         elif op == "s_mult":
             result = interpreter(args[0], context, dimensions)
@@ -70,9 +68,7 @@ def interpreter(
         elif op == "kron":
             result = interpreter(args[0], context, dimensions)
             for arg in args[1:]:
-                result = jnp.kron(
-                    result, interpreter(arg, context, dimensions)
-                )
+                result = jnp.kron(result, interpreter(arg, context, dimensions))
             return result
         elif op == "expm":
             return expm(interpreter(args[0], context, dimensions))
@@ -86,6 +82,4 @@ def interpreter(
     else:
         # Grab literal value
         return expr
-    raise ValueError(
-        "Something went wrong in the expression interpreter!", expr
-    )
+    raise ValueError("Something went wrong in the expression interpreter!", expr)

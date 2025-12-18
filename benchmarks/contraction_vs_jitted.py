@@ -20,12 +20,12 @@ from typing import Callable, Dict, Tuple
 
 os.environ.setdefault("JAX_PLATFORMS", "cpu")
 
+# Ensure we import the in-repo version
+import sys
+
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-
-# Ensure we import the in-repo version
-import sys
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -45,7 +45,7 @@ from photon_weave.state.utils.measurements import (
 from photon_weave.state.utils.operations import apply_operation_matrix
 from photon_weave.state.utils.shape_planning import build_plan
 
-RUNS = 20
+RUNS = 30
 SAVE_DIR = Path("benchmarks")
 
 
@@ -103,7 +103,7 @@ def run_single_envelope(use_jit: bool) -> float:
     cfg = Config()
     cfg._use_jit = use_jit  # internal toggle for this branch
     cfg.set_contraction(True)
-    dims = 12
+    dims = 20
     features = jnp.linspace(-1.0, 1.0, 8)
 
     def fn() -> jnp.ndarray:
@@ -137,13 +137,11 @@ def composite_plan_benchmark(use_jit: bool) -> float:
     # Initial density matrix |1,0>
     rho0 = _basis_density(dims, index=1)
 
-    bs = Operation(
-        CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4
-    )
+    bs = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
     bs.dimensions = list(dims)
     bs_op = bs.operator
 
-    reps = 12
+    reps = 18
 
     def legacy_apply():
         rho = rho0
@@ -180,9 +178,7 @@ def composite_plan_benchmark(use_jit: bool) -> float:
 
     def legacy_meas():
         key = jax.random.PRNGKey(0)
-        outcomes, post = measure_matrix(
-            states, [states[0]], rho_for_meas, key=key
-        )
+        outcomes, post = measure_matrix(states, [states[0]], rho_for_meas, key=key)
         return post
 
     def jitted_meas():
