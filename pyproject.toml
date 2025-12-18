@@ -7,6 +7,7 @@ license = "Apache-2.0"
 readme = "README.md"
 homepage = "https://github.com/tqsd/photon_weave"
 repository = "https://github.com/tqsd/photon_weave"
+documentation = "https://tqsd.github.io/photon_weave/"
 keywords = ["quantum optics", "simulation", "quantum mechanics"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -52,6 +53,13 @@ dev = [
     "python-semantic-release",
     "packaging",
 ]
+
+[tool.poetry.urls]
+Documentation = "https://tqsd.github.io/photon_weave/"
+Repository = "https://github.com/tqsd/photon_weave"
+Issues = "https://github.com/tqsd/photon_weave/issues"
+Changelog = "https://github.com/tqsd/photon_weave/blob/master/CHANGELOG.md"
+Benchmarks = "https://github.com/tqsd/photon_weave/tree/master/benchmarks"
 
 [tool.semantic_release]
 branch = "master"
