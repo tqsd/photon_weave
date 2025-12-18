@@ -130,7 +130,7 @@ class FockOperationType(Enum):
         required_params: List[str],
         expansion_level: ExpansionLevel,
         op_id: int,
-    ):
+    ) -> "FockOperationType":
         obj = object.__new__(cls)
         obj._value_ = op_id
         obj.renormalize = renormalize
@@ -193,9 +193,7 @@ class FockOperationType(Enum):
         """
         return
 
-    def compute_operator(
-        self, dimensions: List[int], **kwargs: Any
-    ) -> jnp.ndarray:
+    def compute_operator(self, dimensions: List[int], **kwargs: Any) -> jnp.ndarray:
         """
         Generates the operator for this operation, given
         the dimensions
@@ -224,9 +222,7 @@ class FockOperationType(Enum):
             case FockOperationType.Identity:
                 return jnp.identity(dimensions[0])
             case FockOperationType.Expresion:
-                return interpreter(
-                    kwargs["expr"], kwargs["context"], dimensions
-                )
+                return interpreter(kwargs["expr"], kwargs["context"], dimensions)
             case FockOperationType.Custom:
                 return kwargs["operator"]
         raise ValueError("Something went wrong in operation generation")

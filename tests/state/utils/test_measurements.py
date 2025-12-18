@@ -76,9 +76,7 @@ class TestMeasurementUtils(unittest.TestCase):
             measurement_probabilities[fock] = probabilities
 
         # create the state
-        op = Operation(
-            CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4
-        )
+        op = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
 
         ce = CompositeEnvelope(env1, env2, env3, env4)
         ce.apply_operation(op, env1.fock, env2.fock)
@@ -111,9 +109,7 @@ class TestMeasurementUtils(unittest.TestCase):
             measurement_probabilities[fock] = probabilities
 
         # create the state
-        op = Operation(
-            CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4
-        )
+        op = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
 
         ce = CompositeEnvelope(env1, env2, env3, env4)
         ce.apply_operation(op, env1.fock, env2.fock)
@@ -141,13 +137,9 @@ class TestMeasurementUtils(unittest.TestCase):
         eta = 0.6
         dark = 50.0
         window = 1e-9
-        P = pnr_transition_matrix(
-            max_photons=3, eta=eta, dark_rate=dark, window=window
-        )
+        P = pnr_transition_matrix(max_photons=3, eta=eta, dark_rate=dark, window=window)
         col_sums = P.sum(axis=0)
-        self.assertTrue(
-            jnp.allclose(col_sums, jnp.ones_like(col_sums), atol=1e-6)
-        )
+        self.assertTrue(jnp.allclose(col_sums, jnp.ones_like(col_sums), atol=1e-6))
         povm = pnr_povm(3, eta=eta, dark_rate=dark, window=window)
         completeness = povm.sum(axis=0)
         self.assertTrue(jnp.allclose(completeness, jnp.eye(4), atol=1e-6))
@@ -155,9 +147,7 @@ class TestMeasurementUtils(unittest.TestCase):
     def test_gaussian_jitter_kernel_normalizes(self) -> None:
         J = gaussian_jitter_kernel(num_bins=4, bin_width=1.0, jitter_std=0.2)
         col_sums = J.sum(axis=0)
-        self.assertTrue(
-            jnp.allclose(col_sums, jnp.ones_like(col_sums), atol=1e-6)
-        )
+        self.assertTrue(jnp.allclose(col_sums, jnp.ones_like(col_sums), atol=1e-6))
 
 
 def test_measure_vector_jit_accepts_shape_plan_and_decodes_outcome():
@@ -167,9 +157,7 @@ def test_measure_vector_jit_accepts_shape_plan_and_decodes_outcome():
     state = _basis_state(0, 4)  # |00>
     key = jax.random.PRNGKey(0)
 
-    outcomes, post, _ = measure_vector_jit(
-        states, targets, state, key, meta=plan
-    )
+    outcomes, post, _ = measure_vector_jit(states, targets, state, key, meta=plan)
     assert outcomes[targets[0]] == 0
     assert post.shape == (2, 1)
     assert jnp.allclose(post, _basis_state(0, 2))
@@ -183,14 +171,10 @@ def test_measure_matrix_jit_accepts_shape_plan_and_decodes_outcome():
     rho = _density(state)
     key = jax.random.PRNGKey(0)
 
-    outcomes, post, _ = measure_matrix_jit(
-        states, targets, rho, key, meta=plan
-    )
+    outcomes, post, _ = measure_matrix_jit(states, targets, rho, key, meta=plan)
     assert outcomes[targets[0]] == 0
     assert post.shape == (2, 2)
-    assert jnp.allclose(
-        post, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128)
-    )
+    assert jnp.allclose(post, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128))
 
 
 def test_measure_vector_jit_accepts_dims_meta_with_contraction_flag_restored():
@@ -201,9 +185,7 @@ def test_measure_vector_jit_accepts_dims_meta_with_contraction_flag_restored():
     key = jax.random.PRNGKey(0)
 
     Config().set_contraction(False)
-    outcomes, post, _ = measure_vector_jit(
-        states, targets, state, key, meta=meta
-    )
+    outcomes, post, _ = measure_vector_jit(states, targets, state, key, meta=meta)
     assert outcomes[targets[0]] == 0
     assert post.shape == (2, 1)
     assert jnp.allclose(post, _basis_state(0, 2))
@@ -238,9 +220,7 @@ def test_measure_matrix_jit_with_probs_accepts_shape_plan():
     assert outcomes[targets[0]] == 0
     assert jnp.allclose(probs, jnp.array([1.0, 0.0]))
     assert post.shape == (2, 2)
-    assert jnp.allclose(
-        post, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128)
-    )
+    assert jnp.allclose(post, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128))
 
 
 def test_measure_vector_expectation_accepts_shape_plan():
@@ -255,9 +235,7 @@ def test_measure_vector_expectation_accepts_shape_plan():
     probs, post = measure_vector_expectation(states, targets, state, meta=plan)
     assert jnp.allclose(probs, jnp.array([0.5, 0.5]))
     assert post.shape == (2, 2)
-    assert jnp.allclose(
-        post, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128)
-    )
+    assert jnp.allclose(post, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128))
 
 
 def test_measure_matrix_expectation_accepts_dims_meta_with_jit_flag():
@@ -271,9 +249,7 @@ def test_measure_matrix_expectation_accepts_dims_meta_with_jit_flag():
     probs, post = measure_matrix_expectation(states, targets, rho, meta=meta)
     assert jnp.allclose(probs, jnp.array([1.0, 0.0]))
     assert post.shape == (2, 2)
-    assert jnp.allclose(
-        post, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128)
-    )
+    assert jnp.allclose(post, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128))
 
 
 def test_measure_pnr_vector_requires_key_for_jit_path():
@@ -368,9 +344,7 @@ def test_measure_vector_expectation_grad():
         state = state.at[0, 0].set(jnp.cos(theta))
         state = state.at[2, 0].set(jnp.sin(theta))
         state = state / jnp.linalg.norm(state)
-        probs, _ = measure_vector_expectation(
-            states, targets, state, meta=plan
-        )
+        probs, _ = measure_vector_expectation(states, targets, state, meta=plan)
         return probs[0]
 
     grad_fn = jax.grad(prob_sum)

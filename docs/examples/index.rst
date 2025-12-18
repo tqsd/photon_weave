@@ -7,3 +7,4 @@ Examples
    time_bin_encoding
    jaynes_cummings_model
    super_dense_coding
+   reusable_devices

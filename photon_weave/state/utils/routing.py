@@ -31,9 +31,7 @@ def route_operation() -> Callable:
                     return delegate_method(self, **kwargs)
             elif isinstance(self.index, tuple):
                 if not hasattr(self.composite_envelope, mn):
-                    raise AttributeError(
-                        f"CompositeEnvelope has no method {mn}"
-                    )
+                    raise AttributeError(f"CompositeEnvelope has no method {mn}")
 
                 delegate_method = getattr(self.composite_envelope, mn)
                 if len(args) > 0:

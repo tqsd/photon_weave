@@ -1,5 +1,5 @@
-photon\_weave.extra package
-===========================
+Extras & Interop
+================
 
 Submodules
 ----------

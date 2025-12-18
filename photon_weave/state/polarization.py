@@ -23,8 +23,8 @@ from .utils.measurements import (
     measure_vector_jit,
 )
 from .utils.operations import apply_operation_matrix, apply_operation_vector
-from .utils.shape_planning import build_plan
 from .utils.routing import route_operation
+from .utils.shape_planning import build_plan
 from .utils.state_transform import state_contract, state_expand
 
 Operation = Any
@@ -81,9 +81,7 @@ class Polarization(BaseState):
         envelope: Union["Envelope", None] = None,
     ):
         super().__init__()
-        self.state: Optional[Union[jnp.ndarray, PolarizationLabel]] = (
-            polarization
-        )
+        self.state: Optional[Union[jnp.ndarray, PolarizationLabel]] = polarization
         self._dimensions: int = 2
         self._envelope: Optional["Envelope"] = envelope
         self._expansion_level: Optional[ExpansionLevel] = ExpansionLevel.Label
@@ -140,9 +138,7 @@ class Polarization(BaseState):
                     vector = [1 / jnp.sqrt(2), -1 / jnp.sqrt(2)]
                 case PolarizationLabel.D:
                     vector = [1 / jnp.sqrt(2), 1 / jnp.sqrt(2)]
-            self.state = jnp.array(vector, dtype=jnp.complex128)[
-                :, jnp.newaxis
-            ]
+            self.state = jnp.array(vector, dtype=jnp.complex128)[:, jnp.newaxis]
             self.expansion_level = ExpansionLevel.Vector
         else:
             assert isinstance(self.state, jnp.ndarray)
@@ -245,9 +241,7 @@ class Polarization(BaseState):
             else:
                 self.index = minor
         else:
-            raise ValueError(
-                "Polarization state does not seem to be extracted"
-            )
+            raise ValueError("Polarization state does not seem to be extracted")
 
     def _set_measured(self) -> None:
         """
@@ -271,12 +265,8 @@ class Polarization(BaseState):
         C = Config()
         plan = build_plan([self], [self]) if C.use_jit else None
         if self.expansion_level == ExpansionLevel.Vector:
-            return measure_vector_expectation(
-                [self], [self], self.state, meta=plan
-            )
-        return measure_matrix_expectation(
-            [self], [self], self.state, meta=plan
-        )
+            return measure_vector_expectation([self], [self], self.state, meta=plan)
+        return measure_matrix_expectation([self], [self], self.state, meta=plan)
 
     @route_operation()
     def measure(

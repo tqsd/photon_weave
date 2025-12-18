@@ -1,5 +1,13 @@
-photon\_weave.state package
-===========================
+State API (envelopes & composites)
+==================================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 2
+
+   photon_weave.state.utils
 
 Submodules
 ----------
@@ -73,4 +81,3 @@ Module contents
 .. automodule:: photon_weave.state
    :members:
    :noindex:
-

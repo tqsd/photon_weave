@@ -67,9 +67,7 @@ class TestCustomExpressionOperator(unittest.TestCase):
             "b": lambda dims: jnp.array([[0, 0, 0], [0, 0, 0], [0, 1, 0]]),
         }
         expr = ("add", "a", "b")
-        op = Operation(
-            CustomStateOperationType.Expresion, expr=expr, context=context
-        )
+        op = Operation(CustomStateOperationType.Expresion, expr=expr, context=context)
         cs.apply_operation(op)
         self.assertEqual(cs.state, 1)
 
@@ -82,9 +80,7 @@ class TestCustomExpressionOperator(unittest.TestCase):
             "b": lambda dims: jnp.array([[0, 0, 0], [0, 0, 0], [0, 1, 0]]),
         }
         expr = ("add", "a", "b")
-        op = Operation(
-            CustomStateOperationType.Expresion, expr=expr, context=context
-        )
+        op = Operation(CustomStateOperationType.Expresion, expr=expr, context=context)
         cs.apply_operation(op)
         self.assertEqual(cs.state, 1)
 
@@ -98,9 +94,7 @@ class TestCustomExpressionOperator(unittest.TestCase):
             "b": lambda dims: jnp.array([[0, 0, 0], [0, 0, 0], [0, 1, 0]]),
         }
         expr = ("add", "a", "b")
-        op = Operation(
-            CustomStateOperationType.Expresion, expr=expr, context=context
-        )
+        op = Operation(CustomStateOperationType.Expresion, expr=expr, context=context)
         cs1.apply_operation(op)
         self.assertTrue(
             jnp.allclose(
@@ -121,9 +115,7 @@ class TestCustomExpressionOperator(unittest.TestCase):
             "b": lambda dims: jnp.array([[0, 0, 0], [0, 0, 0], [0, 1, 0]]),
         }
         expr = ("add", "a", "b")
-        op = Operation(
-            CustomStateOperationType.Expresion, expr=expr, context=context
-        )
+        op = Operation(CustomStateOperationType.Expresion, expr=expr, context=context)
         cs1.apply_operation(op)
         self.assertTrue(
             jnp.allclose(

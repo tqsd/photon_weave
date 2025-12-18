@@ -92,9 +92,7 @@ def lossy_bs_circuit(initial_state, lossy):
     composite_state_1 = env1.expand(env2)
     composite_state_1.evolve(BS)
     if lossy:
-        A_cond = conditional_annihilation(dim).tensor(
-            conditional_annihilation(dim)
-        )
+        A_cond = conditional_annihilation(dim).tensor(conditional_annihilation(dim))
         composite_state_1.evolve(A_cond)
         AMUT.record_operator_size(BS.data, A_cond.data)
         del A_cond
@@ -105,9 +103,7 @@ def lossy_bs_circuit(initial_state, lossy):
     composite_state_2 = env3.expand(env4)
     composite_state_2.evolve(BS)
     if lossy:
-        A_cond = conditional_annihilation(dim).tensor(
-            conditional_annihilation(dim)
-        )
+        A_cond = conditional_annihilation(dim).tensor(conditional_annihilation(dim))
         composite_state_2.evolve(A_cond)
         AMUT.record_operator_size(BS.data, A_cond.data)
         del A_cond

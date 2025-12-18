@@ -54,9 +54,7 @@ class TestFockSmallFunctions(unittest.TestCase):
             constructed_line_1 = " ".join(
                 [v(1) if ln == i else v(0) for i in range(fock.dimensions)]
             )
-            constructed_line_0 = " ".join(
-                [v(0) for i in range(fock.dimensions)]
-            )
+            constructed_line_0 = " ".join([v(0) for i in range(fock.dimensions)])
             if ln == 0:
                 if label == ln:
                     self.assertEqual(f"⎡{constructed_line_1}⎤", line)
@@ -275,39 +273,29 @@ class TestFockExpansionAndContraction(unittest.TestCase):
         self.third_contract_test(fock, label)
 
     def initialization_test(self, fock: Fock, label: int) -> None:
-        for i, item in enumerate(
-            [fock.envelope, fock.composite_envelope, fock.index]
-        ):
+        for i, item in enumerate([fock.envelope, fock.composite_envelope, fock.index]):
             self.assertIsNone(item, f"{i}-{item}")
         self.assertEqual(fock.state, label)
 
-    def first_expansion_test(
-        self, fock: Fock, state_vector: jnp.ndarray
-    ) -> None:
+    def first_expansion_test(self, fock: Fock, state_vector: jnp.ndarray) -> None:
         fock.expand()
         for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(jnp.allclose(state_vector, fock.state))
 
-    def second_expansion_test(
-        self, fock: Fock, density_matrix: jnp.ndarray
-    ) -> None:
+    def second_expansion_test(self, fock: Fock, density_matrix: jnp.ndarray) -> None:
         fock.expand()
         for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(jnp.allclose(density_matrix, fock.state))
 
-    def third_expansion_test(
-        self, fock: Fock, density_matrix: jnp.ndarray
-    ) -> None:
+    def third_expansion_test(self, fock: Fock, density_matrix: jnp.ndarray) -> None:
         fock.expand()
         for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(jnp.allclose(density_matrix, fock.state))
 
-    def first_contract_test(
-        self, fock: Fock, state_vector: jnp.ndarray
-    ) -> None:
+    def first_contract_test(self, fock: Fock, state_vector: jnp.ndarray) -> None:
         fock.contract(final=ExpansionLevel.Vector)
         for item in [fock.index, fock.envelope, fock.composite_envelope]:
             self.assertIsNone(item)
@@ -419,9 +407,7 @@ class TestFockMeasurement(unittest.TestCase):
         binom_key, noise_seed = jax.random.split(noise_key)
         dark_seed, _ = jax.random.split(noise_seed)
         dark_key, jitter_key = jax.random.split(dark_seed)
-        expected_dark = int(
-            jax.random.poisson(dark_key, lam=2.0, shape=()).item()
-        )
+        expected_dark = int(jax.random.poisson(dark_key, lam=2.0, shape=()).item())
         expected_jitter = jax.random.normal(jitter_key, shape=(1,)) * 0.1
         self.assertEqual(outcomes[f], 1 + expected_dark)
         self.assertTrue(jnp.allclose(jitter, expected_jitter))
@@ -452,9 +438,7 @@ class TestFockDimensionChange(unittest.TestCase):
         f.expand()
         f.resize(5)
         self.assertEqual(f.dimensions, 5)
-        self.assertTrue(
-            jnp.allclose(f.state, jnp.array([[1], [0], [0], [0], [0]]))
-        )
+        self.assertTrue(jnp.allclose(f.state, jnp.array([[1], [0], [0], [0], [0]])))
 
         f.resize(2)
         self.assertEqual(f.dimensions, 2)
@@ -466,9 +450,7 @@ class TestFockDimensionChange(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 f.state,
-                jnp.array(
-                    [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-                ),
+                jnp.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]),
             )
         )
 
@@ -489,9 +471,7 @@ class TestFockDimensionChange(unittest.TestCase):
 
         s = env.resize_fock(2)
         self.assertTrue(s)
-        self.assertTrue(
-            jnp.allclose(env.state, jnp.array([[0], [1], [0], [0]]))
-        )
+        self.assertTrue(jnp.allclose(env.state, jnp.array([[0], [1], [0], [0]])))
         self.assertEqual(env.fock.dimensions, 2)
 
         # Trying the same with the reversed order
@@ -550,9 +530,7 @@ class TestFockDimensionChange(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 env.state,
-                jnp.array(
-                    [[0], [0], [0], [0], [1 / jnp.sqrt(2)], [1j / jnp.sqrt(2)]]
-                ),
+                jnp.array([[0], [0], [0], [0], [1 / jnp.sqrt(2)], [1j / jnp.sqrt(2)]]),
             )
         )
 
@@ -616,9 +594,7 @@ class TestFockDimensionChange(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array(
-                    [[0], [0], [1 / jnp.sqrt(2)], [1j / jnp.sqrt(2)], [0], [0]]
-                ),
+                jnp.array([[0], [0], [1 / jnp.sqrt(2)], [1j / jnp.sqrt(2)], [0], [0]]),
             )
         )
 

@@ -23,12 +23,14 @@ The time bin encoding process involves:
                                ┃
                               ◽
    """
+
 The goal is to simulate the interaction of photons through these components and measure the outcomes at various points in time.
 
 Function Description
 --------------------
 
 .. code:: python
+   
    def time_bin_encoding(alpha:float, beta:float) -> List[List[int]]
 
 Parameters:
@@ -248,6 +250,7 @@ We define single run for Time-Bin Encoding, so that we may run it in a loop to g
 We also define ``run_tbe`` in order to enable parallelization.
 
 .. code:: python
+    
     def tbe(alpha:float, beta:float, runs:int=1):
         """
         Simulates time bin encoding
@@ -381,6 +384,7 @@ We define the plotting logic
 -------------
 
 Lastly we tie it all together in the ``__main__`` block, enabling different ways or running the example (parallelization, measuring).
+
 .. code:: python
 
     if __name__ == "__main__":

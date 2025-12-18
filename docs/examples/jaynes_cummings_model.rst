@@ -33,6 +33,7 @@ First import all of the needed libraries and objects in the top of the file.
 Create the two states, which will be interacting in the simulation. We represent the light state with the `Envelope` and the atom state with the `CustomState`. Since the two systems will be interacting, we put them into one `CompositeEnvelope`.
 
 .. code:: python
+    
     env = Envelope()
     env.fock.state = 1
 

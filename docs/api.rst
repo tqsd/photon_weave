@@ -28,6 +28,11 @@ Reference
 .. toctree::
    :maxdepth: 2
 
-   photon_weave
-   photon_weave.state
-   photon_weave.operation
+   Full API (autodoc) <photon_weave>
+   Core Internals <photon_weave.core>
+   State API (envelopes & composites) <photon_weave.state>
+   State Utilities <photon_weave.state.utils>
+   Operation API <photon_weave.operation>
+   Operation Helpers <photon_weave.operation.helpers>
+   Constants <photon_weave.constants>
+   Extras & Interop <photon_weave.extra>
