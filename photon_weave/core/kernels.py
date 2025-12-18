@@ -51,9 +51,7 @@ def _measurement_probs_matrix(
     target_flat = _prod(target_dims)
     rest_flat = _prod(rest_dims)
 
-    ps = product_state.reshape(
-        (target_flat, rest_flat, target_flat, rest_flat)
-    )
+    ps = product_state.reshape((target_flat, rest_flat, target_flat, rest_flat))
     ps = jnp.transpose(ps, (0, 2, 1, 3))  # (t, t, r, r)
     reduced_target = oe.contract("ijrr->ij", ps, backend="jax")
     probs = jnp.real(jnp.diag(reduced_target))
@@ -132,9 +130,7 @@ def apply_op_matrix_ordered(
     rest_flat = _prod(rest_dims)
     total = target_flat * rest_flat
 
-    ps = product_state.reshape(
-        (target_flat, rest_flat, target_flat, rest_flat)
-    )
+    ps = product_state.reshape((target_flat, rest_flat, target_flat, rest_flat))
     # Bring target axes together for a clean matmul: (t1, t2, r1, r2)
     ps = jnp.transpose(ps, (0, 2, 1, 3)).reshape(
         (target_flat, target_flat, rest_flat * rest_flat)
@@ -182,7 +178,7 @@ def apply_kraus_matrix_ordered(
            [0. , 0. , 0. , 0.5]], dtype=complex128)
     """
 
-    def _single(op, ps):
+    def _single(op: jnp.ndarray, ps: jnp.ndarray) -> jnp.ndarray:
         return apply_op_matrix_ordered(state_dims, target_count, ps, op)
 
     return jnp.sum(
@@ -195,7 +191,7 @@ def measure_vector_ordered(
     target_count: int,
     product_state: jnp.ndarray,
     key: jnp.ndarray,
-) -> Tuple[int, jnp.ndarray, jnp.ndarray]:
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """
     Measure the leading `target_count` axes of a state vector.
 
@@ -205,9 +201,9 @@ def measure_vector_ordered(
     probs, ps, rest_flat = _measurement_probs_vector(
         state_dims, target_count, product_state
     )
-    outcome = jax.random.choice(key, a=ps.shape[0], p=probs)
-    post = ps[outcome] / jnp.sqrt(probs[outcome] + 1e-18)
-    return outcome, post.reshape((rest_flat, 1)), key
+    outcome_arr = jax.random.choice(key, a=ps.shape[0], p=probs)
+    post = ps[outcome_arr] / jnp.sqrt(probs[outcome_arr] + 1e-18)
+    return outcome_arr, post.reshape((rest_flat, 1)), key
 
 
 def measure_matrix_ordered(
@@ -215,7 +211,7 @@ def measure_matrix_ordered(
     target_count: int,
     product_state: jnp.ndarray,
     key: jnp.ndarray,
-) -> Tuple[int, jnp.ndarray, jnp.ndarray]:
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """
     Measure the leading `target_count` axes of a density matrix.
 
@@ -225,10 +221,10 @@ def measure_matrix_ordered(
     probs, ps, rest_flat = _measurement_probs_matrix(
         state_dims, target_count, product_state
     )
-    outcome = jax.random.choice(key, a=ps.shape[0], p=probs)
-    post = ps[outcome, outcome] / (probs[outcome] + 1e-18)
+    outcome_arr = jax.random.choice(key, a=ps.shape[0], p=probs)
+    post = ps[outcome_arr, outcome_arr] / (probs[outcome_arr] + 1e-18)
     post = post.reshape((rest_flat, rest_flat))
-    return outcome, post, key
+    return outcome_arr, post, key
 
 
 def measure_vector_ordered_with_probs(
@@ -236,7 +232,7 @@ def measure_vector_ordered_with_probs(
     target_count: int,
     product_state: jnp.ndarray,
     key: jnp.ndarray,
-) -> Tuple[int, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """
     Measure vector state, returning sampled outcome, post state, probability
     distribution, and next key.
@@ -244,9 +240,9 @@ def measure_vector_ordered_with_probs(
     probs, ps, rest_flat = _measurement_probs_vector(
         state_dims, target_count, product_state
     )
-    outcome = jax.random.choice(key, a=ps.shape[0], p=probs)
-    post = ps[outcome] / jnp.sqrt(probs[outcome] + 1e-18)
-    return outcome, post.reshape((rest_flat, 1)), probs, key
+    outcome_arr = jax.random.choice(key, a=ps.shape[0], p=probs)
+    post = ps[outcome_arr] / jnp.sqrt(probs[outcome_arr] + 1e-18)
+    return outcome_arr, post.reshape((rest_flat, 1)), probs, key
 
 
 def measure_matrix_ordered_with_probs(
@@ -254,7 +250,7 @@ def measure_matrix_ordered_with_probs(
     target_count: int,
     product_state: jnp.ndarray,
     key: jnp.ndarray,
-) -> Tuple[int, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """
     Measure density matrix, returning sampled outcome, post state, probability
     distribution, and next key.
@@ -262,9 +258,9 @@ def measure_matrix_ordered_with_probs(
     probs, ps, rest_flat = _measurement_probs_matrix(
         state_dims, target_count, product_state
     )
-    outcome = jax.random.choice(key, a=ps.shape[0], p=probs)
-    post = ps[outcome, outcome] / (probs[outcome] + 1e-18)
-    return outcome, post.reshape((rest_flat, rest_flat)), probs, key
+    outcome_arr = jax.random.choice(key, a=ps.shape[0], p=probs)
+    post = ps[outcome_arr, outcome_arr] / (probs[outcome_arr] + 1e-18)
+    return outcome_arr, post.reshape((rest_flat, rest_flat)), probs, key
 
 
 def measure_vector_expectation_ordered(
@@ -297,12 +293,8 @@ def measure_matrix_expectation_ordered(
     density matrix. Returns (probs, expected post-measurement density matrix of
     the unmeasured subsystem).
     """
-    probs, _, _ = _measurement_probs_matrix(
-        state_dims, target_count, product_state
-    )
-    expected_post = trace_out_matrix_ordered(
-        state_dims, target_count, product_state
-    )
+    probs, _, _ = _measurement_probs_matrix(state_dims, target_count, product_state)
+    expected_post = trace_out_matrix_ordered(state_dims, target_count, product_state)
     return probs, expected_post
 
 
@@ -319,9 +311,7 @@ def trace_out_matrix_ordered(
     target_flat = _prod(target_dims)
     rest_flat = _prod(rest_dims)
 
-    ps = product_state.reshape(
-        (target_flat, rest_flat, target_flat, rest_flat)
-    )
+    ps = product_state.reshape((target_flat, rest_flat, target_flat, rest_flat))
     ps = jnp.transpose(ps, (0, 2, 1, 3)).reshape(
         (target_flat, target_flat, rest_flat * rest_flat)
     )
@@ -335,23 +325,23 @@ def measure_povm_matrix_ordered(
     operators: jnp.ndarray,
     product_state: jnp.ndarray,
     key: jnp.ndarray,
-) -> Tuple[int, jnp.ndarray, jnp.ndarray]:
+) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """
     Perform POVM on the leading `target_count` axes. Operators shape [k, d, d].
     Returns (outcome_index, post_state, next_key).
     """
 
-    def _apply(op, ps):
+    def _apply(op: jnp.ndarray, ps: jnp.ndarray) -> jnp.ndarray:
         return apply_op_matrix_ordered(state_dims, target_count, ps, op)
 
     projected = jax.vmap(_apply, in_axes=(0, None))(operators, product_state)
     probs = jnp.real(oe.contract("kii->k", projected, backend="jax"))
     probs = probs / jnp.sum(probs)
 
-    outcome = jax.random.choice(key, a=operators.shape[0], p=probs)
-    post = projected[outcome]
+    outcome_arr = jax.random.choice(key, a=operators.shape[0], p=probs)
+    post = projected[outcome_arr]
     post = post / (jnp.trace(post) + 1e-18)
-    return outcome, post, key
+    return outcome_arr, post, key
 
 
 def vmap_apply_op_matrix_ordered(
@@ -361,8 +351,6 @@ def vmap_apply_op_matrix_ordered(
     Return a vmapped apply_op_matrix_ordered over a batch of product states.
     """
     return jax.vmap(
-        lambda ps: apply_op_matrix_ordered(
-            state_dims, target_count, ps, operator
-        ),
+        lambda ps: apply_op_matrix_ordered(state_dims, target_count, ps, operator),
         in_axes=0,
     )

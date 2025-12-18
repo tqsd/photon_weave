@@ -114,9 +114,7 @@ class Envelope:
         self.uid: uuid.UUID = uuid.uuid4()
         self.fock = Fock() if fock is None else fock
         self.fock.envelope = self
-        self.polarization = (
-            Polarization() if polarization is None else polarization
-        )
+        self.polarization = Polarization() if polarization is None else polarization
         self.polarization.envelope = self
         self._expansion_level: Optional[ExpansionLevel] = None
         self.composite_envelope_id: Optional[uuid.UUID] = None
@@ -124,9 +122,7 @@ class Envelope:
         self.measured = False
         self.wavelength = wavelength
         self.temporal_profile = temporal_profile
-        self._plan_cache: Dict[
-            Tuple[Tuple[int, int], Tuple[int, int]], ShapePlan
-        ] = {}
+        self._plan_cache: Dict[Tuple[Tuple[int, int], Tuple[int, int]], ShapePlan] = {}
 
     @property
     def expansion_level(self) -> Optional[ExpansionLevel]:
@@ -161,18 +157,10 @@ class Envelope:
             fock_repr.extend([" " * max_length] * (max_lines - len(fock_repr)))
             pol_repr.extend([""] * (max_lines - len(pol_repr)))
             zipped_lines = zip(fock_repr, pol_repr)
-            return "\n".join(
-                f"{f_line} ⊗ {p_line}" for f_line, p_line in zipped_lines
-            )
-        elif (
-            self.state is not None
-            and self.expansion_level == ExpansionLevel.Vector
-        ):
+            return "\n".join(f"{f_line} ⊗ {p_line}" for f_line, p_line in zipped_lines)
+        elif self.state is not None and self.expansion_level == ExpansionLevel.Vector:
             return representation_vector(self.state)
-        elif (
-            self.state is not None
-            and self.expansion_level == ExpansionLevel.Matrix
-        ):
+        elif self.state is not None and self.expansion_level == ExpansionLevel.Matrix:
             return representation_matrix(self.state)
         return str(self.uid)  # pragme: no cover
 
@@ -465,9 +453,7 @@ class Envelope:
                     self.state,
                     meta=plan,
                 )
-        raise ValueError(
-            "Unsupported expansion level for expectation measurement"
-        )
+        raise ValueError("Unsupported expansion level for expectation measurement")
 
     def measure_POVM(
         self,
@@ -506,9 +492,7 @@ class Envelope:
 
         # Check the validity of the given states
         if len(states) == 2:
-            if (
-                isinstance(states[0], Fock) and isinstance(states[1], Fock)
-            ) or (
+            if (isinstance(states[0], Fock) and isinstance(states[1], Fock)) or (
                 isinstance(states[0], Polarization)
                 and isinstance(states[1], Polarization)
             ):
@@ -572,9 +556,7 @@ class Envelope:
         else:
             if destructive:
                 other_state = (
-                    self.fock
-                    if states[0] is self.polarization
-                    else self.polarization
+                    self.fock if states[0] is self.polarization else self.polarization
                 )
                 other_state.state = trace_out_matrix(
                     [self.fock, self.polarization], [other_state], self.state
@@ -618,17 +600,14 @@ class Envelope:
 
         s_uids = [s.uid for s in states]
         if (len(states) == 2) and (
-            (self.fock.uid not in s_uids)
-            or (self.polarization.uid not in s_uids)
+            (self.fock.uid not in s_uids) or (self.polarization.uid not in s_uids)
         ):
             raise ValueError("Both given states must belong to the Envelope")
         elif len(states) > 2:
             raise ValueError("Too many states given")
 
         # If any of the states is in bigger product state apply the kraus there
-        if self.state is None and any(
-            isinstance(s.index, tuple) for s in states
-        ):
+        if self.state is None and any(isinstance(s.index, tuple) for s in states):
             assert self.composite_envelope_id is not None
             assert isinstance(self.composite_envelope, CompositeEnvelope)
             self.composite_envelope.apply_kraus(operators, *states)
@@ -690,8 +669,7 @@ class Envelope:
         states_list = list(states)
         if len(states_list) == 2:
             if (
-                isinstance(states_list[0], Fock)
-                and isinstance(states_list[1], Fock)
+                isinstance(states_list[0], Fock) and isinstance(states_list[1], Fock)
             ) or (
                 isinstance(states_list[0], Polarization)
                 and isinstance(states_list[1], Polarization)
@@ -724,10 +702,7 @@ class Envelope:
         current_order[self.fock.index] = self.fock
         current_order[self.polarization.index] = self.polarization
 
-        if (
-            current_order[0] is states_list[0]
-            and current_order[1] is states_list[1]
-        ):
+        if current_order[0] is states_list[0] and current_order[1] is states_list[1]:
             return
 
         current_shape = [0, 0]
@@ -737,9 +712,7 @@ class Envelope:
         if self.expansion_level == ExpansionLevel.Vector:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, 1)
-            tmp_vector = self.state.reshape(
-                (current_shape[0], current_shape[1])
-            )
+            tmp_vector = self.state.reshape((current_shape[0], current_shape[1]))
             tmp_vector = jnp.transpose(tmp_vector, (1, 0))
             self.state = tmp_vector.reshape(-1, 1)
             self.fock.index, self.polarization.index = (
@@ -865,9 +838,7 @@ class Envelope:
             self._plan_cache[key] = shape_planning.build_plan(order, targets)
         return self._plan_cache[key]
 
-    def overlap_integral(
-        self, other: Envelope, delay: float, n: float = 1
-    ) -> float:
+    def overlap_integral(self, other: Envelope, delay: float, n: float = 1) -> float:
         r"""
         Given delay in [seconds] this method computes overlap of temporal
         profiles between this envelope and other envelope.
@@ -890,9 +861,7 @@ class Envelope:
 
         return result
 
-    def prepare_meta(
-        self, *target_states: BaseState
-    ) -> shape_planning.DimsMeta:
+    def prepare_meta(self, *target_states: BaseState) -> shape_planning.DimsMeta:
         """
         Prepare static dimension metadata for this envelope.
 
@@ -909,9 +878,7 @@ class Envelope:
         plan = envelope_plan(self, *target_states)
         return compiled_kernels(plan)
 
-    def resize_fock(
-        self, new_dimensions: int, state: Optional[Fock] = None
-    ) -> bool:
+    def resize_fock(self, new_dimensions: int, state: Optional[Fock] = None) -> bool:
         """
         Adjusts the dimension of the fock in the envelope. The dimensions are adjusted
         also when the fock space is in the product state.
@@ -951,9 +918,7 @@ class Envelope:
                 padding = new_dimensions - self.fock.dimensions
                 pad_config = [(0, 0) for _ in range(ps.ndim)]
                 pad_config[self.fock.index] = (0, padding)
-                ps = jnp.pad(
-                    ps, pad_config, mode="constant", constant_values=0
-                )
+                ps = jnp.pad(ps, pad_config, mode="constant", constant_values=0)
                 self.state = ps.reshape(-1, 1)
                 self.fock.dimensions = new_dimensions
                 return True
@@ -973,18 +938,16 @@ class Envelope:
         if self.expansion_level == ExpansionLevel.Matrix:
             assert isinstance(self.state, jnp.ndarray)
             assert self.state.shape == (self.dimensions, self.dimensions)
-            ps = self.state.reshape(
-                [*reshape_shape, *reshape_shape]
-            ).transpose([0, 2, 1, 3])
+            ps = self.state.reshape([*reshape_shape, *reshape_shape]).transpose(
+                [0, 2, 1, 3]
+            )
             if new_dimensions > self.fock.dimensions:
                 padding = new_dimensions - self.fock.dimensions
                 pad_config = [(0, 0) for _ in range(ps.ndim)]
                 pad_config[self.fock.index * 2] = (0, padding)
                 pad_config[self.fock.index * 2 + 1] = (0, padding)
 
-                ps = jnp.pad(
-                    ps, pad_config, mode="constant", constant_values=0
-                )
+                ps = jnp.pad(ps, pad_config, mode="constant", constant_values=0)
                 self.fock.dimensions = new_dimensions
                 ps = ps.transpose([0, 2, 1, 3])
                 self.state = ps.reshape((self.dimensions, self.dimensions))
@@ -1041,9 +1004,7 @@ class Envelope:
             return
 
         if not jnp.any(jnp.abs(self.state) > 0):
-            raise ValueError(
-                "The state is invalid." "The state only consists of 0s."
-            )
+            raise ValueError("The state is invalid." "The state only consists of 0s.")
 
         C = Config()
         if C.use_jit and C.dynamic_dimensions:
@@ -1053,9 +1014,9 @@ class Envelope:
             )
 
         # Compute the operator (no dynamic resizing allowed in jit mode)
-        if isinstance(
-            operation._operation_type, FockOperationType
-        ) and isinstance(states[0], Fock):
+        if isinstance(operation._operation_type, FockOperationType) and isinstance(
+            states[0], Fock
+        ):
             to = self.fock.trace_out()
             assert isinstance(to, jnp.ndarray)
             operation.compute_dimensions(states[0]._num_quanta, to)
@@ -1081,9 +1042,7 @@ class Envelope:
         current_order_dict: Dict[int, BaseState] = {}
         current_order_dict[self.fock.index] = self.fock
         current_order_dict[self.polarization.index] = self.polarization
-        current_order = [
-            current_order_dict[i] for i in sorted(current_order_dict)
-        ]
+        current_order = [current_order_dict[i] for i in sorted(current_order_dict)]
         # current_order: List[Optional[BaseState]] = [None, None]
         # current_order[self.fock.index] = self.fock
         # current_order[self.polarization.index] = self.polarization

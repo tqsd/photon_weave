@@ -37,9 +37,7 @@ def test_apply_operation_vector_with_shape_plan_matches_full_operator():
     op = x_operator()
     state = _basis_state(0, 4)  # |00>
 
-    out = operations.apply_operation_vector(
-        states, targets, state, op, meta=plan
-    )
+    out = operations.apply_operation_vector(states, targets, state, op, meta=plan)
     full_op = jnp.kron(op, jnp.eye(2))
     expected = full_op @ state
     assert jnp.allclose(out, expected)
@@ -55,9 +53,7 @@ def test_apply_operation_matrix_with_meta_matches_full_operator():
 
     # Turn off the global contraction flag to exercise the non-contraction path
     Config().set_contraction(False)
-    out = operations.apply_operation_matrix(
-        states, targets, rho, op, meta=meta
-    )
+    out = operations.apply_operation_matrix(states, targets, rho, op, meta=meta)
     full_op = jnp.kron(op, jnp.eye(2))
     expected = full_op @ rho @ jnp.conj(full_op.T)
     assert jnp.allclose(out, expected)

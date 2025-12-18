@@ -9,6 +9,43 @@ Welcome to Photon Weave's Documentation!
 
 Photon Weave is a general-purpose quantum simulator framework that focuses on optical simulations in the Fock domain. The framework also includes a `CustomState` class, which can represent arbitrary quantum systems with a user-defined number of basis states. Photon Weave aims to be an easy-to-use simulator, abstracting away the complexities of product space management and operation applications for the user.
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Start Here
+
+   intro
+   installation
+   usage
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Examples & Benchmarks
+
+   examples/index
+   benchmarks
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Guides & Notes
+
+   change_summary
+   changelog
+   update_notes
+   architecture_and_typing
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Community & Policies
+
+   code_of_conduct
+   contributing
+
+.. toctree::
+   :maxdepth: 2
+   :caption: API Reference
+
+   api
+
 Mathematical Introduction
 ===========================
 
@@ -301,6 +338,7 @@ Measuring
 Measuring is as simple as calling the `measure()` method on any of the state containers (`Fock`, `Polarization`, `CustomState`, `Envelope` or `CompositeEnvelope`). Measuring `CustomState` is the most straight forward:
 
 .. code:: python
+   
    cs = CustomState(2)
    outcome = cs.measure()
    print(outcome[cs]) # prints: 0
@@ -313,6 +351,7 @@ When measuring `Fock` or `Polarization` by default you measure the whole envelop
 The states can be measured in an envelope, by defining which state should be measured and optionally setting the `separate_measurement` and `destructive` key word arguments after specifying the state that should be measured:
 
 .. code:: python
+    
     env1 = Envelope()
     outcome = env1.measure(env1.fock, separate_measurement=True)
     # will return only measurement outcome for the Fock space
@@ -359,32 +398,11 @@ Reproducability
 For Reproducability **Photon Weave** allows the user to set the seed that is used with random processes. The seed is configured though `Config` class. `Config` class is a singleton class and is consulted at every random process.
 
 .. code:: python
+    
     from photon_weave.photon_weave import Config
 
     C = Config()
     C.set_seed(1)
-
-
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-   intro
-   installation
-   usage
-   code_of_conduct
-   contributing
-   change_summary
-   update_notes
-   branch_changelog
-   api
-   examples/index
-   benchmarks
-   photon_weave
-   photon_weave.core
-   photon_weave.state
-   photon_weave.operation
 
 
 ..  LocalWords:  toctree Fock CustomState mathcal rangle ldots langle

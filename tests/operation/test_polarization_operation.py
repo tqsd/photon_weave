@@ -49,9 +49,7 @@ class TestIdentityOperator(unittest.TestCase):
         env.reorder(env.polarization, env.fock)
         self.assertTrue(
             jnp.allclose(
-                jnp.array(
-                    [[1 / jnp.sqrt(2)], [0], [0], [1j / jnp.sqrt(2)], [0], [0]]
-                ),
+                jnp.array([[1 / jnp.sqrt(2)], [0], [0], [1j / jnp.sqrt(2)], [0], [0]]),
                 env.state,
             )
         )
@@ -64,9 +62,7 @@ class TestIdentityOperator(unittest.TestCase):
         op = Operation(PolarizationOperationType.I)
         ce.apply_operation(op, env2.polarization)
         self.assertTrue(
-            jnp.allclose(
-                ce.product_states[0].state, jnp.array([[1], [0], [0], [0]])
-            )
+            jnp.allclose(ce.product_states[0].state, jnp.array([[1], [0], [0], [0]]))
         )
 
         env1 = Envelope()
@@ -92,9 +88,7 @@ class TestIdentityOperator(unittest.TestCase):
         op = Operation(PolarizationOperationType.I)
         ce.apply_operation(op, env2.polarization)
         self.assertTrue(
-            jnp.allclose(
-                ce.product_states[0].state, jnp.array([[1], [0], [0], [0]])
-            )
+            jnp.allclose(ce.product_states[0].state, jnp.array([[1], [0], [0], [0]]))
         )
 
         env1 = Envelope()
@@ -191,9 +185,7 @@ class TestXOperator(unittest.TestCase):
         op = Operation(PolarizationOperationType.X)
         env1.polarization.apply_operation(op)
         self.assertTrue(
-            jnp.allclose(
-                ce.product_states[0].state, jnp.array([[0], [0], [1], [0]])
-            )
+            jnp.allclose(ce.product_states[0].state, jnp.array([[0], [0], [1], [0]]))
         )
 
         env1 = Envelope()
@@ -205,9 +197,7 @@ class TestXOperator(unittest.TestCase):
         op = Operation(PolarizationOperationType.X)
         env1.polarization.apply_operation(op)
         self.assertTrue(
-            jnp.allclose(
-                ce.product_states[0].state, jnp.array([[1], [0], [0], [0]])
-            )
+            jnp.allclose(ce.product_states[0].state, jnp.array([[1], [0], [0], [0]]))
         )
 
     def test_X_composite_envelope_matrix(self) -> None:
@@ -219,9 +209,7 @@ class TestXOperator(unittest.TestCase):
         op = Operation(PolarizationOperationType.X)
         env1.polarization.apply_operation(op)
         self.assertTrue(
-            jnp.allclose(
-                ce.product_states[0].state, jnp.array([[0], [0], [1], [0]])
-            )
+            jnp.allclose(ce.product_states[0].state, jnp.array([[0], [0], [1], [0]]))
         )
 
         env1 = Envelope()
@@ -234,9 +222,7 @@ class TestXOperator(unittest.TestCase):
         op = Operation(PolarizationOperationType.X)
         env1.polarization.apply_operation(op)
         self.assertTrue(
-            jnp.allclose(
-                ce.product_states[0].state, jnp.array([[1], [0], [0], [0]])
-            )
+            jnp.allclose(ce.product_states[0].state, jnp.array([[1], [0], [0], [0]]))
         )
 
 
@@ -298,18 +284,14 @@ class TestOtherOperators(unittest.TestCase):
         theta = random.uniform(0, 2 * jnp.pi)
         op = Operation(PolarizationOperationType.RZ, theta=theta)
         op.compute_dimensions(0, 0)
-        RZ = jnp.array(
-            [[jnp.exp(-1j * theta / 2), 0], [0, jnp.exp(1j * theta / 2)]]
-        )
+        RZ = jnp.array([[jnp.exp(-1j * theta / 2), 0], [0, jnp.exp(1j * theta / 2)]])
         self.assertTrue(jnp.allclose(op.operator, RZ))
 
     def test_U3_operator(self) -> None:
         phi = random.uniform(0, 2 * jnp.pi)
         theta = random.uniform(0, 2 * jnp.pi)
         omega = random.uniform(0, 2 * jnp.pi)
-        op = Operation(
-            PolarizationOperationType.U3, phi=phi, theta=theta, omega=omega
-        )
+        op = Operation(PolarizationOperationType.U3, phi=phi, theta=theta, omega=omega)
         op.compute_dimensions(0, 0)
         cos_term = jnp.cos(theta / 2)
         sin_term = jnp.sin(theta / 2)

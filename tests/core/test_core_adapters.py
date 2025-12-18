@@ -83,9 +83,7 @@ def test_measure_matrix_collapses_and_decodes_outcomes():
     outcome, post, _ = adapters.measure_matrix(dims, (0,), rho, key)
     assert outcome == 0
     assert post.shape == (2, 2)
-    assert jnp.allclose(
-        post, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128)
-    )
+    assert jnp.allclose(post, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128))
 
 
 def test_measure_povm_matrix_projective():
@@ -95,9 +93,7 @@ def test_measure_povm_matrix_projective():
     proj1 = jnp.array([[0, 0], [0, 1]], dtype=jnp.complex128)
     operators = jnp.stack([proj0, proj1])
     key = jax.random.PRNGKey(0)
-    outcome, post, _ = adapters.measure_povm_matrix(
-        dims, (0,), operators, rho, key
-    )
+    outcome, post, _ = adapters.measure_povm_matrix(dims, (0,), operators, rho, key)
     assert outcome == 0
     assert jnp.allclose(post, rho)
 
@@ -107,18 +103,14 @@ def test_trace_out_matrix_reduces_state():
     rho = _density(_basis_state(0, 4))
     reduced = adapters.trace_out_matrix(dims, (0,), rho)
     assert reduced.shape == (2, 2)
-    assert jnp.allclose(
-        reduced, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128)
-    )
+    assert jnp.allclose(reduced, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128))
 
 
 def test_measure_vector_with_probs_returns_probs_and_post():
     dims = (2, 2)
     state = _basis_state(1, 4)  # |01>
     key = jax.random.PRNGKey(0)
-    outcome, post, probs, _ = adapters.measure_vector_with_probs(
-        dims, (0,), state, key
-    )
+    outcome, post, probs, _ = adapters.measure_vector_with_probs(dims, (0,), state, key)
     assert outcome == 0
     assert jnp.allclose(probs, jnp.array([1.0, 0.0]))
     assert post.shape == (2, 1)
@@ -129,15 +121,11 @@ def test_measure_matrix_with_probs_returns_probs_and_post():
     dims = (2, 2)
     rho = _density(_basis_state(1, 4))  # |01><01|
     key = jax.random.PRNGKey(0)
-    outcome, post, probs, _ = adapters.measure_matrix_with_probs(
-        dims, (0,), rho, key
-    )
+    outcome, post, probs, _ = adapters.measure_matrix_with_probs(dims, (0,), rho, key)
     assert outcome == 0
     assert jnp.allclose(probs, jnp.array([1.0, 0.0]))
     assert post.shape == (2, 2)
-    assert jnp.allclose(
-        post, jnp.array([[0, 0], [0, 1]], dtype=jnp.complex128)
-    )
+    assert jnp.allclose(post, jnp.array([[0, 0], [0, 1]], dtype=jnp.complex128))
 
 
 def test_measure_vector_expectation_matches_reduced_density():
@@ -149,9 +137,7 @@ def test_measure_vector_expectation_matches_reduced_density():
     probs, post = adapters.measure_vector_expectation(dims, (0,), state)
     assert jnp.allclose(probs, jnp.array([0.5, 0.5]))
     assert post.shape == (2, 2)
-    assert jnp.allclose(
-        post, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128)
-    )
+    assert jnp.allclose(post, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128))
 
 
 def test_measure_matrix_expectation_matches_trace_out():
@@ -160,6 +146,4 @@ def test_measure_matrix_expectation_matches_trace_out():
     probs, post = adapters.measure_matrix_expectation(dims, (0,), rho)
     assert jnp.allclose(probs, jnp.array([1.0, 0.0]))
     assert post.shape == (2, 2)
-    assert jnp.allclose(
-        post, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128)
-    )
+    assert jnp.allclose(post, jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128))

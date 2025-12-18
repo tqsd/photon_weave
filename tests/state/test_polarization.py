@@ -72,16 +72,12 @@ class TestPolarizationExpansionAndContraction(unittest.TestCase):
         self.first_contract_test(pol, state_vector)
         self.second_contract_test(pol, label)
 
-    def initalization_test(
-        self, pol: Polarization, label: PolarizationLabel
-    ) -> None:
+    def initalization_test(self, pol: Polarization, label: PolarizationLabel) -> None:
         for item in [pol.index, pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(pol.state == label)
 
-    def first_expansion_test(
-        self, pol: Polarization, state_vector: jnp.array
-    ) -> None:
+    def first_expansion_test(self, pol: Polarization, state_vector: jnp.array) -> None:
         pol.expand()
         for item in [pol.index, pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
@@ -103,17 +99,13 @@ class TestPolarizationExpansionAndContraction(unittest.TestCase):
             self.assertIsNone(item)
         self.assertTrue(jnp.allclose(density_matrix, pol.state))
 
-    def first_contract_test(
-        self, pol: Polarization, state_vector: jnp.array
-    ) -> None:
+    def first_contract_test(self, pol: Polarization, state_vector: jnp.array) -> None:
         pol.contract(final=ExpansionLevel.Vector)
         for item in [pol.index, pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
         self.assertTrue(jnp.allclose(state_vector, pol.state))
 
-    def second_contract_test(
-        self, pol: Polarization, label: PolarizationLabel
-    ) -> None:
+    def second_contract_test(self, pol: Polarization, label: PolarizationLabel) -> None:
         pol.contract(final=ExpansionLevel.Label)
         for item in [pol.index, pol.envelope, pol.composite_envelope]:
             self.assertIsNone(item)
@@ -198,12 +190,8 @@ class TestPolarizationSmallFunctions(unittest.TestCase):
         pol.expand()
         representation = pol.__repr__()
         representation = representation.split("\n")
-        self.assertEqual(
-            representation[0], "⎡ +1.00 + 0.00j   +0.00 + 0.00j ⎤"
-        )
-        self.assertEqual(
-            representation[1], "⎣ +0.00 + 0.00j   +0.00 + 0.00j ⎦"
-        )
+        self.assertEqual(representation[0], "⎡ +1.00 + 0.00j   +0.00 + 0.00j ⎤")
+        self.assertEqual(representation[1], "⎣ +0.00 + 0.00j   +0.00 + 0.00j ⎦")
         pol = Polarization()
         pol.extract(1)
         representation = pol.__repr__()

@@ -186,9 +186,7 @@ class TestStateCombining(unittest.TestCase):
         self.assertIsNone(env1.polarization.state)
         self.assertIsNone(env2.polarization.state)
         self.assertTrue(
-            jnp.allclose(
-                ce1.product_states[0].state, jnp.array([[1], [0], [0], [0]])
-            )
+            jnp.allclose(ce1.product_states[0].state, jnp.array([[1], [0], [0], [0]]))
         )
 
     def test_combine_with_custom_state(self) -> None:
@@ -275,9 +273,7 @@ class TestStateCombining(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce1.product_states[0].state,
-                jnp.array(
-                    [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-                ),
+                jnp.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]),
             )
         )
 
@@ -395,17 +391,13 @@ class TestProductStateReordering(unittest.TestCase):
         ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.polarization, env2.polarization)
         self.assertTrue(
-            jnp.allclose(
-                ce.product_states[0].state, jnp.array([[0], [1], [0], [0]])
-            )
+            jnp.allclose(ce.product_states[0].state, jnp.array([[0], [1], [0], [0]]))
         )
         self.assertEqual(env1.polarization.index, (0, 0))
         self.assertEqual(env2.polarization.index, (0, 1))
         ce.reorder(env2.polarization, env1.polarization)
         self.assertTrue(
-            jnp.allclose(
-                ce.product_states[0].state, jnp.array([[0], [0], [1], [0]])
-            )
+            jnp.allclose(ce.product_states[0].state, jnp.array([[0], [0], [1], [0]]))
         )
         self.assertEqual(env1.polarization.index, (0, 1))
         self.assertEqual(env2.polarization.index, (0, 0))
@@ -426,26 +418,18 @@ class TestProductStateReordering(unittest.TestCase):
         self.assertEqual(env2.fock.index, (0, 2))
 
         first_expected_state = (
-            1
-            / jnp.sqrt(2)
-            * jnp.array([[1], [0], [0], [0], [1j], [0], [0], [0]])
+            1 / jnp.sqrt(2) * jnp.array([[1], [0], [0], [0], [1j], [0], [0], [0]])
         )
-        self.assertTrue(
-            jnp.allclose(first_expected_state, ce.product_states[0].state)
-        )
+        self.assertTrue(jnp.allclose(first_expected_state, ce.product_states[0].state))
 
         ce.reorder(env1.fock, env2.fock, env1.polarization)
         self.assertEqual(env1.fock.index, (0, 0))
         self.assertEqual(env2.fock.index, (0, 1))
         self.assertEqual(env1.polarization.index, (0, 2))
         second_expected_state = (
-            1
-            / jnp.sqrt(2)
-            * jnp.array([[1], [1j], [0], [0], [0], [0], [0], [0]])
+            1 / jnp.sqrt(2) * jnp.array([[1], [1j], [0], [0], [0], [0], [0], [0]])
         )
-        self.assertTrue(
-            jnp.allclose(second_expected_state, ce.product_states[0].state)
-        )
+        self.assertTrue(jnp.allclose(second_expected_state, ce.product_states[0].state))
 
     def test_matrix_reordering(self) -> None:
         env1 = Envelope()
@@ -459,9 +443,7 @@ class TestProductStateReordering(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array(
-                    [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0]]
-                ),
+                jnp.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0]]),
             )
         )
         self.assertEqual(env1.polarization.index, (0, 1))
@@ -550,9 +532,7 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         self.assertEqual(env1.fock.state, 1)
         self.assertEqual(env2.fock.state, 2)
         self.assertTrue(
-            jnp.allclose(
-                ce.product_states[0].state, jnp.array([[1], [0], [0], [0]])
-            )
+            jnp.allclose(ce.product_states[0].state, jnp.array([[1], [0], [0], [0]]))
         )
         ce.combine(env1.fock, env2.fock, env1.polarization, env2.polarization)
         ce.product_states[0].expand()
@@ -570,9 +550,7 @@ class TestCompositeEnvelopeMeasurementsVectors(unittest.TestCase):
         self.assertEqual(env1.fock.state, 1)
         self.assertEqual(env2.fock.state, 2)
         self.assertTrue(
-            jnp.allclose(
-                ce.product_states[0].state, jnp.array([[1], [0], [0], [0]])
-            )
+            jnp.allclose(ce.product_states[0].state, jnp.array([[1], [0], [0], [0]]))
         )
 
     def test_measurement_envelope_non_destructive(self) -> None:
@@ -757,17 +735,13 @@ class TestKrausApply(unittest.TestCase):
         ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.fock, env2.fock)
 
-        op = jnp.array(
-            [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0]]
-        )
+        op = jnp.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0]])
 
         last_op = self.get_the_last_kraus_operator([op])
         operators = [op, last_op]
         ce.apply_kraus(operators, env1.fock, env2.fock)
         self.assertTrue(
-            jnp.allclose(
-                ce.product_states[0].state, jnp.array([[0], [0], [0], [1]])
-            )
+            jnp.allclose(ce.product_states[0].state, jnp.array([[0], [0], [0], [1]]))
         )
 
     def test_kraus_apply_vector_partial(self) -> None:
@@ -812,9 +786,7 @@ class TestKrausApply(unittest.TestCase):
         ce.combine(env1.fock, env2.polarization)
         ce.combine(env1.polarization, env2.fock)
 
-        op = jnp.array(
-            [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0]]
-        )
+        op = jnp.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0]])
         last_op = self.get_the_last_kraus_operator([op])
 
         ce.apply_kraus([op, last_op], env1.fock, env2.fock)
@@ -859,9 +831,7 @@ class TestKrausApply(unittest.TestCase):
         ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.fock, env2.fock)
 
-        op = jnp.array(
-            [[0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-        )
+        op = jnp.array([[0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
         last_op = self.get_the_last_kraus_operator([op])
         C = Config()
         C.set_contraction(False)
@@ -871,9 +841,7 @@ class TestKrausApply(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array(
-                    [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-                ),
+                jnp.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]),
             )
         )
 
@@ -892,9 +860,7 @@ class TestKrausApply(unittest.TestCase):
         ce = CompositeEnvelope(env1, env2)
         ce.combine(env1.fock, env2.fock)
 
-        op = jnp.array(
-            [[0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-        )
+        op = jnp.array([[0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
         last_op = self.get_the_last_kraus_operator([op])
         C = Config()
         C.set_contraction(True)
@@ -902,9 +868,7 @@ class TestKrausApply(unittest.TestCase):
         ce.apply_kraus([op, last_op], env1.fock, env2.fock)
 
         self.assertTrue(
-            jnp.allclose(
-                ce.product_states[0].state, jnp.array([[1], [0], [0], [0]])
-            )
+            jnp.allclose(ce.product_states[0].state, jnp.array([[1], [0], [0], [0]]))
         )
 
     def test_kraus_apply_matrix_partial(self) -> None:
@@ -931,9 +895,7 @@ class TestKrausApply(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array(
-                    [[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-                ),
+                jnp.array([[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]),
             )
         )
 
@@ -953,9 +915,7 @@ class TestKrausApply(unittest.TestCase):
         ce.combine(env1.fock)
         ce.combine(env2.fock)
 
-        op = jnp.array(
-            [[0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-        )
+        op = jnp.array([[0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
         last_op = self.get_the_last_kraus_operator([op])
         C = Config()
         C.set_contraction(False)
@@ -965,9 +925,7 @@ class TestKrausApply(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array(
-                    [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-                ),
+                jnp.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]),
             )
         )
 
@@ -981,15 +939,11 @@ class TestKrausApply(unittest.TestCase):
         env1.fock.dimensions = 2
         env1.combine()
         ce = CompositeEnvelope(env1)
-        op = jnp.array(
-            [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0]]
-        )
+        op = jnp.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0]])
         last_op = self.get_the_last_kraus_operator([op])
         ce.apply_kraus([op, last_op], env1.fock, env1.polarization)
         self.assertEqual(len(ce.product_states), 0)
-        self.assertTrue(
-            jnp.allclose(env1.state, jnp.array([[0], [0], [0], [1]]))
-        )
+        self.assertTrue(jnp.allclose(env1.state, jnp.array([[0], [0], [0], [1]])))
 
     def test_kraus_apply_onto_custom_state(self) -> None:
         C = Config()
@@ -1049,9 +1003,7 @@ class TestKrausApply(unittest.TestCase):
         ce.combine(env1.fock)
         ce.combine(env2.fock)
 
-        op = jnp.array(
-            [[2, 0, 0, 0], [0, 2, 0, 0], [0, 0, 2, 0], [0, 0, 0, 2]]
-        )
+        op = jnp.array([[2, 0, 0, 0], [0, 2, 0, 0], [0, 0, 2, 0], [0, 0, 0, 2]])
         C = Config()
         C.set_contraction(False)
 
@@ -1125,9 +1077,7 @@ class TestPOVMMeasurement(unittest.TestCase):
         C.set_contraction(True)
         outcomes = ce.measure_POVM(operators, env1.fock)
         self.assertEqual(1, outcomes[0])
-        self.assertTrue(
-            jnp.allclose(ce.product_states[0].state, jnp.array([[1], [0]]))
-        )
+        self.assertTrue(jnp.allclose(ce.product_states[0].state, jnp.array([[1], [0]])))
 
     def test_partial_POVM_measurement_non_destructive(self) -> None:
         env1 = Envelope()
@@ -1153,9 +1103,7 @@ class TestPOVMMeasurement(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array(
-                    [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0]]
-                ),
+                jnp.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0]]),
             )
         )
 
@@ -1186,9 +1134,7 @@ class TestPOVMMeasurement(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array(
-                    [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-                ),
+                jnp.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]),
             )
         )
 
@@ -1209,9 +1155,7 @@ class TestPOVMMeasurement(unittest.TestCase):
             op = op.at[tuple([i, i])].set(1)
             operators.append(op)
 
-        outcome = ce.measure_POVM(
-            operators, env1.polarization, env2.polarization
-        )
+        outcome = ce.measure_POVM(operators, env1.polarization, env2.polarization)
         self.assertEqual(outcome[0], 0)
 
     def test_POVM_exception(self) -> None:
@@ -1265,12 +1209,8 @@ class TestCompositeMatrixTrace(unittest.TestCase):
         ce.combine(env1.polarization, env2.polarization, env3.polarization)
 
         to = ce.trace_out(env1.polarization, env2.polarization)
-        expected_state = jnp.array(
-            [[0], [1 / jnp.sqrt(2)], [0], [1j / jnp.sqrt(2)]]
-        )
-        expected_state, _ = state_expand(
-            expected_state, ExpansionLevel.Vector, 4
-        )
+        expected_state = jnp.array([[0], [1 / jnp.sqrt(2)], [0], [1j / jnp.sqrt(2)]])
+        expected_state, _ = state_expand(expected_state, ExpansionLevel.Vector, 4)
         self.assertTrue(jnp.allclose(to, expected_state))
 
         # Check that the state is not changed
@@ -1317,9 +1257,7 @@ class TestCompositeMatrixTrace(unittest.TestCase):
             def prob(theta: float) -> jnp.ndarray:
                 env1 = Envelope()
                 env1.fock.dimensions = 2
-                env1.fock.state = jnp.array(
-                    [[jnp.cos(theta)], [jnp.sin(theta)]]
-                )
+                env1.fock.state = jnp.array([[jnp.cos(theta)], [jnp.sin(theta)]])
                 env1.fock.expansion_level = ExpansionLevel.Vector
                 env2 = Envelope()
                 env2.fock.dimensions = 2
@@ -1468,16 +1406,12 @@ class TestContraction(unittest.TestCase):
         self.assertTrue(
             jnp.allclose(
                 ce.product_states[0].state,
-                jnp.array(
-                    [[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-                ),
+                jnp.array([[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]),
             )
         )
         ce.product_states[0].contract()
         self.assertTrue(
-            jnp.allclose(
-                ce.product_states[0].state, jnp.array([[0], [1], [0], [0]])
-            )
+            jnp.allclose(ce.product_states[0].state, jnp.array([[0], [1], [0], [0]]))
         )
 
     def test_contraction_fail(self) -> None:
@@ -1503,6 +1437,4 @@ class TestContraction(unittest.TestCase):
         container.states[0].state = rho.copy()
         container.states[0].contract()
         self.assertTrue(jnp.allclose(container.states[0].state, rho))
-        self.assertEqual(
-            container.states[0].expansion_level, ExpansionLevel.Matrix
-        )
+        self.assertEqual(container.states[0].expansion_level, ExpansionLevel.Matrix)

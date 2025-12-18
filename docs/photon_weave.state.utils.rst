@@ -1,5 +1,5 @@
-photon\_weave.state.utils package
-=================================
+State Utilities
+===============
 
 Submodules
 ----------

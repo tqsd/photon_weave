@@ -1,6 +1,7 @@
 import random
 import sys
-from typing import Any
+from types import TracebackType
+from typing import Any, TypedDict
 
 import jax
 import jax.numpy as jnp
@@ -58,7 +59,7 @@ class Config:
         return self._dynamic_dimensions
 
     @dynamic_dimensions.setter
-    def dynamic_dimensions(self, dynamic_dimensions) -> None:
+    def dynamic_dimensions(self, dynamic_dimensions: bool) -> None:
         self._dynamic_dimensions = bool(dynamic_dimensions)
 
     def set_dynamic_dimensions(self, dynamic_dimensions: bool) -> None:
@@ -70,6 +71,14 @@ class Config:
 
     def set_use_jit(self, use_jit: bool) -> None:
         self._use_jit = bool(use_jit)
+
+
+class _ConfigSnapshot(TypedDict):
+    seed: int
+    key: jnp.ndarray
+    contractions: bool
+    dynamic_dimensions: bool
+    use_jit: bool
 
 
 class Session:
@@ -91,7 +100,7 @@ class Session:
         use_jit: bool | None = None,
     ) -> None:
         cfg = Config()
-        self._prev = {
+        self._prev: _ConfigSnapshot = {
             "seed": cfg.random_seed,
             "key": cfg._key,  # type: ignore[attr-defined]
             "contractions": cfg.contractions,
@@ -115,7 +124,12 @@ class Session:
             self._cfg.set_use_jit(self._use_jit)
         return self._cfg
 
-    def __exit__(self, exc_type, exc, tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         self._cfg._random_seed = self._prev["seed"]  # type: ignore[attr-defined]
         self._cfg._key = self._prev["key"]  # type: ignore[attr-defined]
         self._cfg.set_contraction(self._prev["contractions"])

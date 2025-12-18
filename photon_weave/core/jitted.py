@@ -67,9 +67,7 @@ def measure_povm_matrix(
     product_state: jnp.ndarray,
     key: jnp.ndarray,
 ) -> Tuple[int, jnp.ndarray, jnp.ndarray]:
-    return adapters.measure_povm_matrix_jit_meta(
-        meta, operators, product_state, key
-    )
+    return adapters.measure_povm_matrix_jit_meta(meta, operators, product_state, key)
 
 
 def trace_out_matrix(

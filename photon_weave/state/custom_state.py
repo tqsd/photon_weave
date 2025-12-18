@@ -8,7 +8,7 @@ such as qubits or quantum dots
 """
 
 import uuid
-from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import jax
 import jax.numpy as jnp
@@ -32,8 +32,8 @@ from .utils.measurements import (
     measure_vector_jit,
 )
 from .utils.operations import apply_operation_matrix, apply_operation_vector
-from .utils.shape_planning import build_plan
 from .utils.routing import route_operation
+from .utils.shape_planning import build_plan
 from .utils.state_transform import state_contract, state_expand
 
 
@@ -226,12 +226,8 @@ class CustomState(BaseState):
         C = Config()
         plan = build_plan([self], [self]) if C.use_jit else None
         if self.expansion_level == ExpansionLevel.Vector:
-            return measure_vector_expectation(
-                [self], [self], self.state, meta=plan
-            )
-        return measure_matrix_expectation(
-            [self], [self], self.state, meta=plan
-        )
+            return measure_vector_expectation([self], [self], self.state, meta=plan)
+        return measure_matrix_expectation([self], [self], self.state, meta=plan)
 
     def measure_POVM(
         self,
@@ -264,9 +260,7 @@ class CustomState(BaseState):
             if self.composite_envelope is None or not hasattr(
                 self.composite_envelope, "measure_POVM"
             ):
-                raise ValueError(
-                    "Composite envelope not attached for measurement"
-                )
+                raise ValueError("Composite envelope not attached for measurement")
             return self.composite_envelope.measure_POVM(operators, self)
 
         for op in operators:
@@ -286,9 +280,7 @@ class CustomState(BaseState):
             key = Config().random_key
         use_key, _ = borrow_key(key)
         outcome = int(
-            jax.random.choice(
-                use_key, a=jnp.arange(len(operators)), p=probabilities
-            )
+            jax.random.choice(use_key, a=jnp.arange(len(operators)), p=probabilities)
         )
         self.state = jnp.matmul(
             operators[outcome],

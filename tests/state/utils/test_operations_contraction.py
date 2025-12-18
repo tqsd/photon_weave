@@ -36,9 +36,7 @@ def test_vector_contraction_handles_noncontiguous_target_with_plan():
     op = x_operator()
     state = _basis_state(2, 8)  # |010>
 
-    out = operations.apply_operation_vector(
-        states, targets, state, op, meta=plan
-    )
+    out = operations.apply_operation_vector(states, targets, state, op, meta=plan)
     full_op = jnp.kron(jnp.eye(2), jnp.kron(op, jnp.eye(2)))
     expected = full_op @ state
     assert jnp.allclose(out, expected)

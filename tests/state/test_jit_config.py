@@ -21,9 +21,7 @@ def test_envelope_expand_respects_use_jit(monkeypatch):
         calls["called"] = True
         return jnp.array([[1, 0], [0, 0]], dtype=jnp.complex128), level
 
-    monkeypatch.setattr(
-        "photon_weave.state.envelope.state_expand_jit", fake_expand
-    )
+    monkeypatch.setattr("photon_weave.state.envelope.state_expand_jit", fake_expand)
     env.expand()
     assert calls.get("called", False)
 

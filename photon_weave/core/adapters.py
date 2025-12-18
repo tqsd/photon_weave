@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 from functools import lru_cache, partial
-from typing import List, Sequence, Tuple
+from typing import Callable, List, Sequence, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -111,19 +111,15 @@ def _cached_matrix_einsum(
 @lru_cache(None)
 def _cached_vector_contraction_kernel(
     state_dims: Tuple[int, ...], target_indices: Tuple[int, ...]
-):
+) -> Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray]:
     einsum_str = _cached_vector_einsum(state_dims, target_indices)
     target_dims = tuple(state_dims[i] for i in target_indices)
 
     @jax.jit
-    def kernel(
-        operator: jnp.ndarray, product_state: jnp.ndarray
-    ) -> jnp.ndarray:
+    def kernel(operator: jnp.ndarray, product_state: jnp.ndarray) -> jnp.ndarray:
         op_tensor = operator.reshape((*target_dims, *target_dims))
         state_tensor = product_state.reshape((*state_dims, 1))
-        contracted = oe.contract(
-            einsum_str, op_tensor, state_tensor, backend="jax"
-        )
+        contracted = oe.contract(einsum_str, op_tensor, state_tensor, backend="jax")
         return contracted.reshape((-1, 1))
 
     return kernel
@@ -132,15 +128,13 @@ def _cached_vector_contraction_kernel(
 @lru_cache(None)
 def _cached_matrix_contraction_kernel(
     state_dims: Tuple[int, ...], target_indices: Tuple[int, ...]
-):
+) -> Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray]:
     einsum_str = _cached_matrix_einsum(state_dims, target_indices)
     target_dims = tuple(state_dims[i] for i in target_indices)
     flat_dim = int(math.prod(state_dims))
 
     @jax.jit
-    def kernel(
-        operator: jnp.ndarray, product_state: jnp.ndarray
-    ) -> jnp.ndarray:
+    def kernel(operator: jnp.ndarray, product_state: jnp.ndarray) -> jnp.ndarray:
         op_tensor = operator.reshape((*target_dims, *target_dims))
         state_tensor = product_state.reshape((*state_dims, *state_dims))
         contracted = oe.contract(
@@ -158,7 +152,7 @@ def _cached_matrix_contraction_kernel(
 @lru_cache(None)
 def _cached_trace_out_contraction_kernel(
     state_dims: Tuple[int, ...], target_indices: Tuple[int, ...]
-):
+) -> Callable[[jnp.ndarray], jnp.ndarray]:
     einsum_str = _cached_trace_out_einsum(state_dims, target_indices)
     target_dims = _permute_dims(state_dims, target_indices)
     flat = int(math.prod(target_dims))
@@ -173,9 +167,7 @@ def _cached_trace_out_contraction_kernel(
 
 
 @lru_cache(None)
-def _cached_kraus_einsum(
-    dims: Tuple[int, ...], target_indices: Tuple[int, ...]
-) -> str:
+def _cached_kraus_einsum(dims: Tuple[int, ...], target_indices: Tuple[int, ...]) -> str:
     """
     Build an einsum string for stacked Kraus operators with a leading Kraus axis.
 
@@ -736,9 +728,7 @@ def trace_out_matrix(
 
     # Trace out the leading rest_count subsystems (i.e., the ones not requested)
     rest_count = len(rest_indices)
-    reduced = kernels.trace_out_matrix_ordered(
-        tuple(reordered_dims), rest_count, ps
-    )
+    reduced = kernels.trace_out_matrix_ordered(tuple(reordered_dims), rest_count, ps)
     target_dims = _permute_dims(state_dims, target_indices)
     return reduced.reshape((math.prod(target_dims),) * 2)
 
@@ -912,9 +902,7 @@ def measure_vector_jit(
 def measure_vector_jit_meta(
     meta: DimsMeta, product_state: jnp.ndarray, key: jnp.ndarray
 ) -> Tuple[int, jnp.ndarray, jnp.ndarray]:
-    return measure_vector_jit(
-        meta.state_dims, meta.target_indices, product_state, key
-    )
+    return measure_vector_jit(meta.state_dims, meta.target_indices, product_state, key)
 
 
 @partial(jax.jit, static_argnames=("state_dims", "target_indices"))
@@ -941,9 +929,7 @@ def measure_matrix_jit(
 def measure_matrix_jit_meta(
     meta: DimsMeta, product_state: jnp.ndarray, key: jnp.ndarray
 ) -> Tuple[int, jnp.ndarray, jnp.ndarray]:
-    return measure_matrix_jit(
-        meta.state_dims, meta.target_indices, product_state, key
-    )
+    return measure_matrix_jit(meta.state_dims, meta.target_indices, product_state, key)
 
 
 @partial(jax.jit, static_argnames=("state_dims", "target_indices"))

@@ -1,5 +1,5 @@
-photon\_weave.operation.helpers package
-=======================================
+Operation Helpers
+=================
 
 Submodules
 ----------

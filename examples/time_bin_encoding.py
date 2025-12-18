@@ -147,9 +147,7 @@ class MZI:
             we label these pulses as second_pulse
             """
             env02 = self._empty_env(2)
-            env_top_second_pulse, env_bot_second_pulse = self.apply_bs(
-                env_t1, env02
-            )
+            env_top_second_pulse, env_bot_second_pulse = self.apply_bs(env_t1, env02)
             env_top_second_pulse = self.apply_ps(env_top_second_pulse)
 
         """
@@ -157,9 +155,7 @@ class MZI:
         we apply the second beam_splitter and append it to the results
         """
         env10 = self._empty_env(10)
-        env_top_first_out, env_bot_first_out = self.apply_bs(
-            env10, env_bot_first_pulse
-        )
+        env_top_first_out, env_bot_first_out = self.apply_bs(env10, env_bot_first_pulse)
 
         self.debug_log_probabilities(env_top_first_out, env_bot_first_out)
         results.append({"top": env_top_first_out, "bot": env_bot_first_out})
@@ -175,12 +171,8 @@ class MZI:
             env_top_second_out, env_bot_second_out = self.apply_bs(
                 env_top_first_pulse, env12
             )
-            results.append(
-                {"top": env_top_second_out, "bot": env_bot_second_out}
-            )
-            self.debug_log_probabilities(
-                env_top_second_out, env_bot_second_out
-            )
+            results.append({"top": env_top_second_out, "bot": env_bot_second_out})
+            self.debug_log_probabilities(env_top_second_out, env_bot_second_out)
         else:
             """
             In case there is second pulse entering MZI, we have simulate interaction
@@ -190,9 +182,7 @@ class MZI:
             env_top_second_out, env_bot_second_out = self.apply_bs(
                 env_top_first_pulse, env_bot_second_pulse
             )
-            results.append(
-                {"top": env_top_second_out, "bot": env_bot_second_out}
-            )
+            results.append({"top": env_top_second_out, "bot": env_bot_second_out})
 
             """
             Finally we process the part of the second pulse, which
@@ -202,9 +192,7 @@ class MZI:
             env_top_third_out, env_bot_third_out = self.apply_bs(
                 env_top_second_pulse, self._empty_env("last")
             )
-            results.append(
-                {"top": env_top_third_out, "bot": env_bot_third_out}
-            )
+            results.append({"top": env_top_third_out, "bot": env_bot_third_out})
         if self.debug:
             self.show_debug_plot()
         return results
@@ -262,26 +250,14 @@ def tbe(alpha: float, beta: float, runs: int = 1):
             probs_top_2.append(get_probability(third_pulse["top"]))
             probs_bot_2.append(get_probability(third_pulse["bot"]))
         else:
-            probs_top_0.append(
-                first_pulse["top"].measure()[first_pulse["top"].fock]
-            )
-            probs_bot_0.append(
-                first_pulse["bot"].measure()[first_pulse["bot"].fock]
-            )
+            probs_top_0.append(first_pulse["top"].measure()[first_pulse["top"].fock])
+            probs_bot_0.append(first_pulse["bot"].measure()[first_pulse["bot"].fock])
 
-            probs_top_1.append(
-                second_pulse["top"].measure()[second_pulse["top"].fock]
-            )
-            probs_bot_1.append(
-                second_pulse["bot"].measure()[second_pulse["bot"].fock]
-            )
+            probs_top_1.append(second_pulse["top"].measure()[second_pulse["top"].fock])
+            probs_bot_1.append(second_pulse["bot"].measure()[second_pulse["bot"].fock])
 
-            probs_top_2.append(
-                third_pulse["top"].measure()[third_pulse["top"].fock]
-            )
-            probs_bot_2.append(
-                third_pulse["bot"].measure()[third_pulse["bot"].fock]
-            )
+            probs_top_2.append(third_pulse["top"].measure()[third_pulse["top"].fock])
+            probs_bot_2.append(third_pulse["bot"].measure()[third_pulse["bot"].fock])
 
     probs_top_0 = jnp.array(probs_top_0)
     probs_bot_0 = jnp.array(probs_bot_0)
@@ -384,9 +360,7 @@ if __name__ == "__main__":
     ylims = [(0, 0.1), (0, 0.3), (0, 0.1)]
     for i, ax in enumerate(axes):
         ax.plot(alpha_values, probabilities_all[i][0], label="Top Probability")
-        ax.plot(
-            alpha_values, probabilities_all[i][1], label="Bottom Probability"
-        )
+        ax.plot(alpha_values, probabilities_all[i][1], label="Bottom Probability")
         ax.set_ylabel(f"Probability {titles[i]}")
         ax.legend()
         ax.set_xticks(xticks)

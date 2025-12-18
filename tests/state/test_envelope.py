@@ -42,12 +42,8 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
         representation = env.__repr__().split("\n")
         representation = [r.split(" ⊗ ") for r in representation]
         self.assertEqual(representation[0][0], "|0⟩")
-        self.assertEqual(
-            representation[0][1], "⎡ +1.00 + 0.00j   +0.00 + 0.00j ⎤"
-        )
-        self.assertEqual(
-            representation[1][1], "⎣ +0.00 + 0.00j   +0.00 + 0.00j ⎦"
-        )
+        self.assertEqual(representation[0][1], "⎡ +1.00 + 0.00j   +0.00 + 0.00j ⎤")
+        self.assertEqual(representation[1][1], "⎣ +0.00 + 0.00j   +0.00 + 0.00j ⎦")
 
         env.fock.expand()
         representation = env.__repr__().split("\n")
@@ -55,12 +51,8 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
         self.assertEqual(representation[0][0], "⎡ +1.00 + 0.00j ⎤")
         self.assertEqual(representation[1][0], "⎢ +0.00 + 0.00j ⎥")
         self.assertEqual(representation[2][0], "⎣ +0.00 + 0.00j ⎦")
-        self.assertEqual(
-            representation[0][1], "⎡ +1.00 + 0.00j   +0.00 + 0.00j ⎤"
-        )
-        self.assertEqual(
-            representation[1][1], "⎣ +0.00 + 0.00j   +0.00 + 0.00j ⎦"
-        )
+        self.assertEqual(representation[0][1], "⎡ +1.00 + 0.00j   +0.00 + 0.00j ⎤")
+        self.assertEqual(representation[1][1], "⎣ +0.00 + 0.00j   +0.00 + 0.00j ⎦")
 
         env.fock.expand()
         representation = env.__repr__().split("\n")
@@ -77,12 +69,8 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
             representation[2][0],
             "⎣ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎦",
         )
-        self.assertEqual(
-            representation[0][1], "⎡ +1.00 + 0.00j   +0.00 + 0.00j ⎤"
-        )
-        self.assertEqual(
-            representation[1][1], "⎣ +0.00 + 0.00j   +0.00 + 0.00j ⎦"
-        )
+        self.assertEqual(representation[0][1], "⎡ +1.00 + 0.00j   +0.00 + 0.00j ⎤")
+        self.assertEqual(representation[1][1], "⎣ +0.00 + 0.00j   +0.00 + 0.00j ⎦")
 
         env = Envelope()
         env.fock.state = 1
@@ -158,12 +146,8 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
             representation[3][0],
             "⎣ +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j   +0.00 + 0.00j ⎦",
         )
-        self.assertEqual(
-            representation[0][1], "⎡ +1.00 + 0.00j   +0.00 + 0.00j ⎤"
-        )
-        self.assertEqual(
-            representation[1][1], "⎣ +0.00 + 0.00j   +0.00 + 0.00j ⎦"
-        )
+        self.assertEqual(representation[0][1], "⎡ +1.00 + 0.00j   +0.00 + 0.00j ⎤")
+        self.assertEqual(representation[1][1], "⎣ +0.00 + 0.00j   +0.00 + 0.00j ⎦")
 
         env = Envelope()
         env.fock.state = 1
@@ -215,9 +199,7 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
         self.assertTrue(isinstance(env.polarization, Polarization))
         self.assertIsNone(env.state)
         self.assertEqual(env.wavelength, 1550)
-        self.assertTrue(
-            isinstance(env.temporal_profile, TemporalProfileInstance)
-        )
+        self.assertTrue(isinstance(env.temporal_profile, TemporalProfileInstance))
         self.assertEqual(env.temporal_profile.params["mu"], 0)
 
         fock = Fock()
@@ -227,9 +209,7 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
         self.assertTrue(isinstance(env.polarization, Polarization))
         self.assertIsNone(env.state)
         self.assertEqual(env.wavelength, 1550)
-        self.assertTrue(
-            isinstance(env.temporal_profile, TemporalProfileInstance)
-        )
+        self.assertTrue(isinstance(env.temporal_profile, TemporalProfileInstance))
         self.assertEqual(env.temporal_profile.params["mu"], 0)
 
         pol = Polarization()
@@ -238,9 +218,7 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
         self.assertTrue(isinstance(env.polarization, Polarization))
         self.assertIsNone(env.state)
         self.assertEqual(env.wavelength, 1550)
-        self.assertTrue(
-            isinstance(env.temporal_profile, TemporalProfileInstance)
-        )
+        self.assertTrue(isinstance(env.temporal_profile, TemporalProfileInstance))
         self.assertEqual(env.temporal_profile.params["mu"], 0)
 
         pol = Polarization()
@@ -252,9 +230,7 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
         self.assertTrue(isinstance(env.polarization, Polarization))
         self.assertIsNone(env.state)
         self.assertEqual(env.wavelength, 1550)
-        self.assertTrue(
-            isinstance(env.temporal_profile, TemporalProfileInstance)
-        )
+        self.assertTrue(isinstance(env.temporal_profile, TemporalProfileInstance))
         self.assertEqual(env.temporal_profile.params["mu"], 0)
 
     def test_state_combining(self) -> None:
@@ -368,15 +344,11 @@ class TestEnvelopeSmallFunctions(unittest.TestCase):
         env.expand()
         self.assertEqual(env.expansion_level, ExpansionLevel.Vector)
         self.assertEqual(env.fock.expansion_level, ExpansionLevel.Vector)
-        self.assertEqual(
-            env.polarization.expansion_level, ExpansionLevel.Vector
-        )
+        self.assertEqual(env.polarization.expansion_level, ExpansionLevel.Vector)
         env.expand()
         self.assertEqual(env.expansion_level, ExpansionLevel.Matrix)
         self.assertEqual(env.fock.expansion_level, ExpansionLevel.Matrix)
-        self.assertEqual(
-            env.polarization.expansion_level, ExpansionLevel.Matrix
-        )
+        self.assertEqual(env.polarization.expansion_level, ExpansionLevel.Matrix)
 
     def test_reorder(self) -> None:
         """
@@ -693,13 +665,9 @@ class TestEnvelopeMeausrement(unittest.TestCase):
         with self.assertRaises(ValueError):
             env.measure_POVM(operators=[], states=[env.fock, env.fock])
         with self.assertRaises(ValueError):
-            env.measure_POVM(
-                operators=[], states=[env.polarization, env.polarization]
-            )
+            env.measure_POVM(operators=[], states=[env.polarization, env.polarization])
         with self.assertRaises(ValueError):
-            env.measure_POVM(
-                operators=[], states=[env.polarization, env.fock, Fock()]
-            )
+            env.measure_POVM(operators=[], states=[env.polarization, env.fock, Fock()])
         with self.assertRaises(ValueError):
             env.measure_POVM(operators=[], states=[Polarization(), Fock()])
         with self.assertRaises(ValueError):
@@ -872,9 +840,7 @@ class TestEnvelopeMeausrement(unittest.TestCase):
         probs, post = env.measure_expectation(env.fock)
 
         self.assertTrue(jnp.allclose(probs, jnp.array([0.5, 0.5])))
-        self.assertTrue(
-            jnp.allclose(post, jnp.array([[1.0, 0.0], [0.0, 0.0]]))
-        )
+        self.assertTrue(jnp.allclose(post, jnp.array([[1.0, 0.0], [0.0, 0.0]])))
         self.assertTrue(jnp.allclose(env.state, original_state))
 
     def test_measure_expectation_is_differentiable(self) -> None:
@@ -889,9 +855,7 @@ class TestEnvelopeMeausrement(unittest.TestCase):
             def prob(theta: float) -> jnp.ndarray:
                 env = Envelope()
                 env.fock.dimensions = 2
-                env.fock.state = jnp.array(
-                    [[jnp.cos(theta)], [jnp.sin(theta)]]
-                )
+                env.fock.state = jnp.array([[jnp.cos(theta)], [jnp.sin(theta)]])
                 env.fock.expansion_level = ExpansionLevel.Vector
                 env.polarization.state = jnp.array([[1.0], [0.0]])
                 env.polarization.expansion_level = ExpansionLevel.Vector
@@ -918,9 +882,7 @@ class TestEnvelopeMeausrement(unittest.TestCase):
             def loss_fn(theta: jnp.ndarray) -> jnp.ndarray:
                 env = Envelope()
                 env.fock.dimensions = 2
-                env.fock.state = jnp.array(
-                    [[jnp.cos(theta)], [jnp.sin(theta)]]
-                )
+                env.fock.state = jnp.array([[jnp.cos(theta)], [jnp.sin(theta)]])
                 env.fock.expansion_level = ExpansionLevel.Vector
                 env.polarization.state = jnp.array([[1.0], [0.0]])
                 env.polarization.expansion_level = ExpansionLevel.Vector
@@ -1071,17 +1033,11 @@ class TestEnvelopeKraus(unittest.TestCase):
         env.fock.uid = "F"
         env.polarization.uid = "P"
         env.fock.dimensions = 2
-        op1 = jnp.array(
-            [[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-        )
-        op2 = jnp.array(
-            [[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
-        )
+        op1 = jnp.array([[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
+        op2 = jnp.array([[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
         env.apply_kraus([op1, op2], env.fock, env.polarization)
         # State is contracted
-        self.assertTrue(
-            jnp.allclose(env.state, jnp.array([[0], [1], [0], [0]]))
-        )
+        self.assertTrue(jnp.allclose(env.state, jnp.array([[0], [1], [0], [0]])))
         self.assertEqual(env.fock.index, 0)
         self.assertEqual(env.polarization.index, 1)
 
@@ -1119,9 +1075,7 @@ class TestEnvelopeKraus(unittest.TestCase):
         op1 = jnp.array([[0, 1], [0, 0]])
         op2 = jnp.array([[0, 0], [1, 0]])
         env.apply_kraus([op1, op2], env.polarization)
-        self.assertTrue(
-            jnp.allclose(jnp.array([[0], [0], [0], [1]]), env.state)
-        )
+        self.assertTrue(jnp.allclose(jnp.array([[0], [0], [0], [1]]), env.state))
 
 
 class TestTraceOut(unittest.TestCase):
@@ -1136,9 +1090,7 @@ class TestTraceOut(unittest.TestCase):
         env.fock.expand()
         env.polarization.expand()
         self.assertIsNone(env.state)
-        self.assertTrue(
-            jnp.allclose(env.trace_out(env.fock), jnp.array([[0], [1]]))
-        )
+        self.assertTrue(jnp.allclose(env.trace_out(env.fock), jnp.array([[0], [1]])))
         self.assertTrue(
             jnp.allclose(
                 env.trace_out(env.polarization),
@@ -1188,9 +1140,7 @@ class TestTraceOut(unittest.TestCase):
         )
 
         self.assertTrue(
-            jnp.allclose(
-                env.trace_out(env.polarization), jnp.array([[1, 0], [0, 0]])
-            )
+            jnp.allclose(env.trace_out(env.polarization), jnp.array([[1, 0], [0, 0]]))
         )
 
         # State should not be changed
@@ -1213,9 +1163,7 @@ class TestTraceOut(unittest.TestCase):
         )
 
         self.assertTrue(
-            jnp.allclose(
-                env.trace_out(env.polarization), jnp.array([[1, 0], [0, 0]])
-            )
+            jnp.allclose(env.trace_out(env.polarization), jnp.array([[1, 0], [0, 0]]))
         )
 
         self.assertTrue(
@@ -1235,9 +1183,7 @@ class TestTraceOut(unittest.TestCase):
         )
 
         self.assertTrue(
-            jnp.allclose(
-                env.polarization.trace_out(), jnp.array([[1, 0], [0, 0]])
-            )
+            jnp.allclose(env.polarization.trace_out(), jnp.array([[1, 0], [0, 0]]))
         )
 
 

@@ -43,13 +43,9 @@ def mach_zender_probabilities(phase_shift: float):
     env2.fock.dimensions = 2
 
     # Generate operators
-    bs1 = Operation(
-        CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4
-    )
+    bs1 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
     ps = Operation(FockOperationType.PhaseShift, phi=phase_shift)
-    bs2 = Operation(
-        CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4
-    )
+    bs2 = Operation(CompositeOperationType.NonPolarizingBeamSplitter, eta=jnp.pi / 4)
 
     ce = CompositeEnvelope(env1, env2)
     ce.apply_operation(bs1, env1.fock, env2.fock)
@@ -64,9 +60,7 @@ def mach_zender_probabilities(phase_shift: float):
 
 if __name__ == "__main__":
     angles = jnp.linspace(0, 2 * jnp.pi, 100)
-    results = {
-        float(angle): mach_zender_probabilities(angle) for angle in angles
-    }
+    results = {float(angle): mach_zender_probabilities(angle) for angle in angles}
 
     measurements_1 = [vals[0] for vals in results.values()]
     measurements_2 = [vals[1] for vals in results.values()]
@@ -77,9 +71,7 @@ if __name__ == "__main__":
     plt.plot(angles, measurements_2, label="Output Port 2 Probability")
     plt.xlabel("Phase Shift (radians)")
     plt.ylabel("Probability")
-    plt.title(
-        "Mach-Zehnder Interferometer Output Probabilities vs Phase Shift"
-    )
+    plt.title("Mach-Zehnder Interferometer Output Probabilities vs Phase Shift")
     plt.legend()
     plt.grid(True)
     plt.show()

@@ -276,9 +276,7 @@ def squeezing_operator(cutoff: int, zeta: complex) -> jnp.ndarray:
     """
     create = creation_operator(cutoff=cutoff)
     destroy = annihilation_operator(cutoff=cutoff)
-    operator = 0.5 * (
-        jnp.conj(zeta) * (destroy @ destroy) - zeta * (create @ create)
-    )
+    operator = 0.5 * (jnp.conj(zeta) * (destroy @ destroy) - zeta * (create @ create))
 
     return jitted_exp(operator)
 
@@ -357,17 +355,14 @@ def compute_einsum(
 
 
 def _stack_kraus_operators(
-    operators: Union[
-        jnp.ndarray, np.ndarray, List[Union[np.ndarray, jnp.ndarray]]
-    ],
+    operators: Union[jnp.ndarray, np.ndarray, List[Union[np.ndarray, jnp.ndarray]]],
 ) -> jnp.ndarray:
     ops = jnp.asarray(operators)
     if ops.ndim == 2:
         ops = ops[None, ...]
     if ops.ndim != 3:
         raise ValueError(
-            "Kraus operators must have shape (k, d, d) or (d, d); "
-            f"got {ops.shape}"
+            "Kraus operators must have shape (k, d, d) or (d, d); " f"got {ops.shape}"
         )
     return ops
 
@@ -409,9 +404,7 @@ def apply_kraus(
 
 
 def kraus_identity_check(
-    operators: Union[
-        jnp.ndarray, np.ndarray, List[Union[np.ndarray, jnp.ndarray]]
-    ],
+    operators: Union[jnp.ndarray, np.ndarray, List[Union[np.ndarray, jnp.ndarray]]],
     tol: float = 1e-6,
 ) -> bool:
     """
@@ -505,21 +498,13 @@ def num_quanta_matrix(matrix: jnp.ndarray) -> jnp.int64:
     non_zero_cols = jnp.any(matrix != 0, axis=0)
 
     highest_non_zero_index_row = (
-        jnp.where(non_zero_rows)[0][-1].item()
-        if jnp.any(non_zero_rows)
-        else None
+        jnp.where(non_zero_rows)[0][-1].item() if jnp.any(non_zero_rows) else None
     )
     highest_non_zero_index_col = (
-        jnp.where(non_zero_cols)[0][-1].item()
-        if jnp.any(non_zero_cols)
-        else None
+        jnp.where(non_zero_cols)[0][-1].item() if jnp.any(non_zero_cols) else None
     )
-    assert (
-        highest_non_zero_index_row is not None
-    )  # for mypy but needs to be checked
-    assert (
-        highest_non_zero_index_col is not None
-    )  # for mypy but needs to be checked
+    assert highest_non_zero_index_row is not None  # for mypy but needs to be checked
+    assert highest_non_zero_index_col is not None  # for mypy but needs to be checked
     # Determine the overall highest index
     highest_non_zero_index_matrix = max(
         highest_non_zero_index_row, highest_non_zero_index_col

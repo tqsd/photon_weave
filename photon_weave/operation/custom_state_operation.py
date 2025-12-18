@@ -66,7 +66,7 @@ class CustomStateOperationType(Enum):
         required_params: List[str],
         expansion_level: ExpansionLevel,
         op_id: int,
-    ):
+    ) -> "CustomStateOperationType":
         obj = object.__new__(cls)
         obj._value_ = op_id
         obj.renormalize = renormalize
@@ -80,9 +80,7 @@ class CustomStateOperationType(Enum):
         """
         return
 
-    def compute_operator(
-        self, dimensions: List[int], **kwargs: Any
-    ) -> jnp.ndarray:
+    def compute_operator(self, dimensions: List[int], **kwargs: Any) -> jnp.ndarray:
         """
         Generates the operator for this operation
 
@@ -98,9 +96,7 @@ class CustomStateOperationType(Enum):
             case CustomStateOperationType.Custom:
                 return kwargs["operator"]
             case CustomStateOperationType.Expresion:
-                return interpreter(
-                    kwargs["expr"], kwargs["context"], dimensions
-                )
+                return interpreter(kwargs["expr"], kwargs["context"], dimensions)
         raise ValueError("Operator not recognized")
 
     def compute_dimensions(
